@@ -1,0 +1,16 @@
+#[link(name = "layers",
+       vers = "0.1")];
+#[crate_type = "lib"];
+
+use std;
+use geom;
+use azure;
+use opengles;
+
+mod layers;
+mod scene;
+mod rendergl;
+
+#[cfg(test)]
+mod test;
+
