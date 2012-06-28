@@ -1,8 +1,6 @@
-import azure::AzDrawTargetRef;
 import geom::matrix::{Matrix4, identity};
-import geom::size::Size2D;
+import opengles::gl2::GLuint;
 
-import f32::num;
 import std::cmp::fuzzy_eq;
 
 enum Format {
@@ -11,7 +9,7 @@ enum Format {
 
 enum Layer {
     ContainerLayerKind(@ContainerLayer),
-    AzureLayerKind(@AzureLayer)
+    ImageLayerKind(@ImageLayer)
 }
 
 class CommonLayer {
@@ -19,15 +17,13 @@ class CommonLayer {
     let mut prev_sibling: option<Layer>;
     let mut next_sibling: option<Layer>;
 
-    let mut size: Size2D<f32>;
     let mut transform: Matrix4<f32>;
 
-    new(size: Size2D<f32>) {
+    new() {
         self.parent = none;
         self.prev_sibling = none;
         self.next_sibling = none;
 
-        self.size = size;
         self.transform = identity(0.0f32);
     }
 }
@@ -37,20 +33,38 @@ class ContainerLayer {
     let mut first_child: option<Layer>;
     let mut last_child: option<Layer>;
 
-    new(size: Size2D<f32>) {
-        self.common = CommonLayer(size);
+    new() {
+        self.common = CommonLayer();
         self.first_child = none;
         self.last_child = none;
     }
 }
 
-class AzureLayer {
-    let mut common: CommonLayer;
-    let mut draw_target: AzDrawTargetRef;
+class Image {
+    let width: uint;
+    let height: uint;
+    let format: Format;
+    let data: [u8]/~;
 
-    new(size: Size2D<f32>, draw_target: AzDrawTargetRef) {
-        self.common = CommonLayer(size);
-        self.draw_target = draw_target;
+    let mut texture: option<GLuint>;
+
+    new(width: uint, height: uint, format: Format, +data: [u8]/~) {
+        self.width = width;
+        self.height = height;
+        self.format = format;
+        self.data = data;
+
+        self.texture = none;
+    }
+}
+
+class ImageLayer {
+    let mut common: CommonLayer;
+    let mut image: @Image;
+
+    new(image: @Image) {
+        self.common = CommonLayer();
+        self.image = image;
     }
 }
 

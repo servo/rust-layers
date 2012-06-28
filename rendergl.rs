@@ -1,3 +1,6 @@
+import layers::Image;
+
+import geom::matrix::Matrix4;
 import opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, COMPILE_STATUS};
 import opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, REPEAT, RGB, STATIC_DRAW};
 import opengles::gl2::{TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER, TEXTURE_WRAP_S};
@@ -9,7 +12,8 @@ import opengles::gl2::{enable_vertex_attrib_array, gen_buffers, gen_textures};
 import opengles::gl2::{get_attrib_location, get_error, get_program_iv};
 import opengles::gl2::{get_shader_info_log, get_shader_iv};
 import opengles::gl2::{get_uniform_location, link_program, shader_source, tex_image_2d};
-import opengles::gl2::{tex_parameter_i, uniform_1i, use_program, vertex_attrib_pointer_f32};
+import opengles::gl2::{tex_parameter_i, uniform_1i, uniform_matrix_4fv, use_program};
+import opengles::gl2::{vertex_attrib_pointer_f32};
 
 import io::println;
 import libc::c_int;
@@ -36,10 +40,12 @@ fn VERTEX_SHADER_SOURCE() -> str {
         attribute vec3 aVertexPosition;
         attribute vec2 aTextureCoord;
 
+        uniform mat4 uMVMatrix;
+
         varying vec2 vTextureCoord;
 
         void main(void) {
-            gl_Position = vec4(aVertexPosition, 1.0);
+            gl_Position = uMVMatrix * vec4(aVertexPosition, 1.0);
             vTextureCoord = aTextureCoord;
         }
     "
@@ -47,7 +53,7 @@ fn VERTEX_SHADER_SOURCE() -> str {
 
 fn load_shader(source_string: str, shader_type: GLenum) -> GLuint {
     let shader_id = create_shader(shader_type);
-    shader_source(shader_id, [ bytes(source_string) ]);
+    shader_source(shader_id, [ bytes(source_string) ]/~);
     compile_shader(shader_id);
 
     if get_error() != NO_ERROR {
@@ -67,12 +73,14 @@ class RenderContext {
     let program: GLuint;
     let vertex_position_attr: c_int;
     let texture_coord_attr: c_int;
+    let modelview_uniform: c_int;
     let sampler_uniform: c_int;
 
     new(program: GLuint) {
         self.program = program;
         self.vertex_position_attr = get_attrib_location(program, "aVertexPosition");
         self.texture_coord_attr = get_attrib_location(program, "aTextureCoord");
+        self.modelview_uniform = get_uniform_location(program, "uMVMatrix");
         self.sampler_uniform = get_uniform_location(program, "uSampler");
 
         enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
@@ -108,7 +116,7 @@ fn init_buffers() -> (GLuint, GLuint) {
         _0, _1, _0,
         _1, _0, _0,
         _1, _1, _0
-    ];
+    ]/~;
 
     buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
 
@@ -120,14 +128,19 @@ fn init_buffers() -> (GLuint, GLuint) {
         _0, _0,
         _1, _1,
         _1, _0
-    ];
+    ]/~;
 
     buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
 
     ret (triangle_vertex_buffer, texture_coord_buffer);
 }
 
-fn init_texture(width: uint, height: uint, data: [u8]) -> GLuint {
+fn create_texture_for_image(image: @Image) {
+    alt image.texture {
+        none {}
+        some(_) { ret; /* Nothing to do. */ }
+    }
+
     let texture = gen_textures(1 as GLsizei)[0];
     bind_texture(TEXTURE_2D, texture);
 
@@ -136,22 +149,40 @@ fn init_texture(width: uint, height: uint, data: [u8]) -> GLuint {
     tex_parameter_i(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR as GLint);
     tex_parameter_i(TEXTURE_2D, TEXTURE_MIN_FILTER, NEAREST as GLint);
 
-    tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint, width as GLsizei, height as GLsizei,
-                 0 as GLint, RGB, UNSIGNED_BYTE, data);
-    ret texture;
+    tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint,
+                 image.width as GLsizei, image.height as GLsizei,
+                 0 as GLint, RGB, UNSIGNED_BYTE, image.data);
+
+    image.texture = some(texture);
 }
 
-fn render_scene(render_context: RenderContext, texture_width: uint, texture_height: uint,
-                texture_data: [u8]) {
+fn render_scene(render_context: RenderContext, image_layer: layers::ImageLayer) {
 
     let (vertex_buffer, texture_coord_buffer) = init_buffers();
-    let texture = init_texture(texture_width, texture_height, texture_data);
+    create_texture_for_image(image_layer.image);
+
+    let _0 = 0.0f32;
+    let _1 = 1.0f32;
+    let _2 = 2.0f32;
 
     clear_color(0.0f32, 0.0f32, 1.0f32, 1.0f32);
     clear(COLOR_BUFFER_BIT);
 
     enable(TEXTURE_2D);
+
+    uniform_matrix_4fv(render_context.modelview_uniform, false,
+                       image_layer.common.transform.to_array());
+
+    // FIXME: option.get should be pure
+    let mut texture;
+    alt image_layer.image.texture {
+        none { fail; }
+        some(tex) {
+            texture = tex;
+        }
+    }
     bind_texture(TEXTURE_2D, texture);
+
     uniform_1i(render_context.sampler_uniform, 0);
 
     bind_buffer(ARRAY_BUFFER, vertex_buffer);

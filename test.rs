@@ -1,24 +1,44 @@
 use glut;
 use stb_image;
 
+import layers::*;
 import rendergl::*;
 import stb_image::image::load;
 
 import glut::{create_window, display_func, init};
-import glut::bindgen::{glutInitDisplayMode, glutMainLoop, glutSwapBuffers};
+import glut::bindgen::{glutInitDisplayMode, glutMainLoop, glutPostRedisplay, glutSwapBuffers};
 
 import comm::{chan, port, recv, send};
 import libc::c_uint;
+import os::{getenv, setenv};
 import task::{builder, get_opts, run_listener, set_opts};
 
 crust fn display_callback() {
-    let image = load("keep-calm-and-carry-on.jpg");
-    io::println(#fmt("image is %ux%ux%u", image.width, image.height, image.depth));
+    let mut t;
+    alt getenv("RUST_LAYERS_PROGRESS") {
+        none { t = 1.0f32; }
+        some(string) { t = float::from_str(string).get() as f32; }
+    }
+
+    let stb_image = load("keep-calm-and-carry-on.jpg");
+    let mut image = @Image(stb_image.width, stb_image.height, RGB24Format, copy stb_image.data);
+    io::println(#fmt("image is %ux%u", image.width, image.height));
+
+    let image_layer = ImageLayer(image);
+    image_layer.common.transform = Matrix4(1.0f32 * t, 0.0f32,     0.0f32, 0.0f32,
+                                           0.0f32,     1.0f32 * t, 0.0f32, 0.0f32,
+                                           0.0f32,     0.0f32,     1.0f32, 0.0f32,
+                                           0.0f32,     0.0f32,     0.0f32, 1.0f32);
 
     let context = init_render_context();
-    render_scene(context, image.width, image.height, image.data);
+    render_scene(context, image_layer);
+
+    t -= 0.004f32;
+    setenv("RUST_LAYERS_PROGRESS", float::to_str(t as float, 6u));
 
     glutSwapBuffers();
+
+    glutPostRedisplay();
 }
 
 #[test]
