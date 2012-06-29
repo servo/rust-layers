@@ -165,7 +165,17 @@ fn create_texture_for_image_if_necessary(image: @Image) {
     image.texture = some(texture);
 }
 
-fn render_scene(render_context: RenderContext, &image_layer: layers::ImageLayer) {
+fn render_scene(render_context: RenderContext, &scene: Scene) {
+    let mut image_layer;
+    alt scene.root {
+        ContainerLayerKind(*) {
+            fail "container layers unsupported";
+        }
+        ImageLayerKind(embedded_image_layer) {
+            image_layer = embedded_image_layer;
+        }
+    }
+
     create_texture_for_image_if_necessary(image_layer.image);
 
     let _0 = 0.0f32;
