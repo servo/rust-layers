@@ -75,6 +75,8 @@ class RenderContext {
     let texture_coord_attr: c_int;
     let modelview_uniform: c_int;
     let sampler_uniform: c_int;
+    let vertex_buffer: GLuint;
+    let texture_coord_buffer: GLuint;
 
     new(program: GLuint) {
         self.program = program;
@@ -82,6 +84,10 @@ class RenderContext {
         self.texture_coord_attr = get_attrib_location(program, "aTextureCoord");
         self.modelview_uniform = get_uniform_location(program, "uMVMatrix");
         self.sampler_uniform = get_uniform_location(program, "uSampler");
+
+        let (vertex_buffer, texture_coord_buffer) = init_buffers();
+        self.vertex_buffer = vertex_buffer;
+        self.texture_coord_buffer = texture_coord_buffer;
 
         enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
         enable_vertex_attrib_array(self.texture_coord_attr as GLuint);
@@ -102,6 +108,8 @@ fn init_render_context() -> RenderContext {
     }
 
     use_program(program);
+
+    enable(TEXTURE_2D);
 
     ret RenderContext(program);
 }
@@ -135,11 +143,13 @@ fn init_buffers() -> (GLuint, GLuint) {
     ret (triangle_vertex_buffer, texture_coord_buffer);
 }
 
-fn create_texture_for_image(image: @Image) {
+fn create_texture_for_image_if_necessary(image: @Image) {
     alt image.texture {
         none {}
         some(_) { ret; /* Nothing to do. */ }
     }
+
+    #debug("making texture");
 
     let texture = gen_textures(1 as GLsizei)[0];
     bind_texture(TEXTURE_2D, texture);
@@ -147,19 +157,16 @@ fn create_texture_for_image(image: @Image) {
     tex_parameter_i(TEXTURE_2D, TEXTURE_WRAP_S, REPEAT as GLint);
     tex_parameter_i(TEXTURE_2D, TEXTURE_WRAP_T, REPEAT as GLint);
     tex_parameter_i(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR as GLint);
-    tex_parameter_i(TEXTURE_2D, TEXTURE_MIN_FILTER, NEAREST as GLint);
+    tex_parameter_i(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR as GLint);
 
-    tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint,
-                 image.width as GLsizei, image.height as GLsizei,
-                 0 as GLint, RGB, UNSIGNED_BYTE, image.data);
+    tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint, image.width as GLsizei,
+                 image.height as GLsizei, 0 as GLint, RGB, UNSIGNED_BYTE, image.data);
 
     image.texture = some(texture);
 }
 
-fn render_scene(render_context: RenderContext, image_layer: layers::ImageLayer) {
-
-    let (vertex_buffer, texture_coord_buffer) = init_buffers();
-    create_texture_for_image(image_layer.image);
+fn render_scene(render_context: RenderContext, &image_layer: layers::ImageLayer) {
+    create_texture_for_image_if_necessary(image_layer.image);
 
     let _0 = 0.0f32;
     let _1 = 1.0f32;
@@ -167,8 +174,6 @@ fn render_scene(render_context: RenderContext, image_layer: layers::ImageLayer) 
 
     clear_color(0.0f32, 0.0f32, 1.0f32, 1.0f32);
     clear(COLOR_BUFFER_BIT);
-
-    enable(TEXTURE_2D);
 
     uniform_matrix_4fv(render_context.modelview_uniform, false,
                        image_layer.common.transform.to_array());
@@ -185,11 +190,11 @@ fn render_scene(render_context: RenderContext, image_layer: layers::ImageLayer) 
 
     uniform_1i(render_context.sampler_uniform, 0);
 
-    bind_buffer(ARRAY_BUFFER, vertex_buffer);
+    bind_buffer(ARRAY_BUFFER, render_context.vertex_buffer);
     vertex_attrib_pointer_f32(render_context.vertex_position_attr as GLuint, 3 as GLint, false,
                               0 as GLsizei, 0 as GLuint);
 
-    bind_buffer(ARRAY_BUFFER, texture_coord_buffer);
+    bind_buffer(ARRAY_BUFFER, render_context.texture_coord_buffer);
     vertex_attrib_pointer_f32(render_context.texture_coord_attr as GLuint, 2 as GLint, false,
                               0 as GLsizei, 0 as GLuint);
 

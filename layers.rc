@@ -9,6 +9,7 @@ use opengles;
 mod layers;
 mod scene;
 mod rendergl;
+mod util;
 
 #[cfg(test)]
 mod test;
