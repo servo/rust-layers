@@ -1,6 +1,10 @@
 use glut;
 use azure;
+use geom;
 
+import geom::point::Point2D;
+import geom::rect::Rect;
+import geom::size::Size2D;
 import layers::*;
 import rendergl::*;
 import util::convert_rgb32_to_rgb24;
@@ -10,6 +14,7 @@ import glut::bindgen::{glutInitDisplayMode, glutMainLoop, glutPostRedisplay, glu
 
 import azure::cairo::CAIRO_FORMAT_RGB24;
 import CairoContext = azure::cairo_hl::Context;
+import azure::azure_hl::{Color, ColorPattern, DrawTarget};
 import azure::cairo_hl::ImageSurface;
 
 import comm::{chan, port, recv, send};
@@ -27,11 +32,10 @@ class Renderer {
     new() {
         let cairo_image = ImageSurface(CAIRO_FORMAT_RGB24, 500, 704);
 
-        let cairo_context = CairoContext(cairo_image);
-        cairo_context.set_line_width(5.0f64);
-        cairo_context.set_source_rgb(255.0f64, 255.0f64, 0.0f64);
-        cairo_context.rectangle(50.0f64, 50.0f64, 300.0f64, 284.0f64);
-        cairo_context.stroke();
+        let draw_target = DrawTarget(cairo_image);
+        draw_target.fill_rect(Rect(Point2D(50.0f32, 50.0f32), Size2D(300.0f32, 284.0f32)),
+                              ColorPattern(Color(1.0f32, 1.0f32, 0.0f32, 1.0f32)));
+        draw_target.flush();
 
         self.image = @Image(cairo_image.width() as uint, cairo_image.height() as uint, RGB24Format,
                             convert_rgb32_to_rgb24(cairo_image.data()));
