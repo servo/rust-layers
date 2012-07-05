@@ -60,9 +60,9 @@ class Image {
 
 class ImageLayer {
     let mut common: CommonLayer;
-    let mut image: @Image;
+    let mut image: @layers::Image;
 
-    new(image: @Image) {
+    new(image: @layers::Image) {
         self.common = CommonLayer();
         self.image = image;
     }
