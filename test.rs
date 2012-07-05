@@ -99,9 +99,7 @@ fn test_triangle_and_square() unsafe {
 
     let port: port<()> = port();
     let chan = chan(port);
-    let _result_ch: chan<()> = run_listener(builder, {
-        |_port|
-
+    let _result_ch: chan<()> = do run_listener(builder) |port| {
         let renderer = @Renderer();
 
         init();
@@ -111,7 +109,8 @@ fn test_triangle_and_square() unsafe {
         glutMainLoop();
 
         send(chan, ());
-    });
+    };
+
     recv(port);
 }
 
