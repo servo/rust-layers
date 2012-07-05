@@ -165,7 +165,7 @@ fn create_texture_for_image_if_necessary(image: @Image) {
     image.texture = some(texture);
 }
 
-fn render_scene(render_context: RenderContext, &image_layer: ImageLayer) {
+fn render_scene(render_context: RenderContext, &image_layer: layers::ImageLayer) {
     /*let mut image_layer;
     alt scene.root {
         ContainerLayerKind(*) {
