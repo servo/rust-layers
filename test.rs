@@ -9,7 +9,8 @@ import layers::*;
 import rendergl::*;
 import util::convert_rgb32_to_rgb24;
 
-import glut::{check_loop, create_window, destroy_window, display_func, init, init_display_mode, post_redisplay, swap_buffers, timer_func};
+import glut::{DOUBLE, check_loop, create_window, destroy_window, display_func, init};
+import glut::{init_display_mode, post_redisplay, swap_buffers, timer_func};
 
 import azure::cairo::CAIRO_FORMAT_RGB24;
 import CairoContext = azure::cairo_hl::Context;
@@ -102,7 +103,7 @@ fn test_triangle_and_square() unsafe {
         let renderer = @Renderer();
 
         init();
-        init_display_mode(0 as c_uint);
+        init_display_mode(DOUBLE as c_uint);
         let window = create_window("Rust Layers");
         display_func(renderer.get_display_callback(renderer));
 
