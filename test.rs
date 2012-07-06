@@ -9,15 +9,14 @@ import layers::*;
 import rendergl::*;
 import util::convert_rgb32_to_rgb24;
 
-import glut::{create_window, display_func, init};
-import glut::bindgen::{glutInitDisplayMode, glutMainLoop, glutPostRedisplay, glutSwapBuffers};
+import glut::{check_loop, create_window, destroy_window, display_func, init, init_display_mode, post_redisplay, swap_buffers, timer_func};
 
 import azure::cairo::CAIRO_FORMAT_RGB24;
 import CairoContext = azure::cairo_hl::Context;
 import azure::azure_hl::{Color, ColorPattern, DrawTarget};
 import azure::cairo_hl::ImageSurface;
 
-import comm::{chan, port, recv, send};
+import comm::{chan, peek, port, recv, send};
 import libc::c_uint;
 import os::{getenv, setenv};
 import task::{builder, get_opts, run_listener, set_opts};
@@ -82,9 +81,9 @@ class Renderer {
             self.delta = -self.delta;
         }
 
-        glutSwapBuffers();
+        swap_buffers();
 
-        glutPostRedisplay();
+        post_redisplay();
     }
 }
 
@@ -97,21 +96,37 @@ fn test_triangle_and_square() unsafe {
     };
     set_opts(builder, opts);
 
-    let port: port<()> = port();
-    let chan = chan(port);
-    let _result_ch: chan<()> = do run_listener(builder) |port| {
+    let po: port<()> = port();
+    let ch = chan(po);
+    let _result_ch: chan<()> = do run_listener(builder) |_po| {
         let renderer = @Renderer();
 
         init();
-        glutInitDisplayMode(0 as c_uint);
-        create_window("Rust Layers");
+        init_display_mode(0 as c_uint);
+        let window = create_window("Rust Layers");
         display_func(renderer.get_display_callback(renderer));
-        glutMainLoop();
 
-        send(chan, ());
+        let wakeup = port();
+        let wakeup_chan = chan(wakeup);
+        do timer_func(2500) {
+            send(wakeup_chan, ());
+        }
+
+        loop {
+            check_loop();
+
+            if peek(wakeup) {
+                recv(wakeup);
+                send(ch, ());
+                destroy_window(window);
+                break;
+            }
+        }
+
+        send(ch, ());
     };
 
-    recv(port);
+    recv(po);
 }
 
 
