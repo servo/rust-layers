@@ -192,8 +192,8 @@ fn render_scene(render_context: RenderContext, &scene: Scene) {
     uniform_matrix_4fv(render_context.modelview_uniform, false,
                        image_layer.common.transform.to_array());
 
-    let modelview_matrix = ortho(0.0f32, scene.size.width, scene.size.height, 0.0f32, -10.0f32,
-                                 10.0f32);
+    let modelview_matrix = ortho(0.0f32, copy scene.size.width, copy scene.size.height, 0.0f32, 
+                                 -10.0f32, 10.0f32);
     uniform_matrix_4fv(render_context.projection_uniform, false, modelview_matrix.to_array());
 
     // FIXME: option.get should be pure
