@@ -6,6 +6,7 @@ import geom::point::Point2D;
 import geom::rect::Rect;
 import geom::size::Size2D;
 import layers::*;
+import scene::*;
 import rendergl::*;
 import util::convert_rgb32_to_rgb24;
 
@@ -24,7 +25,7 @@ import task::{builder, get_opts, run_listener, set_opts};
 
 class Renderer {
     let image: @Image;
-    let mut image_layer: ImageLayer;
+    let mut image_layer: @ImageLayer;
     let mut t: f32;
     let mut delta: f32;
     let mut render_context: option<RenderContext>;
@@ -41,7 +42,7 @@ class Renderer {
                             convert_rgb32_to_rgb24(cairo_image.data()));
         io::println(#fmt("image is %ux%u", self.image.width, self.image.height));
 
-        self.image_layer = ImageLayer(self.image);
+        self.image_layer = @ImageLayer(self.image);
 
         self.t = 1.0f32;
         self.delta = -0.001f32;
@@ -70,12 +71,13 @@ class Renderer {
         };
 
         let t = self.t;
-        self.image_layer.common.transform = Matrix4(1.0f32 * t, 0.0f32,     0.0f32, 0.0f32,
-                                                    0.0f32,     1.0f32 * t, 0.0f32, 0.0f32,
-                                                    0.0f32,     0.0f32,     1.0f32, 0.0f32,
-                                                    0.0f32,     0.0f32,     0.0f32, 1.0f32);
+        self.image_layer.common.transform = Matrix4(400.0f32 * t, 0.0f32,       0.0f32, 0.0f32,
+                                                    0.0f32,       300.0f32 * t, 0.0f32, 0.0f32,
+                                                    0.0f32,       0.0f32,       1.0f32, 0.0f32,
+                                                    0.0f32,       0.0f32,       0.0f32, 1.0f32);
 
-        render_scene(context, self.image_layer);
+        let mut scene = Scene(ImageLayerKind(self.image_layer), Size2D(400.0f32, 300.0f32));
+        render_scene(context, scene);
 
         self.t += self.delta;
         if self.t < 0.0f32 || self.t > 1.0f32 {

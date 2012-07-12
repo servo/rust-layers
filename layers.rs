@@ -26,6 +26,11 @@ class CommonLayer {
 
         self.transform = identity(0.0f32);
     }
+
+    // FIXME: Workaround for cross-crate bug regarding mutability of class fields
+    fn set_transform(new_transform: Matrix4<f32>) {
+        self.transform = new_transform;
+    }
 }
 
 class ContainerLayer {
@@ -65,6 +70,11 @@ class ImageLayer {
     new(image: @layers::Image) {
         self.common = CommonLayer();
         self.image = image;
+    }
+
+    // FIXME: Workaround for cross-crate bug
+    fn set_image(new_image: @layers::Image) {
+        self.image = new_image;
     }
 }
 

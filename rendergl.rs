@@ -1,6 +1,7 @@
-import layers::Image;
+import layers::{ContainerLayerKind, Image, ImageLayerKind};
+import scene::Scene;
 
-import geom::matrix::Matrix4;
+import geom::matrix::{Matrix4, ortho};
 import opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, COMPILE_STATUS};
 import opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, REPEAT, RGB, STATIC_DRAW};
 import opengles::gl2::{TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER, TEXTURE_WRAP_S};
@@ -41,11 +42,12 @@ fn VERTEX_SHADER_SOURCE() -> str {
         attribute vec2 aTextureCoord;
 
         uniform mat4 uMVMatrix;
+        uniform mat4 uPMatrix;
 
         varying vec2 vTextureCoord;
 
         void main(void) {
-            gl_Position = uMVMatrix * vec4(aVertexPosition, 1.0);
+            gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
             vTextureCoord = aTextureCoord;
         }
     "
@@ -74,6 +76,7 @@ class RenderContext {
     let vertex_position_attr: c_int;
     let texture_coord_attr: c_int;
     let modelview_uniform: c_int;
+    let projection_uniform: c_int;
     let sampler_uniform: c_int;
     let vertex_buffer: GLuint;
     let texture_coord_buffer: GLuint;
@@ -83,6 +86,7 @@ class RenderContext {
         self.vertex_position_attr = get_attrib_location(program, "aVertexPosition");
         self.texture_coord_attr = get_attrib_location(program, "aTextureCoord");
         self.modelview_uniform = get_uniform_location(program, "uMVMatrix");
+        self.projection_uniform = get_uniform_location(program, "uPMatrix");
         self.sampler_uniform = get_uniform_location(program, "uSampler");
 
         let (vertex_buffer, texture_coord_buffer) = init_buffers();
@@ -132,10 +136,10 @@ fn init_buffers() -> (GLuint, GLuint) {
     bind_buffer(ARRAY_BUFFER, texture_coord_buffer);
 
     let vertices = [
-        _0, _1,
         _0, _0,
-        _1, _1,
-        _1, _0
+        _0, _1,
+        _1, _0,
+        _1, _1
     ]/~;
 
     buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
@@ -165,8 +169,8 @@ fn create_texture_for_image_if_necessary(image: @Image) {
     image.texture = some(texture);
 }
 
-fn render_scene(render_context: RenderContext, &image_layer: layers::ImageLayer) {
-    /*let mut image_layer;
+fn render_scene(render_context: RenderContext, &scene: Scene) {
+    let mut image_layer;
     alt scene.root {
         ContainerLayerKind(*) {
             fail "container layers unsupported";
@@ -174,7 +178,7 @@ fn render_scene(render_context: RenderContext, &image_layer: layers::ImageLayer)
         ImageLayerKind(embedded_image_layer) {
             image_layer = embedded_image_layer;
         }
-    }*/
+    }
 
     create_texture_for_image_if_necessary(image_layer.image);
 
@@ -187,6 +191,10 @@ fn render_scene(render_context: RenderContext, &image_layer: layers::ImageLayer)
 
     uniform_matrix_4fv(render_context.modelview_uniform, false,
                        image_layer.common.transform.to_array());
+
+    let modelview_matrix = ortho(0.0f32, scene.size.width, scene.size.height, 0.0f32, -10.0f32,
+                                 10.0f32);
+    uniform_matrix_4fv(render_context.projection_uniform, false, modelview_matrix.to_array());
 
     // FIXME: option.get should be pure
     let mut texture;
