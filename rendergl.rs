@@ -1,11 +1,12 @@
-import layers::{ContainerLayerKind, Image, ImageLayerKind};
+import layers::{ARGB32Format, ContainerLayerKind, Image, ImageLayerKind, RGB24Format};
 import scene::Scene;
 
 import geom::matrix::{Matrix4, ortho};
 import opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, COMPILE_STATUS};
-import opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, REPEAT, RGB, STATIC_DRAW};
-import opengles::gl2::{TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER, TEXTURE_WRAP_S};
-import opengles::gl2::{TEXTURE_WRAP_T, TRIANGLE_STRIP, UNSIGNED_BYTE, VERTEX_SHADER, GLclampf};
+import opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, REPEAT, RGB, RGBA};
+import opengles::gl2::{STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
+import opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T};
+import opengles::gl2::{TRIANGLE_STRIP, UNSIGNED_BYTE, VERTEX_SHADER, GLclampf};
 import opengles::gl2::{GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer, bind_texture};
 import opengles::gl2::{buffer_data, create_program, clear, clear_color};
 import opengles::gl2::{compile_shader, create_shader, draw_arrays, enable};
@@ -14,7 +15,7 @@ import opengles::gl2::{get_attrib_location, get_error, get_program_iv};
 import opengles::gl2::{get_shader_info_log, get_shader_iv};
 import opengles::gl2::{get_uniform_location, link_program, shader_source, tex_image_2d};
 import opengles::gl2::{tex_parameter_i, uniform_1i, uniform_matrix_4fv, use_program};
-import opengles::gl2::{vertex_attrib_pointer_f32};
+import opengles::gl2::{vertex_attrib_pointer_f32, viewport};
 
 import io::println;
 import libc::c_int;
@@ -163,13 +164,24 @@ fn create_texture_for_image_if_necessary(image: @Image) {
     tex_parameter_i(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR as GLint);
     tex_parameter_i(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR as GLint);
 
-    tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint, image.width as GLsizei,
-                 image.height as GLsizei, 0 as GLint, RGB, UNSIGNED_BYTE, image.data);
+    alt image.format {
+        RGB24Format {
+            tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint, image.width as GLsizei,
+                         image.height as GLsizei, 0 as GLint, RGB, UNSIGNED_BYTE, image.data);
+        }
+        ARGB32Format {
+            tex_image_2d(TEXTURE_2D, 0 as GLint, RGBA as GLint, image.width as GLsizei,
+                         image.height as GLsizei, 0 as GLint, RGBA, UNSIGNED_BYTE, image.data);
+        }
+    }
 
     image.texture = some(texture);
 }
 
 fn render_scene(render_context: RenderContext, &scene: Scene) {
+    // Set the viewport.
+    viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
+
     let mut image_layer;
     alt scene.root {
         ContainerLayerKind(*) {

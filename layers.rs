@@ -1,9 +1,10 @@
 import geom::matrix::{Matrix4, identity};
-import opengles::gl2::GLuint;
+import opengles::gl2::{GLuint, delete_textures};
 
 import std::cmp::fuzzy_eq;
 
 enum Format {
+    ARGB32Format,
     RGB24Format
 }
 
@@ -60,6 +61,17 @@ class Image {
         self.data = data;
 
         self.texture = none;
+    }
+
+    drop {
+        alt copy self.texture {
+            none {
+                // Nothing to do.
+            }
+            some(texture) {
+                delete_textures(&[texture]);
+            }
+        }
     }
 }
 
