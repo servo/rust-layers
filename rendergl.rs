@@ -171,7 +171,7 @@ fn create_texture_for_image_if_necessary(image: @Image) {
         }
         ARGB32Format {
             tex_image_2d(TEXTURE_2D, 0 as GLint, RGBA as GLint, image.width as GLsizei,
-                         image.height as GLsizei, 0 as GLint, RGBA, UNSIGNED_BYTE, image.data);
+                         image.height as GLsizei, 0 as GLint, BGRA, UNSIGNED_BYTE, image.data);
         }
     }
 
