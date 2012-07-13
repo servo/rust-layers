@@ -3,7 +3,8 @@ import scene::Scene;
 
 import geom::matrix::{Matrix4, ortho};
 import opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, COMPILE_STATUS};
-import opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, REPEAT, RGB, RGBA};
+import opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, REPEAT, RGB, RGBA,
+                      BGRA};
 import opengles::gl2::{STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
 import opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T};
 import opengles::gl2::{TRIANGLE_STRIP, UNSIGNED_BYTE, VERTEX_SHADER, GLclampf};
