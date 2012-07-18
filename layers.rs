@@ -50,11 +50,11 @@ class Image {
     let width: uint;
     let height: uint;
     let format: Format;
-    let data: [u8]/~;
+    let data: ~[u8];
 
     let mut texture: option<GLuint>;
 
-    new(width: uint, height: uint, format: Format, +data: [u8]/~) {
+    new(width: uint, height: uint, format: Format, +data: ~[u8]) {
         self.width = width;
         self.height = height;
         self.format = format;

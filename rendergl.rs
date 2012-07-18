@@ -22,8 +22,8 @@ import io::println;
 import libc::c_int;
 import str::bytes;
 
-fn FRAGMENT_SHADER_SOURCE() -> str {
-    "
+fn FRAGMENT_SHADER_SOURCE() -> ~str {
+    ~"
         #ifdef GLES2
             precision mediump float;
         #endif
@@ -38,8 +38,8 @@ fn FRAGMENT_SHADER_SOURCE() -> str {
     "
 }
 
-fn VERTEX_SHADER_SOURCE() -> str {
-    "
+fn VERTEX_SHADER_SOURCE() -> ~str {
+    ~"
         attribute vec3 aVertexPosition;
         attribute vec2 aTextureCoord;
 
@@ -55,19 +55,19 @@ fn VERTEX_SHADER_SOURCE() -> str {
     "
 }
 
-fn load_shader(source_string: str, shader_type: GLenum) -> GLuint {
+fn load_shader(source_string: ~str, shader_type: GLenum) -> GLuint {
     let shader_id = create_shader(shader_type);
-    shader_source(shader_id, [ bytes(source_string) ]/~);
+    shader_source(shader_id, ~[ bytes(source_string) ]);
     compile_shader(shader_id);
 
     if get_error() != NO_ERROR {
         println(#fmt("error: %d", get_error() as int));
-        fail "failed to compile shader";
+        fail ~"failed to compile shader";
     }
 
     if get_shader_iv(shader_id, COMPILE_STATUS) == (0 as GLint) {
         println(#fmt("shader info log: %s", get_shader_info_log(shader_id)));
-        fail "failed to compile shader";
+        fail ~"failed to compile shader";
     }
 
     ret shader_id;
@@ -85,11 +85,11 @@ class RenderContext {
 
     new(program: GLuint) {
         self.program = program;
-        self.vertex_position_attr = get_attrib_location(program, "aVertexPosition");
-        self.texture_coord_attr = get_attrib_location(program, "aTextureCoord");
-        self.modelview_uniform = get_uniform_location(program, "uMVMatrix");
-        self.projection_uniform = get_uniform_location(program, "uPMatrix");
-        self.sampler_uniform = get_uniform_location(program, "uSampler");
+        self.vertex_position_attr = get_attrib_location(program, ~"aVertexPosition");
+        self.texture_coord_attr = get_attrib_location(program, ~"aTextureCoord");
+        self.modelview_uniform = get_uniform_location(program, ~"uMVMatrix");
+        self.projection_uniform = get_uniform_location(program, ~"uPMatrix");
+        self.sampler_uniform = get_uniform_location(program, ~"uSampler");
 
         let (vertex_buffer, texture_coord_buffer) = init_buffers();
         self.vertex_buffer = vertex_buffer;
@@ -110,7 +110,7 @@ fn init_render_context() -> RenderContext {
     link_program(program);
 
     if get_program_iv(program, LINK_STATUS) == (0 as GLint) {
-        fail "failed to initialize program";
+        fail ~"failed to initialize program";
     }
 
     use_program(program);
@@ -125,24 +125,24 @@ fn init_buffers() -> (GLuint, GLuint) {
     bind_buffer(ARRAY_BUFFER, triangle_vertex_buffer);
 
     let (_0, _1) = (0.0f32, 1.0f32);
-    let vertices = [
+    let vertices = ~[
         _0, _0, _0,
         _0, _1, _0,
         _1, _0, _0,
         _1, _1, _0
-    ]/~;
+    ];
 
     buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
 
     let texture_coord_buffer = gen_buffers(1 as GLsizei)[0];
     bind_buffer(ARRAY_BUFFER, texture_coord_buffer);
 
-    let vertices = [
+    let vertices = ~[
         _0, _0,
         _0, _1,
         _1, _0,
         _1, _1
-    ]/~;
+    ];
 
     buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
 
@@ -186,7 +186,7 @@ fn render_scene(render_context: RenderContext, &scene: Scene) {
     let mut image_layer;
     alt scene.root {
         ContainerLayerKind(*) {
-            fail "container layers unsupported";
+            fail ~"container layers unsupported";
         }
         ImageLayerKind(embedded_image_layer) {
             image_layer = embedded_image_layer;

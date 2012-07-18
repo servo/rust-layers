@@ -106,7 +106,7 @@ fn test_triangle_and_square() unsafe {
 
         init();
         init_display_mode(DOUBLE as c_uint);
-        let window = create_window("Rust Layers");
+        let window = create_window(~"Rust Layers");
         display_func(renderer.get_display_callback(renderer));
 
         let wakeup = port();
