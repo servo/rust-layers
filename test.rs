@@ -21,7 +21,7 @@ import azure::cairo_hl::ImageSurface;
 import comm::{chan, peek, port, recv, send};
 import libc::c_uint;
 import os::{getenv, setenv};
-import task::{builder, get_opts, run_listener, set_opts};
+import task::task_builder;
 
 class Renderer {
     let image: @Image;
@@ -92,16 +92,11 @@ class Renderer {
 
 #[test]
 fn test_triangle_and_square() unsafe {
-    let builder = builder();
-    let opts = {
-        sched: some({ mode: task::osmain, foreign_stack_size: none })
-        with get_opts(builder)
-    };
-    set_opts(builder, opts);
+    let builder = task::task().sched_mode(task::osmain);
 
     let po: port<()> = port();
     let ch = chan(po);
-    let _result_ch: chan<()> = do run_listener(builder) |_po| {
+    let _result_ch: chan<()> = do builder.spawn_listener |_po| {
         let renderer = @Renderer();
 
         init();
