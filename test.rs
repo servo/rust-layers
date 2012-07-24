@@ -21,7 +21,7 @@ import azure::cairo_hl::ImageSurface;
 import comm::{chan, peek, port, recv, send};
 import libc::c_uint;
 import os::{getenv, setenv};
-import task::{task_builder, get_opts, run_listener, set_opts};
+import task::task_builder;
 
 class Renderer {
     let image: @Image;
