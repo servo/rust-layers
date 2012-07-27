@@ -2,6 +2,7 @@ import geom::matrix::{Matrix4, identity};
 import opengles::gl2::{GLuint, delete_textures};
 
 import std::cmp::fuzzy_eq;
+import dvec::dvec;
 
 enum Format {
     ARGB32Format,
@@ -10,7 +11,8 @@ enum Format {
 
 enum Layer {
     ContainerLayerKind(@ContainerLayer),
-    ImageLayerKind(@ImageLayer)
+    ImageLayerKind(@ImageLayer),
+    TiledImageLayerKind(@TiledImageLayer)
 }
 
 class CommonLayer {
@@ -87,6 +89,25 @@ class ImageLayer {
     // FIXME: Workaround for cross-crate bug
     fn set_image(new_image: @layers::Image) {
         self.image = new_image;
+    }
+}
+
+struct TiledImageLayer {
+    mut common: CommonLayer;
+    tiles: dvec<@layers::Image>;
+    mut tiles_across: uint;
+}
+
+fn TiledImageLayer(in_tiles: &[@layers::Image], tiles_across: uint) -> TiledImageLayer {
+    let tiles = dvec();
+    for in_tiles.each |tile| {
+        tiles.push(tile);
+    }
+
+    TiledImageLayer {
+        common: CommonLayer(),
+        tiles: tiles,
+        tiles_across: tiles_across
     }
 }
 

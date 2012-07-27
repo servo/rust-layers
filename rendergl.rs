@@ -1,4 +1,5 @@
 import layers::{ARGB32Format, ContainerLayerKind, Image, ImageLayerKind, RGB24Format};
+import layers::{TiledImageLayerKind};
 import scene::Scene;
 
 import geom::matrix::{Matrix4, ortho};
@@ -7,15 +8,15 @@ import opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, 
                       BGRA};
 import opengles::gl2::{STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
 import opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T};
-import opengles::gl2::{TRIANGLE_STRIP, UNSIGNED_BYTE, VERTEX_SHADER, GLclampf};
+import opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNSIGNED_BYTE, VERTEX_SHADER, GLclampf};
 import opengles::gl2::{GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer, bind_texture};
 import opengles::gl2::{buffer_data, create_program, clear, clear_color};
 import opengles::gl2::{compile_shader, create_shader, draw_arrays, enable};
 import opengles::gl2::{enable_vertex_attrib_array, gen_buffers, gen_textures};
 import opengles::gl2::{get_attrib_location, get_error, get_program_iv};
 import opengles::gl2::{get_shader_info_log, get_shader_iv};
-import opengles::gl2::{get_uniform_location, link_program, shader_source, tex_image_2d};
-import opengles::gl2::{tex_parameter_i, uniform_1i, uniform_matrix_4fv, use_program};
+import opengles::gl2::{get_uniform_location, link_program, pixel_store_i, shader_source};
+import opengles::gl2::{tex_image_2d, tex_parameter_i, uniform_1i, uniform_matrix_4fv, use_program};
 import opengles::gl2::{vertex_attrib_pointer_f32, viewport};
 
 import io::println;
@@ -165,6 +166,8 @@ fn create_texture_for_image_if_necessary(image: @Image) {
     tex_parameter_i(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR as GLint);
     tex_parameter_i(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR as GLint);
 
+    pixel_store_i(UNPACK_ALIGNMENT, 1);
+
     alt image.format {
         RGB24Format {
             tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint, image.width as GLsizei,
@@ -179,56 +182,81 @@ fn create_texture_for_image_if_necessary(image: @Image) {
     image.texture = some(texture);
 }
 
-fn render_scene(render_context: RenderContext, &scene: Scene) {
-    // Set the viewport.
-    viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
-
-    let mut image_layer;
-    alt scene.root {
-        ContainerLayerKind(*) {
-            fail ~"container layers unsupported";
-        }
-        ImageLayerKind(embedded_image_layer) {
-            image_layer = embedded_image_layer;
-        }
-    }
-
-    create_texture_for_image_if_necessary(image_layer.image);
-
-    let _0 = 0.0f32;
-    let _1 = 1.0f32;
-    let _2 = 2.0f32;
-
-    clear_color(0.0f32, 0.0f32, 1.0f32, 1.0f32);
-    clear(COLOR_BUFFER_BIT);
-
-    uniform_matrix_4fv(render_context.modelview_uniform, false,
-                       image_layer.common.transform.to_array());
-
-    let modelview_matrix = ortho(0.0f32, copy scene.size.width, copy scene.size.height, 0.0f32, 
-                                 -10.0f32, 10.0f32);
-    uniform_matrix_4fv(render_context.projection_uniform, false, modelview_matrix.to_array());
-
-    // FIXME: option.get should be pure
-    let mut texture;
-    alt image_layer.image.texture {
-        none { fail; }
-        some(tex) {
-            texture = tex;
-        }
-    }
+fn bind_and_render_quad(render_context: RenderContext, texture: GLuint) {
     bind_texture(TEXTURE_2D, texture);
 
     uniform_1i(render_context.sampler_uniform, 0);
 
     bind_buffer(ARRAY_BUFFER, render_context.vertex_buffer);
-    vertex_attrib_pointer_f32(render_context.vertex_position_attr as GLuint, 3 as GLint, false,
-                              0 as GLsizei, 0 as GLuint);
+    vertex_attrib_pointer_f32(render_context.vertex_position_attr as GLuint, 3, false, 0, 0);
 
     bind_buffer(ARRAY_BUFFER, render_context.texture_coord_buffer);
-    vertex_attrib_pointer_f32(render_context.texture_coord_attr as GLuint, 2 as GLint, false,
-                              0 as GLsizei, 0 as GLuint);
+    vertex_attrib_pointer_f32(render_context.texture_coord_attr as GLuint, 2, false, 0, 0);
 
-    draw_arrays(TRIANGLE_STRIP, 0 as GLint, 4 as GLint);
+    draw_arrays(TRIANGLE_STRIP, 0, 4);
+}
+
+// Layer rendering
+
+trait Render {
+    fn render(render_context: RenderContext);
+}
+
+impl @layers::ImageLayer : Render {
+    fn render(render_context: RenderContext) {
+        create_texture_for_image_if_necessary(self.image);
+
+        uniform_matrix_4fv(render_context.modelview_uniform, false,
+                           self.common.transform.to_array());
+
+        bind_and_render_quad(render_context, option::get(self.image.texture));
+    }
+}
+
+impl @layers::TiledImageLayer : Render {
+    fn render(render_context: RenderContext) {
+        let tiles_down = self.tiles.len() / self.tiles_across;
+        for self.tiles.eachi |i, tile| {
+            create_texture_for_image_if_necessary(tile);
+
+            let x = ((i % self.tiles_across) as f32);
+            let y = ((i / self.tiles_across) as f32);
+
+            let transform = self.common.transform.scale(1.0f32 / (self.tiles_across as f32),
+                                                        1.0f32 / (tiles_down as f32),
+                                                        1.0f32);
+            let transform = transform.translate(x * 1.0f32, y * 1.0f32, 0.0f32);
+
+            uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
+
+            bind_and_render_quad(render_context, option::get(tile.texture));
+        }
+    }
+}
+
+fn render_scene(render_context: RenderContext, &scene: Scene) {
+    // Set the viewport.
+    viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
+
+    // Clear the screen.
+    clear_color(0.0f32, 0.0f32, 1.0f32, 1.0f32);
+    clear(COLOR_BUFFER_BIT);
+
+    // Set the projection matrix.
+    let projection_matrix = ortho(0.0f32, copy scene.size.width, copy scene.size.height, 0.0f32,
+                                  -10.0f32, 10.0f32);
+    uniform_matrix_4fv(render_context.projection_uniform, false, projection_matrix.to_array());
+
+    alt copy scene.root {
+        ContainerLayerKind(*) {
+            fail ~"container layers unsupported";
+        }
+        ImageLayerKind(image_layer) {
+            image_layer.render(render_context);
+        }
+        TiledImageLayerKind(tiled_image_layer) {
+            tiled_image_layer.render(render_context);
+        }
+    }
 }
 
