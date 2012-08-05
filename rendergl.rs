@@ -71,7 +71,7 @@ fn load_shader(source_string: ~str, shader_type: GLenum) -> GLuint {
         fail ~"failed to compile shader";
     }
 
-    ret shader_id;
+    return shader_id;
 }
 
 class RenderContext {
@@ -118,7 +118,7 @@ fn init_render_context() -> RenderContext {
 
     enable(TEXTURE_2D);
 
-    ret RenderContext(program);
+    return RenderContext(program);
 }
 
 fn init_buffers() -> (GLuint, GLuint) {
@@ -147,13 +147,13 @@ fn init_buffers() -> (GLuint, GLuint) {
 
     buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
 
-    ret (triangle_vertex_buffer, texture_coord_buffer);
+    return (triangle_vertex_buffer, texture_coord_buffer);
 }
 
 fn create_texture_for_image_if_necessary(image: @Image) {
     alt image.texture {
         none {}
-        some(_) { ret; /* Nothing to do. */ }
+        some(_) { return; /* Nothing to do. */ }
     }
 
     #debug("making texture");
