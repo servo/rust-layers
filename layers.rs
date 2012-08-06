@@ -67,10 +67,10 @@ class Image {
 
     drop {
         alt copy self.texture {
-            none {
+            none => {
                 // Nothing to do.
             }
-            some(texture) {
+            some(texture) => {
                 delete_textures(&[texture]);
             }
         }

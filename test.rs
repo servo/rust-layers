@@ -85,16 +85,16 @@ struct Renderer {
 
     fn display_callback() {
         alt self.render_context {
-            none {
+            none => {
                 self.render_context = some(init_render_context());
             }
-            some(_) {
+            some(_) => {
                 // Nothing to do.
             }
         }
         let context = alt self.render_context {
-            none { fail }
-            some(ctx) { ctx }
+            none => fail,
+            some(ctx) => ctx
         };
 
         let t = self.t;
