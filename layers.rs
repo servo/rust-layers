@@ -66,7 +66,7 @@ class Image {
     }
 
     drop {
-        alt copy self.texture {
+        match copy self.texture {
             none => {
                 // Nothing to do.
             }

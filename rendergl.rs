@@ -151,7 +151,7 @@ fn init_buffers() -> (GLuint, GLuint) {
 }
 
 fn create_texture_for_image_if_necessary(image: @Image) {
-    alt image.texture {
+    match image.texture {
         none => {}
         some(_) => { return; /* Nothing to do. */ }
     }
@@ -168,7 +168,7 @@ fn create_texture_for_image_if_necessary(image: @Image) {
 
     pixel_store_i(UNPACK_ALIGNMENT, 1);
 
-    alt image.format {
+    match image.format {
       RGB24Format => {
         tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint, image.width as GLsizei,
                      image.height as GLsizei, 0 as GLint, RGB, UNSIGNED_BYTE, image.data);
@@ -247,7 +247,7 @@ fn render_scene(render_context: RenderContext, &scene: Scene) {
                                   -10.0f32, 10.0f32);
     uniform_matrix_4fv(render_context.projection_uniform, false, projection_matrix.to_array());
 
-    alt copy scene.root {
+    match copy scene.root {
         ContainerLayerKind(*) => fail ~"container layers unsupported",
         ImageLayerKind(image_layer) => image_layer.render(render_context),
         TiledImageLayerKind(tiled_image_layer) => tiled_image_layer.render(render_context)

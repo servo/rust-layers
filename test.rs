@@ -5,7 +5,7 @@ use geom;
 import geom::point::Point2D;
 import geom::rect::Rect;
 import geom::size::Size2D;
-import geom::matrix::Matrix4;
+import geom::matrix::Mat4;
 import layers::*;
 import scene::*;
 import rendergl::*;
@@ -84,7 +84,7 @@ struct Renderer {
     }
 
     fn display_callback() {
-        alt self.render_context {
+        match self.render_context {
             none => {
                 self.render_context = some(init_render_context());
             }
@@ -92,16 +92,16 @@ struct Renderer {
                 // Nothing to do.
             }
         }
-        let context = alt self.render_context {
+        let context = match self.render_context {
             none => fail,
             some(ctx) => ctx
         };
 
         let t = self.t;
-        self.layer.common.transform = Matrix4(400.0f32 * t, 0.0f32,       0.0f32, 0.0f32,
-                                              0.0f32,       300.0f32 * t, 0.0f32, 0.0f32,
-                                              0.0f32,       0.0f32,       1.0f32, 0.0f32,
-                                              0.0f32,       0.0f32,       0.0f32, 1.0f32);
+        self.layer.common.transform = Mat4(400.0f32 * t, 0.0f32,       0.0f32, 0.0f32,
+                                           0.0f32,       300.0f32 * t, 0.0f32, 0.0f32,
+                                           0.0f32,       0.0f32,       1.0f32, 0.0f32,
+                                           0.0f32,       0.0f32,       0.0f32, 1.0f32);
 
         let mut scene = Scene(TiledImageLayerKind(self.layer), Size2D(400.0f32, 300.0f32));
         //let mut scene = Scene(ImageLayerKind(self.layer), Size2D(400.0f32, 300.0f32));
@@ -120,7 +120,7 @@ struct Renderer {
 
 #[test]
 fn test_triangle_and_square() unsafe {
-    let builder = task::task().sched_mode(task::osmain);
+    let builder = task::task().sched_mode(task::platform_thread);
 
     let po: port<()> = port();
     let ch = chan(po);
