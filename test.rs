@@ -5,7 +5,7 @@ use geom;
 import geom::point::Point2D;
 import geom::rect::Rect;
 import geom::size::Size2D;
-import geom::matrix::Mat4;
+import geom::matrix::Matrix4;
 import layers::*;
 import scene::*;
 import rendergl::*;
@@ -98,10 +98,10 @@ struct Renderer {
         };
 
         let t = self.t;
-        self.layer.common.transform = Mat4(400.0f32 * t, 0.0f32,       0.0f32, 0.0f32,
-                                           0.0f32,       300.0f32 * t, 0.0f32, 0.0f32,
-                                           0.0f32,       0.0f32,       1.0f32, 0.0f32,
-                                           0.0f32,       0.0f32,       0.0f32, 1.0f32);
+        self.layer.common.transform = Matrix4(400.0f32 * t, 0.0f32,       0.0f32, 0.0f32,
+                                              0.0f32,       300.0f32 * t, 0.0f32, 0.0f32,
+                                              0.0f32,       0.0f32,       1.0f32, 0.0f32,
+                                              0.0f32,       0.0f32,       0.0f32, 1.0f32);
 
         let mut scene = Scene(TiledImageLayerKind(self.layer), Size2D(400.0f32, 300.0f32));
         //let mut scene = Scene(ImageLayerKind(self.layer), Size2D(400.0f32, 300.0f32));
