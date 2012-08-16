@@ -19,10 +19,10 @@ import CairoContext = azure::cairo_hl::Context;
 import azure::azure_hl::{Color, ColorPattern, DrawTarget};
 import azure::cairo_hl::ImageSurface;
 
-import comm::{chan, peek, port, recv, send};
+import comm::{chan, peek, port, recv, send, Port, Chan};
 import libc::c_uint;
 import os::{getenv, setenv};
-import task::task_builder;
+import task::TaskBuilder;
 
 struct Renderer {
     mut layer: @TiledImageLayer;
@@ -120,11 +120,11 @@ struct Renderer {
 
 #[test]
 fn test_triangle_and_square() unsafe {
-    let builder = task::task().sched_mode(task::platform_thread);
+    let builder = task::task().sched_mode(task::PlatformThread);
 
-    let po: port<()> = port();
+    let po: Port<()> = port();
     let ch = chan(po);
-    let _result_ch: chan<()> = do builder.spawn_listener |_po| {
+    let _result_ch: Chan<()> = do builder.spawn_listener |_po| {
         let renderer = @Renderer();
 
         init();
