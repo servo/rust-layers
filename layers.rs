@@ -2,7 +2,7 @@ import geom::matrix::{Matrix4, identity};
 import opengles::gl2::{GLuint, delete_textures};
 
 import std::cmp::fuzzy_eq;
-import dvec::dvec;
+import dvec::{DVec, dvec};
 
 enum Format {
     ARGB32Format,
@@ -94,7 +94,7 @@ class ImageLayer {
 
 struct TiledImageLayer {
     mut common: CommonLayer;
-    tiles: dvec<@layers::Image>;
+    tiles: DVec<@layers::Image>;
     mut tiles_across: uint;
 }
 
