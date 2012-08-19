@@ -1,7 +1,7 @@
 import layers::Layer;
 import geom::size::Size2D;
 
-class Scene {
+struct Scene {
     let mut root: Layer;
     let mut size: Size2D<f32>;
 

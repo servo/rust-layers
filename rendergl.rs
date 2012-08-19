@@ -74,7 +74,7 @@ fn load_shader(source_string: ~str, shader_type: GLenum) -> GLuint {
     return shader_id;
 }
 
-class RenderContext {
+struct RenderContext {
     let program: GLuint;
     let vertex_position_attr: c_int;
     let texture_coord_attr: c_int;
