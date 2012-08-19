@@ -15,7 +15,7 @@ enum Layer {
     TiledImageLayerKind(@TiledImageLayer)
 }
 
-class CommonLayer {
+struct CommonLayer {
     let mut parent: option<Layer>;
     let mut prev_sibling: option<Layer>;
     let mut next_sibling: option<Layer>;
@@ -36,7 +36,7 @@ class CommonLayer {
     }
 }
 
-class ContainerLayer {
+struct ContainerLayer {
     let mut common: CommonLayer;
     let mut first_child: option<Layer>;
     let mut last_child: option<Layer>;
@@ -48,7 +48,7 @@ class ContainerLayer {
     }
 }
 
-class Image {
+struct Image {
     let width: uint;
     let height: uint;
     let format: Format;
@@ -77,7 +77,7 @@ class Image {
     }
 }
 
-class ImageLayer {
+struct ImageLayer {
     let mut common: CommonLayer;
     let mut image: @layers::Image;
 
