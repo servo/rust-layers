@@ -21,7 +21,7 @@ import opengles::gl2::{vertex_attrib_pointer_f32, viewport};
 
 import io::println;
 import libc::c_int;
-import str::bytes;
+import str::to_bytes;
 
 fn FRAGMENT_SHADER_SOURCE() -> ~str {
     ~"
@@ -58,7 +58,7 @@ fn VERTEX_SHADER_SOURCE() -> ~str {
 
 fn load_shader(source_string: ~str, shader_type: GLenum) -> GLuint {
     let shader_id = create_shader(shader_type);
-    shader_source(shader_id, ~[ bytes(source_string) ]);
+    shader_source(shader_id, ~[ to_bytes(source_string) ]);
     compile_shader(shader_id);
 
     if get_error() != NO_ERROR {
