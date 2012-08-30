@@ -152,8 +152,8 @@ fn init_buffers() -> (GLuint, GLuint) {
 
 fn create_texture_for_image_if_necessary(image: @Image) {
     match image.texture {
-        none => {}
-        some(_) => { return; /* Nothing to do. */ }
+        None => {}
+        Some(_) => { return; /* Nothing to do. */ }
     }
 
     #debug("making texture");
@@ -179,7 +179,7 @@ fn create_texture_for_image_if_necessary(image: @Image) {
       }
     }
 
-    image.texture = some(texture);
+    image.texture = Some(texture);
 }
 
 fn bind_and_render_quad(render_context: RenderContext, texture: GLuint) {

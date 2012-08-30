@@ -1,8 +1,8 @@
 import geom::matrix::{Matrix4, identity};
 import opengles::gl2::{GLuint, delete_textures};
 
-import std::cmp::fuzzy_eq;
-import dvec::{DVec, dvec};
+import std::cmp::FuzzyEq;
+import dvec::DVec;
 
 enum Format {
     ARGB32Format,
@@ -16,16 +16,16 @@ enum Layer {
 }
 
 struct CommonLayer {
-    let mut parent: option<Layer>;
-    let mut prev_sibling: option<Layer>;
-    let mut next_sibling: option<Layer>;
+    let mut parent: Option<Layer>;
+    let mut prev_sibling: Option<Layer>;
+    let mut next_sibling: Option<Layer>;
 
     let mut transform: Matrix4<f32>;
 
     new() {
-        self.parent = none;
-        self.prev_sibling = none;
-        self.next_sibling = none;
+        self.parent = None;
+        self.prev_sibling = None;
+        self.next_sibling = None;
 
         self.transform = identity(0.0f32);
     }
@@ -38,13 +38,13 @@ struct CommonLayer {
 
 struct ContainerLayer {
     let mut common: CommonLayer;
-    let mut first_child: option<Layer>;
-    let mut last_child: option<Layer>;
+    let mut first_child: Option<Layer>;
+    let mut last_child: Option<Layer>;
 
     new() {
         self.common = CommonLayer();
-        self.first_child = none;
-        self.last_child = none;
+        self.first_child = None;
+        self.last_child = None;
     }
 }
 
@@ -54,7 +54,7 @@ struct Image {
     let format: Format;
     let data: ~[u8];
 
-    let mut texture: option<GLuint>;
+    let mut texture: Option<GLuint>;
 
     new(width: uint, height: uint, format: Format, +data: ~[u8]) {
         self.width = width;
@@ -62,15 +62,15 @@ struct Image {
         self.format = format;
         self.data = data;
 
-        self.texture = none;
+        self.texture = None;
     }
 
     drop {
         match copy self.texture {
-            none => {
+            None => {
                 // Nothing to do.
             }
-            some(texture) => {
+            Some(texture) => {
                 delete_textures(&[texture]);
             }
         }
@@ -99,7 +99,7 @@ struct TiledImageLayer {
 }
 
 fn TiledImageLayer(in_tiles: &[@layers::Image], tiles_across: uint) -> TiledImageLayer {
-    let tiles = dvec();
+    let tiles = DVec();
     for in_tiles.each |tile| {
         tiles.push(tile);
     }
