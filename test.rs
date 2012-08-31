@@ -19,7 +19,7 @@ import CairoContext = azure::cairo_hl::Context;
 import azure::azure_hl::{Color, ColorPattern, DrawTarget};
 import azure::cairo_hl::ImageSurface;
 
-import comm::{chan, peek, port, recv, send, Port, Chan};
+import comm::{peek, recv, send, Port, Chan};
 import libc::c_uint;
 import os::{getenv, setenv};
 import task::TaskBuilder;
@@ -29,13 +29,13 @@ struct Renderer {
     //mut layer: @ImageLayer;
     mut t: f32;
     mut delta: f32;
-    mut render_context: option<RenderContext>;
-    mut image: option<@Image>;
+    mut render_context: Option<RenderContext>;
+    mut image: Option<@Image>;
 
     new() {
         let cairo_image = ImageSurface(CAIRO_FORMAT_RGB24, 500, 704);
 
-        self.image = none;
+        self.image = None;
 
         let draw_target = DrawTarget(cairo_image);
         draw_target.fill_rect(Rect(Point2D(50.0f32, 50.0f32), Size2D(300.0f32, 284.0f32)),
@@ -46,11 +46,11 @@ struct Renderer {
         let (tile_width, tile_height) = (width / 4, height / 4);
         let cairo_data = cairo_image.data();
 
-        let tiles = dvec();
+        let tiles = DVec();
         for 4.timesi |y| {
             for 4.timesi |x| {
                 // Extract the relevant part of the image.
-                let data = dvec();
+                let data = DVec();
 
                 let mut scanline_start = (y * tile_height * width + x * tile_width) * 4;
                 for tile_height.times {
@@ -63,7 +63,7 @@ struct Renderer {
 
                 let data = convert_rgb32_to_rgb24(vec::from_mut(dvec::unwrap(data)));
                 let image = @Image(tile_width, tile_height, RGB24Format, data); 
-                self.image = some(image);
+                self.image = Some(image);
                 tiles.push(image);
             }
         }
@@ -74,7 +74,7 @@ struct Renderer {
         self.t = 1.0f32;
         self.delta = -0.001f32;
 
-        self.render_context = none;
+        self.render_context = None;
     }
 
     fn get_display_callback(this: @Renderer) -> fn@() {
@@ -85,16 +85,16 @@ struct Renderer {
 
     fn display_callback() {
         match self.render_context {
-            none => {
-                self.render_context = some(init_render_context());
+            None => {
+                self.render_context = Some(init_render_context());
             }
-            some(_) => {
+            Some(_) => {
                 // Nothing to do.
             }
         }
         let context = match self.render_context {
-            none => fail,
-            some(ctx) => ctx
+            None => fail,
+            Some(ctx) => ctx
         };
 
         let t = self.t;
@@ -122,8 +122,8 @@ struct Renderer {
 fn test_triangle_and_square() unsafe {
     let builder = task::task().sched_mode(task::PlatformThread);
 
-    let po: Port<()> = port();
-    let ch = chan(po);
+    let po: Port<()> = Port();
+    let ch = Chan(po);
     let _result_ch: Chan<()> = do builder.spawn_listener |_po| {
         let renderer = @Renderer();
 
@@ -132,8 +132,8 @@ fn test_triangle_and_square() unsafe {
         let window = create_window(~"Rust Layers");
         display_func(renderer.get_display_callback(renderer));
 
-        let wakeup = port();
-        let wakeup_chan = chan(wakeup);
+        let wakeup = Port();
+        let wakeup_chan = Chan(wakeup);
         do timer_func(30000) {
             send(wakeup_chan, ());
         }
