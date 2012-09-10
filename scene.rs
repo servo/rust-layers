@@ -2,12 +2,15 @@ import layers::Layer;
 import geom::size::Size2D;
 
 struct Scene {
-    let mut root: Layer;
-    let mut size: Size2D<f32>;
+    mut root: Layer,
+    mut size: Size2D<f32>
+}
 
-    new(root: Layer, size: Size2D<f32>) {
-        self.root = root;
-        self.size = size;
+
+fn Scene(root: Layer, size: Size2D<f32>) -> Scene {
+    Scene {
+        root : root,
+        size : size
     }
 }
 

@@ -16,19 +16,11 @@ enum Layer {
 }
 
 struct CommonLayer {
-    let mut parent: Option<Layer>;
-    let mut prev_sibling: Option<Layer>;
-    let mut next_sibling: Option<Layer>;
+    mut parent: Option<Layer>,
+    mut prev_sibling: Option<Layer>,
+    mut next_sibling: Option<Layer>,
 
-    let mut transform: Matrix4<f32>;
-
-    new() {
-        self.parent = None;
-        self.prev_sibling = None;
-        self.next_sibling = None;
-
-        self.transform = identity(0.0f32);
-    }
+    mut transform: Matrix4<f32>,
 
     // FIXME: Workaround for cross-crate bug regarding mutability of class fields
     fn set_transform(new_transform: Matrix4<f32>) {
@@ -36,34 +28,39 @@ struct CommonLayer {
     }
 }
 
-struct ContainerLayer {
-    let mut common: CommonLayer;
-    let mut first_child: Option<Layer>;
-    let mut last_child: Option<Layer>;
 
-    new() {
-        self.common = CommonLayer();
-        self.first_child = None;
-        self.last_child = None;
+fn CommonLayer() -> CommonLayer {
+    CommonLayer {
+        parent : None,
+        prev_sibling : None,
+        next_sibling : None,
+        transform : identity(0.0f32),
     }
 }
 
-struct Image {
-    let width: uint;
-    let height: uint;
-    let format: Format;
-    let data: ~[u8];
 
-    let mut texture: Option<GLuint>;
+struct ContainerLayer {
+    mut common: CommonLayer,
+    mut first_child: Option<Layer>,
+    mut last_child: Option<Layer>,
+}
 
-    new(width: uint, height: uint, format: Format, +data: ~[u8]) {
-        self.width = width;
-        self.height = height;
-        self.format = format;
-        self.data = data;
 
-        self.texture = None;
+fn ContainerLayer() -> ContainerLayer {
+    ContainerLayer {
+        common : CommonLayer(),
+        first_child : None,
+        last_child : None,
     }
+}
+
+
+struct Image {
+    width: uint,
+    height: uint,
+    format: Format,
+    data: ~[u8],
+    mut texture: Option<GLuint>,
 
     drop {
         match copy self.texture {
@@ -77,14 +74,20 @@ struct Image {
     }
 }
 
-struct ImageLayer {
-    let mut common: CommonLayer;
-    let mut image: @layers::Image;
 
-    new(image: @layers::Image) {
-        self.common = CommonLayer();
-        self.image = image;
+fn Image_(width: uint, height: uint, format: Format, +data: ~[u8]) -> Image {
+    Image {
+        width : width,
+        height : height,
+        format : format,
+        data : data,
+        texture : None,
     }
+}
+
+struct ImageLayer {
+    mut common: CommonLayer,
+    mut image: @layers::Image,
 
     // FIXME: Workaround for cross-crate bug
     fn set_image(new_image: @layers::Image) {
@@ -92,13 +95,21 @@ struct ImageLayer {
     }
 }
 
-struct TiledImageLayer {
-    mut common: CommonLayer;
-    tiles: DVec<@layers::Image>;
-    mut tiles_across: uint;
+
+fn ImageLayer_(image: @layers::Image) -> ImageLayer {
+    ImageLayer {
+        common : CommonLayer(),
+        image : image,
+    }
 }
 
-fn TiledImageLayer(in_tiles: &[@layers::Image], tiles_across: uint) -> TiledImageLayer {
+struct TiledImageLayer {
+    mut common: CommonLayer,
+    tiles: DVec<@layers::Image>,
+    mut tiles_across: uint,
+}
+
+fn TiledImageLayer_(in_tiles: &[@layers::Image], tiles_across: uint) -> TiledImageLayer {
     let tiles = DVec();
     for in_tiles.each |tile| {
         tiles.push(tile);

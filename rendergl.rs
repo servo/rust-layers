@@ -75,30 +75,33 @@ fn load_shader(source_string: ~str, shader_type: GLenum) -> GLuint {
 }
 
 struct RenderContext {
-    let program: GLuint;
-    let vertex_position_attr: c_int;
-    let texture_coord_attr: c_int;
-    let modelview_uniform: c_int;
-    let projection_uniform: c_int;
-    let sampler_uniform: c_int;
-    let vertex_buffer: GLuint;
-    let texture_coord_buffer: GLuint;
+    program: GLuint,
+    vertex_position_attr: c_int,
+    texture_coord_attr: c_int,
+    modelview_uniform: c_int,
+    projection_uniform: c_int,
+    sampler_uniform: c_int,
+    vertex_buffer: GLuint,
+    texture_coord_buffer: GLuint,
+}
 
-    new(program: GLuint) {
-        self.program = program;
-        self.vertex_position_attr = get_attrib_location(program, ~"aVertexPosition");
-        self.texture_coord_attr = get_attrib_location(program, ~"aTextureCoord");
-        self.modelview_uniform = get_uniform_location(program, ~"uMVMatrix");
-        self.projection_uniform = get_uniform_location(program, ~"uPMatrix");
-        self.sampler_uniform = get_uniform_location(program, ~"uSampler");
+fn RenderContext(program: GLuint) -> RenderContext {
+    let (vertex_buffer, texture_coord_buffer) = init_buffers();
+    let rc = RenderContext {
+        program : program,
+        vertex_position_attr : get_attrib_location(program, ~"aVertexPosition"),
+        texture_coord_attr : get_attrib_location(program, ~"aTextureCoord"),
+        modelview_uniform : get_uniform_location(program, ~"uMVMatrix"),
+        projection_uniform : get_uniform_location(program, ~"uPMatrix"),
+        sampler_uniform : get_uniform_location(program, ~"uSampler"),
+        vertex_buffer : vertex_buffer,
+        texture_coord_buffer : texture_coord_buffer,
+    };
 
-        let (vertex_buffer, texture_coord_buffer) = init_buffers();
-        self.vertex_buffer = vertex_buffer;
-        self.texture_coord_buffer = texture_coord_buffer;
+    enable_vertex_attrib_array(rc.vertex_position_attr as GLuint);
+    enable_vertex_attrib_array(rc.texture_coord_attr as GLuint);
 
-        enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
-        enable_vertex_attrib_array(self.texture_coord_attr as GLuint);
-    }
+    rc
 }
 
 fn init_render_context() -> RenderContext {
