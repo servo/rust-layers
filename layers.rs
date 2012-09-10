@@ -75,7 +75,7 @@ struct Image {
 }
 
 
-fn Image_(width: uint, height: uint, format: Format, +data: ~[u8]) -> Image {
+fn Image(width: uint, height: uint, format: Format, +data: ~[u8]) -> Image {
     Image {
         width : width,
         height : height,
@@ -96,7 +96,7 @@ struct ImageLayer {
 }
 
 
-fn ImageLayer_(image: @layers::Image) -> ImageLayer {
+fn ImageLayer(image: @layers::Image) -> ImageLayer {
     ImageLayer {
         common : CommonLayer(),
         image : image,
@@ -109,7 +109,7 @@ struct TiledImageLayer {
     mut tiles_across: uint,
 }
 
-fn TiledImageLayer_(in_tiles: &[@layers::Image], tiles_across: uint) -> TiledImageLayer {
+fn TiledImageLayer(in_tiles: &[@layers::Image], tiles_across: uint) -> TiledImageLayer {
     let tiles = DVec();
     for in_tiles.each |tile| {
         tiles.push(tile);
