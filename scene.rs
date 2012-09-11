@@ -1,5 +1,5 @@
-import layers::Layer;
-import geom::size::Size2D;
+use layers::Layer;
+use geom::size::Size2D;
 
 struct Scene {
     mut root: Layer,

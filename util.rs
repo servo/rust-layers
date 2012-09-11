@@ -1,6 +1,6 @@
 // Miscellaneous utilities.
 
-import vec::from_fn;
+use vec::from_fn;
 
 fn convert_rgb32_to_rgb24(buffer: ~[u8]) -> ~[u8] {
     let mut i = 0;

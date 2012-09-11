@@ -2,27 +2,27 @@ use glut;
 use azure;
 use geom;
 
-import geom::point::Point2D;
-import geom::rect::Rect;
-import geom::size::Size2D;
-import geom::matrix::Matrix4;
-import layers::*;
-import scene::*;
-import rendergl::*;
-import util::convert_rgb32_to_rgb24;
+use geom::point::Point2D;
+use geom::rect::Rect;
+use geom::size::Size2D;
+use geom::matrix::Matrix4;
+use layers::*;
+use scene::*;
+use rendergl::*;
+use util::convert_rgb32_to_rgb24;
 
-import glut::{DOUBLE, check_loop, create_window, destroy_window, display_func, init};
-import glut::{init_display_mode, post_redisplay, swap_buffers, timer_func};
+use glut::{DOUBLE, check_loop, create_window, destroy_window, display_func, init};
+use glut::{init_display_mode, post_redisplay, swap_buffers, timer_func};
 
-import azure::cairo::CAIRO_FORMAT_RGB24;
-import CairoContext = azure::cairo_hl::Context;
-import azure::azure_hl::{Color, ColorPattern, DrawTarget};
-import azure::cairo_hl::ImageSurface;
+use azure::cairo::CAIRO_FORMAT_RGB24;
+use CairoContext = azure::cairo_hl::Context;
+use azure::azure_hl::{Color, ColorPattern, DrawTarget};
+use azure::cairo_hl::ImageSurface;
 
-import comm::{peek, recv, send, Port, Chan};
-import libc::c_uint;
-import os::{getenv, setenv};
-import task::TaskBuilder;
+use comm::{peek, recv, send, Port, Chan};
+use libc::c_uint;
+use os::{getenv, setenv};
+use task::TaskBuilder;
 
 struct Renderer {
     mut layer: @TiledImageLayer,
@@ -31,7 +31,9 @@ struct Renderer {
     mut delta: f32,
     mut render_context: Option<RenderContext>,
     mut image: Option<@Image>,
+}
 
+impl Renderer {
     fn get_display_callback(this: @Renderer) -> fn@() {
         fn@() {
             (*this).display_callback();

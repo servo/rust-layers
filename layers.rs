@@ -1,8 +1,8 @@
-import geom::matrix::{Matrix4, identity};
-import opengles::gl2::{GLuint, delete_textures};
+use geom::matrix::{Matrix4, identity};
+use opengles::gl2::{GLuint, delete_textures};
 
-import std::cmp::FuzzyEq;
-import dvec::DVec;
+use std::cmp::FuzzyEq;
+use dvec::DVec;
 
 enum Format {
     ARGB32Format,
@@ -21,7 +21,9 @@ struct CommonLayer {
     mut next_sibling: Option<Layer>,
 
     mut transform: Matrix4<f32>,
+}
 
+impl CommonLayer {
     // FIXME: Workaround for cross-crate bug regarding mutability of class fields
     fn set_transform(new_transform: Matrix4<f32>) {
         self.transform = new_transform;
@@ -88,7 +90,9 @@ fn Image(width: uint, height: uint, format: Format, +data: ~[u8]) -> Image {
 struct ImageLayer {
     mut common: CommonLayer,
     mut image: @layers::Image,
+}
 
+impl ImageLayer {
     // FIXME: Workaround for cross-crate bug
     fn set_image(new_image: @layers::Image) {
         self.image = new_image;

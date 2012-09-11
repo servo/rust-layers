@@ -1,27 +1,27 @@
-import layers::{ARGB32Format, ContainerLayerKind, Image, ImageLayerKind, RGB24Format};
-import layers::{TiledImageLayerKind};
-import scene::Scene;
+use layers::{ARGB32Format, ContainerLayerKind, Image, ImageLayerKind, RGB24Format};
+use layers::{TiledImageLayerKind};
+use scene::Scene;
 
-import geom::matrix::{Matrix4, ortho};
-import opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, COMPILE_STATUS};
-import opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, REPEAT, RGB, RGBA,
+use geom::matrix::{Matrix4, ortho};
+use opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, COMPILE_STATUS};
+use opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, REPEAT, RGB, RGBA,
                       BGRA};
-import opengles::gl2::{STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
-import opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T};
-import opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNSIGNED_BYTE, VERTEX_SHADER, GLclampf};
-import opengles::gl2::{GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer, bind_texture};
-import opengles::gl2::{buffer_data, create_program, clear, clear_color};
-import opengles::gl2::{compile_shader, create_shader, draw_arrays, enable};
-import opengles::gl2::{enable_vertex_attrib_array, gen_buffers, gen_textures};
-import opengles::gl2::{get_attrib_location, get_error, get_program_iv};
-import opengles::gl2::{get_shader_info_log, get_shader_iv};
-import opengles::gl2::{get_uniform_location, link_program, pixel_store_i, shader_source};
-import opengles::gl2::{tex_image_2d, tex_parameter_i, uniform_1i, uniform_matrix_4fv, use_program};
-import opengles::gl2::{vertex_attrib_pointer_f32, viewport};
+use opengles::gl2::{STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
+use opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T};
+use opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNSIGNED_BYTE, VERTEX_SHADER, GLclampf};
+use opengles::gl2::{GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer, bind_texture};
+use opengles::gl2::{buffer_data, create_program, clear, clear_color};
+use opengles::gl2::{compile_shader, create_shader, draw_arrays, enable};
+use opengles::gl2::{enable_vertex_attrib_array, gen_buffers, gen_textures};
+use opengles::gl2::{get_attrib_location, get_error, get_program_iv};
+use opengles::gl2::{get_shader_info_log, get_shader_iv};
+use opengles::gl2::{get_uniform_location, link_program, pixel_store_i, shader_source};
+use opengles::gl2::{tex_image_2d, tex_parameter_i, uniform_1i, uniform_matrix_4fv, use_program};
+use opengles::gl2::{vertex_attrib_pointer_f32, viewport};
 
-import io::println;
-import libc::c_int;
-import str::to_bytes;
+use io::println;
+use libc::c_int;
+use str::to_bytes;
 
 fn FRAGMENT_SHADER_SOURCE() -> ~str {
     ~"
