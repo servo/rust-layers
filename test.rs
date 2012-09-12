@@ -113,7 +113,7 @@ fn Renderer() -> Renderer {
         let tiles = dvec::unwrap(tiles);
     
     Renderer {
-        image : Some(image),
+        image : Some(tiles[0]),
         layer : @TiledImageLayer(tiles, 4),
         t : 1.0f32,
         delta : -0.001f32,
