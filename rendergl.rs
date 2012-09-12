@@ -171,14 +171,16 @@ fn create_texture_for_image_if_necessary(image: @Image) {
 
     pixel_store_i(UNPACK_ALIGNMENT, 1);
 
+    fn borrow(a: &a/[u8]) -> &a/[u8] { a }
+
     match image.format {
       RGB24Format => {
         tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint, image.width as GLsizei,
-                     image.height as GLsizei, 0 as GLint, RGB, UNSIGNED_BYTE, image.data);
+                     image.height as GLsizei, 0 as GLint, RGB, UNSIGNED_BYTE, Some(borrow(image.data)));
       }
       ARGB32Format => {
         tex_image_2d(TEXTURE_2D, 0 as GLint, RGBA as GLint, image.width as GLsizei,
-                     image.height as GLsizei, 0 as GLint, BGRA, UNSIGNED_BYTE, image.data);
+                     image.height as GLsizei, 0 as GLint, BGRA, UNSIGNED_BYTE, Some(borrow(image.data)));
       }
     }
 
