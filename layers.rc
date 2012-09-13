@@ -2,9 +2,9 @@
        vers = "0.1")];
 #[crate_type = "lib"];
 
-use std;
-use geom;
-use opengles;
+extern mod std;
+extern mod geom;
+extern mod opengles;
 
 mod layers;
 mod scene;
