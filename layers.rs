@@ -116,7 +116,7 @@ struct TiledImageLayer {
 fn TiledImageLayer(in_tiles: &[@layers::Image], tiles_across: uint) -> TiledImageLayer {
     let tiles = DVec();
     for in_tiles.each |tile| {
-        tiles.push(tile);
+        tiles.push(*tile);
     }
 
     TiledImageLayer {
