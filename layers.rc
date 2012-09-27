@@ -6,11 +6,11 @@ extern mod std;
 extern mod geom;
 extern mod opengles;
 
-mod layers;
-mod scene;
-mod rendergl;
-mod util;
+pub mod layers;
+pub mod scene;
+pub mod rendergl;
+pub mod util;
 
 #[cfg(test)]
-mod test;
+pub mod test;
 

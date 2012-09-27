@@ -4,18 +4,18 @@ use opengles::gl2::{GLuint, delete_textures};
 use std::cmp::FuzzyEq;
 use dvec::DVec;
 
-enum Format {
+pub enum Format {
     ARGB32Format,
     RGB24Format
 }
 
-enum Layer {
+pub enum Layer {
     ContainerLayerKind(@ContainerLayer),
     ImageLayerKind(@ImageLayer),
     TiledImageLayerKind(@TiledImageLayer)
 }
 
-struct CommonLayer {
+pub struct CommonLayer {
     mut parent: Option<Layer>,
     mut prev_sibling: Option<Layer>,
     mut next_sibling: Option<Layer>,
@@ -31,7 +31,7 @@ impl CommonLayer {
 }
 
 
-fn CommonLayer() -> CommonLayer {
+pub fn CommonLayer() -> CommonLayer {
     CommonLayer {
         parent : None,
         prev_sibling : None,
@@ -41,14 +41,14 @@ fn CommonLayer() -> CommonLayer {
 }
 
 
-struct ContainerLayer {
+pub struct ContainerLayer {
     mut common: CommonLayer,
     mut first_child: Option<Layer>,
     mut last_child: Option<Layer>,
 }
 
 
-fn ContainerLayer() -> ContainerLayer {
+pub fn ContainerLayer() -> ContainerLayer {
     ContainerLayer {
         common : CommonLayer(),
         first_child : None,
@@ -57,7 +57,7 @@ fn ContainerLayer() -> ContainerLayer {
 }
 
 
-struct Image {
+pub struct Image {
     width: uint,
     height: uint,
     format: Format,
@@ -77,7 +77,7 @@ struct Image {
 }
 
 
-fn Image(width: uint, height: uint, format: Format, +data: ~[u8]) -> Image {
+pub fn Image(width: uint, height: uint, format: Format, +data: ~[u8]) -> Image {
     Image {
         width : width,
         height : height,
@@ -87,7 +87,7 @@ fn Image(width: uint, height: uint, format: Format, +data: ~[u8]) -> Image {
     }
 }
 
-struct ImageLayer {
+pub struct ImageLayer {
     mut common: CommonLayer,
     mut image: @layers::Image,
 }
@@ -99,21 +99,20 @@ impl ImageLayer {
     }
 }
 
-
-fn ImageLayer(image: @layers::Image) -> ImageLayer {
+pub fn ImageLayer(image: @layers::Image) -> ImageLayer {
     ImageLayer {
         common : CommonLayer(),
         image : image,
     }
 }
 
-struct TiledImageLayer {
+pub struct TiledImageLayer {
     mut common: CommonLayer,
     tiles: DVec<@layers::Image>,
     mut tiles_across: uint,
 }
 
-fn TiledImageLayer(in_tiles: &[@layers::Image], tiles_across: uint) -> TiledImageLayer {
+pub fn TiledImageLayer(in_tiles: &[@layers::Image], tiles_across: uint) -> TiledImageLayer {
     let tiles = DVec();
     for in_tiles.each |tile| {
         tiles.push(*tile);

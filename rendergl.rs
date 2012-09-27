@@ -23,7 +23,7 @@ use io::println;
 use libc::c_int;
 use str::to_bytes;
 
-fn FRAGMENT_SHADER_SOURCE() -> ~str {
+pub fn FRAGMENT_SHADER_SOURCE() -> ~str {
     ~"
         #ifdef GLES2
             precision mediump float;
@@ -39,7 +39,7 @@ fn FRAGMENT_SHADER_SOURCE() -> ~str {
     "
 }
 
-fn VERTEX_SHADER_SOURCE() -> ~str {
+pub fn VERTEX_SHADER_SOURCE() -> ~str {
     ~"
         attribute vec3 aVertexPosition;
         attribute vec2 aTextureCoord;
@@ -56,7 +56,7 @@ fn VERTEX_SHADER_SOURCE() -> ~str {
     "
 }
 
-fn load_shader(source_string: ~str, shader_type: GLenum) -> GLuint {
+pub fn load_shader(source_string: ~str, shader_type: GLenum) -> GLuint {
     let shader_id = create_shader(shader_type);
     shader_source(shader_id, ~[ to_bytes(source_string) ]);
     compile_shader(shader_id);
@@ -74,7 +74,7 @@ fn load_shader(source_string: ~str, shader_type: GLenum) -> GLuint {
     return shader_id;
 }
 
-struct RenderContext {
+pub struct RenderContext {
     program: GLuint,
     vertex_position_attr: c_int,
     texture_coord_attr: c_int,
@@ -85,7 +85,7 @@ struct RenderContext {
     texture_coord_buffer: GLuint,
 }
 
-fn RenderContext(program: GLuint) -> RenderContext {
+pub fn RenderContext(program: GLuint) -> RenderContext {
     let (vertex_buffer, texture_coord_buffer) = init_buffers();
     let rc = RenderContext {
         program : program,
@@ -104,7 +104,7 @@ fn RenderContext(program: GLuint) -> RenderContext {
     rc
 }
 
-fn init_render_context() -> RenderContext {
+pub fn init_render_context() -> RenderContext {
     let vertex_shader = load_shader(VERTEX_SHADER_SOURCE(), VERTEX_SHADER);
     let fragment_shader = load_shader(FRAGMENT_SHADER_SOURCE(), FRAGMENT_SHADER);
 
@@ -124,7 +124,7 @@ fn init_render_context() -> RenderContext {
     return RenderContext(program);
 }
 
-fn init_buffers() -> (GLuint, GLuint) {
+pub fn init_buffers() -> (GLuint, GLuint) {
     let triangle_vertex_buffer = gen_buffers(1 as GLsizei)[0];
     bind_buffer(ARRAY_BUFFER, triangle_vertex_buffer);
 
@@ -153,7 +153,7 @@ fn init_buffers() -> (GLuint, GLuint) {
     return (triangle_vertex_buffer, texture_coord_buffer);
 }
 
-fn create_texture_for_image_if_necessary(image: @Image) {
+pub fn create_texture_for_image_if_necessary(image: @Image) {
     match image.texture {
         None => {}
         Some(_) => { return; /* Nothing to do. */ }
@@ -176,18 +176,20 @@ fn create_texture_for_image_if_necessary(image: @Image) {
     match image.format {
       RGB24Format => {
         tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint, image.width as GLsizei,
-                     image.height as GLsizei, 0 as GLint, RGB, UNSIGNED_BYTE, Some(borrow(image.data)));
+                     image.height as GLsizei, 0 as GLint, RGB, UNSIGNED_BYTE,
+                     Some(borrow(image.data)));
       }
       ARGB32Format => {
         tex_image_2d(TEXTURE_2D, 0 as GLint, RGBA as GLint, image.width as GLsizei,
-                     image.height as GLsizei, 0 as GLint, BGRA, UNSIGNED_BYTE, Some(borrow(image.data)));
+                     image.height as GLsizei, 0 as GLint, BGRA, UNSIGNED_BYTE,
+                     Some(borrow(image.data)));
       }
     }
 
     image.texture = Some(texture);
 }
 
-fn bind_and_render_quad(render_context: RenderContext, texture: GLuint) {
+pub fn bind_and_render_quad(render_context: RenderContext, texture: GLuint) {
     bind_texture(TEXTURE_2D, texture);
 
     uniform_1i(render_context.sampler_uniform, 0);
@@ -203,7 +205,7 @@ fn bind_and_render_quad(render_context: RenderContext, texture: GLuint) {
 
 // Layer rendering
 
-trait Render {
+pub trait Render {
     fn render(render_context: RenderContext);
 }
 
@@ -214,7 +216,7 @@ impl @layers::ImageLayer : Render {
         uniform_matrix_4fv(render_context.modelview_uniform, false,
                            self.common.transform.to_array());
 
-        bind_and_render_quad(render_context, option::get(self.image.texture));
+        bind_and_render_quad(render_context, option::get(&self.image.texture));
     }
 }
 
@@ -222,7 +224,7 @@ impl @layers::TiledImageLayer : Render {
     fn render(render_context: RenderContext) {
         let tiles_down = self.tiles.len() / self.tiles_across;
         for self.tiles.eachi |i, tile| {
-            create_texture_for_image_if_necessary(tile);
+            create_texture_for_image_if_necessary(*tile);
 
             let x = ((i % self.tiles_across) as f32);
             let y = ((i / self.tiles_across) as f32);
@@ -234,12 +236,12 @@ impl @layers::TiledImageLayer : Render {
 
             uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
 
-            bind_and_render_quad(render_context, option::get(tile.texture));
+            bind_and_render_quad(render_context, option::get(&tile.texture));
         }
     }
 }
 
-fn render_scene(render_context: RenderContext, &scene: Scene) {
+pub fn render_scene(render_context: RenderContext, &scene: Scene) {
     // Set the viewport.
     viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
 
