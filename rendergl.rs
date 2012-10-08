@@ -229,10 +229,10 @@ impl @layers::TiledImageLayer : Render {
             let x = ((i % self.tiles_across) as f32);
             let y = ((i / self.tiles_across) as f32);
 
-            let transform = self.common.transform.scale(1.0f32 / (self.tiles_across as f32),
-                                                        1.0f32 / (tiles_down as f32),
-                                                        1.0f32);
-            let transform = transform.translate(x * 1.0f32, y * 1.0f32, 0.0f32);
+            let transform = self.common.transform.scale(&(1.0f32 / (self.tiles_across as f32)),
+                                                        &(1.0f32 / (tiles_down as f32)),
+                                                        &1.0f32);
+            let transform = transform.translate(&(x * 1.0f32), &(y * 1.0f32), &0.0f32);
 
             uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
 
@@ -241,7 +241,7 @@ impl @layers::TiledImageLayer : Render {
     }
 }
 
-pub fn render_scene(render_context: RenderContext, &scene: Scene) {
+pub fn render_scene(render_context: RenderContext, scene: &Scene) {
     // Set the viewport.
     viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
 

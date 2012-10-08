@@ -77,7 +77,7 @@ pub struct Image {
 }
 
 
-pub fn Image(width: uint, height: uint, format: Format, +data: ~[u8]) -> Image {
+pub fn Image(width: uint, height: uint, format: Format, data: ~[u8]) -> Image {
     Image {
         width : width,
         height : height,

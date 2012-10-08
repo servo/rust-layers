@@ -1,6 +1,6 @@
-use glut;
-use azure;
-use geom;
+extern mod glut;
+extern mod azure;
+extern mod geom;
 
 use geom::point::Point2D;
 use geom::rect::Rect;
@@ -60,9 +60,8 @@ impl Renderer {
                                               0.0f32,       0.0f32,       1.0f32, 0.0f32,
                                               0.0f32,       0.0f32,       0.0f32, 1.0f32);
 
-        let mut scene = Scene(TiledImageLayerKind(self.layer), Size2D(400.0f32, 300.0f32));
-        //let mut scene = Scene(ImageLayerKind(self.layer), Size2D(400.0f32, 300.0f32));
-        render_scene(context, scene);
+        let scene = Scene(TiledImageLayerKind(self.layer), Size2D(400.0f32, 300.0f32));
+        render_scene(context, &scene);
 
         //self.t += self.delta;
         if self.t < 0.0f32 || self.t > 1.0f32 {
@@ -78,11 +77,9 @@ impl Renderer {
 fn Renderer() -> Renderer {
         let cairo_image = ImageSurface(CAIRO_FORMAT_RGB24, 500, 704);
 
-        let image : Image;
-
-        let draw_target = DrawTarget(cairo_image);
-        draw_target.fill_rect(Rect(Point2D(50.0f32, 50.0f32), Size2D(300.0f32, 284.0f32)),
-                              ColorPattern(Color(1.0f32, 1.0f32, 0.0f32, 1.0f32)));
+        let draw_target = DrawTarget(&cairo_image);
+        draw_target.fill_rect(&Rect(Point2D(50.0f32, 50.0f32), Size2D(300.0f32, 284.0f32)),
+                              &ColorPattern(Color(1.0f32, 1.0f32, 0.0f32, 1.0f32)));
         draw_target.flush();
 
         let (width, height) = (cairo_image.width() as uint, cairo_image.height() as uint);
@@ -104,7 +101,7 @@ fn Renderer() -> Renderer {
                     scanline_start += width * 4;
                 }
 
-                let data = convert_rgb32_to_rgb24(vec::from_mut(dvec::unwrap(data)));
+                let data = convert_rgb32_to_rgb24(dvec::unwrap(data));
                 let image = @Image(tile_width, tile_height, RGB24Format, data); 
                 tiles.push(image);
             }
@@ -137,7 +134,7 @@ fn test_triangle_and_square() unsafe {
 
         let wakeup = Port();
         let wakeup_chan = Chan(wakeup);
-        do timer_func(30000) {
+        do timer_func(300) {
             send(wakeup_chan, ());
         }
 
