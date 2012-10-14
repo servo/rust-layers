@@ -246,7 +246,7 @@ pub fn render_scene(render_context: RenderContext, scene: &Scene) {
     viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
 
     // Clear the screen.
-    clear_color(0.0f32, 0.0f32, 1.0f32, 1.0f32);
+    clear_color(0.38f32, 0.36f32, 0.36f32, 1.0f32);
     clear(COLOR_BUFFER_BIT);
 
     // Set the projection matrix.
