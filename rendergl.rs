@@ -3,11 +3,11 @@ use layers::{TiledImageLayerKind};
 use scene::Scene;
 
 use geom::matrix::{Matrix4, ortho};
-use opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, COMPILE_STATUS};
+use opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, CLAMP_TO_EDGE, COMPILE_STATUS};
 use opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, REPEAT, RGB, RGBA,
                       BGRA};
 use opengles::gl2::{STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
-use opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T};
+use opengles::gl2::{TEXTURE_RECTANGLE_ARB, TEXTURE_WRAP_S, TEXTURE_WRAP_T};
 use opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNPACK_CLIENT_STORAGE_APPLE, UNSIGNED_BYTE};
 use opengles::gl2::{UNSIGNED_INT_8_8_8_8_REV, VERTEX_SHADER, GLclampf};
 use opengles::gl2::{GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer, bind_texture};
@@ -24,7 +24,6 @@ use io::println;
 use libc::c_int;
 use str::to_bytes;
 
-// Convert ARGB to ABGR.
 pub fn FRAGMENT_SHADER_SOURCE() -> ~str {
     ~"
         #ifdef GLES2
@@ -33,10 +32,10 @@ pub fn FRAGMENT_SHADER_SOURCE() -> ~str {
 
         varying vec2 vTextureCoord;
 
-        uniform sampler2D uSampler;
+        uniform sampler2DRect uSampler;
 
         void main(void) {
-            gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+            gl_FragColor = texture2DRect(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
         }
     "
 }
@@ -122,6 +121,7 @@ pub fn init_render_context() -> RenderContext {
     use_program(program);
 
     enable(TEXTURE_2D);
+    enable(TEXTURE_RECTANGLE_ARB);
 
     return RenderContext(program);
 }
@@ -143,15 +143,6 @@ pub fn init_buffers() -> (GLuint, GLuint) {
     let texture_coord_buffer = gen_buffers(1 as GLsizei)[0];
     bind_buffer(ARRAY_BUFFER, texture_coord_buffer);
 
-    let vertices = ~[
-        _0, _0,
-        _0, _1,
-        _1, _0,
-        _1, _1
-    ];
-
-    buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
-
     return (triangle_vertex_buffer, texture_coord_buffer);
 }
 
@@ -164,32 +155,32 @@ pub fn create_texture_for_image_if_necessary(image: @Image) {
     #debug("making texture");
 
     let texture = gen_textures(1 as GLsizei)[0];
-    bind_texture(TEXTURE_2D, texture);
+    bind_texture(TEXTURE_RECTANGLE_ARB, texture);
 
-    tex_parameter_i(TEXTURE_2D, TEXTURE_WRAP_S, REPEAT as GLint);
-    tex_parameter_i(TEXTURE_2D, TEXTURE_WRAP_T, REPEAT as GLint);
-    tex_parameter_i(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR as GLint);
-    tex_parameter_i(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR as GLint);
+    tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_WRAP_S, CLAMP_TO_EDGE as GLint);
+    tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_WRAP_T, CLAMP_TO_EDGE as GLint);
+    tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MAG_FILTER, LINEAR as GLint);
+    tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MIN_FILTER, LINEAR as GLint);
 
-    pixel_store_i(UNPACK_ALIGNMENT, 1);
+    //pixel_store_i(UNPACK_ALIGNMENT, 1);
 
     // FIXME: This makes the lifetime requirements somewhat complex...
-    pixel_store_i(UNPACK_CLIENT_STORAGE_APPLE, 1);
+    //pixel_store_i(UNPACK_CLIENT_STORAGE_APPLE, 1);
 
     let size = image.data.size();
     match image.data.format() {
         RGB24Format => {
             do image.data.with_data |data| {
-                tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint, size.width as GLsizei,
-                             size.height as GLsizei, 0 as GLint, RGB, UNSIGNED_BYTE,
-                             Some(data));
+                tex_image_2d(TEXTURE_RECTANGLE_ARB, 0 as GLint, RGB as GLint,
+                             size.width as GLsizei, size.height as GLsizei, 0 as GLint, RGB,
+                             UNSIGNED_BYTE, Some(data));
             }
         }
         ARGB32Format => {
             do image.data.with_data |data| {
-                tex_image_2d(TEXTURE_2D, 0 as GLint, RGBA as GLint, size.width as GLsizei,
-                             size.height as GLsizei, 0 as GLint, BGRA, UNSIGNED_INT_8_8_8_8_REV,
-                             Some(data));
+                tex_image_2d(TEXTURE_RECTANGLE_ARB, 0 as GLint, RGBA as GLint,
+                             size.width as GLsizei, size.height as GLsizei, 0 as GLint, BGRA,
+                             UNSIGNED_INT_8_8_8_8_REV, Some(data));
             }
         }
     }
@@ -197,7 +188,7 @@ pub fn create_texture_for_image_if_necessary(image: @Image) {
     image.texture = Some(texture);
 }
 
-pub fn bind_and_render_quad(render_context: RenderContext, texture: GLuint) {
+pub fn bind_and_render_quad(render_context: RenderContext, size: Size2D<uint>, texture: GLuint) {
     bind_texture(TEXTURE_2D, texture);
 
     uniform_1i(render_context.sampler_uniform, 0);
@@ -205,7 +196,18 @@ pub fn bind_and_render_quad(render_context: RenderContext, texture: GLuint) {
     bind_buffer(ARRAY_BUFFER, render_context.vertex_buffer);
     vertex_attrib_pointer_f32(render_context.vertex_position_attr as GLuint, 3, false, 0, 0);
 
+    // Create the texture coordinate array.
     bind_buffer(ARRAY_BUFFER, render_context.texture_coord_buffer);
+
+    let (width, height) = (size.width as f32, size.height as f32);
+    let vertices = [
+        0.0f32, 0.0f32,
+        0.0f32, height,
+        width,  0.0f32,
+        width,  height
+    ];
+    buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
+
     vertex_attrib_pointer_f32(render_context.texture_coord_attr as GLuint, 2, false, 0, 0);
 
     draw_arrays(TRIANGLE_STRIP, 0, 4);
@@ -224,7 +226,8 @@ impl @layers::ImageLayer : Render {
         uniform_matrix_4fv(render_context.modelview_uniform, false,
                            self.common.transform.to_array());
 
-        bind_and_render_quad(render_context, option::get(&self.image.texture));
+        bind_and_render_quad(
+            render_context, self.image.data.size(), option::get(&self.image.texture));
     }
 }
 
@@ -244,7 +247,7 @@ impl @layers::TiledImageLayer : Render {
 
             uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
 
-            bind_and_render_quad(render_context, option::get(&tile.texture));
+            bind_and_render_quad(render_context, tile.data.size(), option::get(&tile.texture));
         }
     }
 }
