@@ -61,6 +61,10 @@ pub type WithDataFn = &fn(&[u8]);
 
 pub trait ImageData {
     fn size() -> Size2D<uint>;
+
+    // NB: stride is in pixels, like OpenGL GL_UNPACK_ROW_LENGTH.
+    fn stride() -> uint;
+
     fn format() -> Format;
     fn with_data(WithDataFn);
 }
@@ -90,14 +94,17 @@ pub impl Image {
 /// Basic image data is a simple image data store that just owns the pixel data in memory.
 pub struct BasicImageData {
     size: Size2D<uint>,
+    stride: uint,
     format: Format,
     data: ~[u8]
 }
 
 pub impl BasicImageData {
-    static fn new(size: Size2D<uint>, format: Format, data: ~[u8]) -> BasicImageData {
+    static fn new(size: Size2D<uint>, stride: uint, format: Format, data: ~[u8]) ->
+            BasicImageData {
         BasicImageData {
             size: size,
+            stride: stride,
             format: format,
             data: move data
         }
@@ -106,6 +113,7 @@ pub impl BasicImageData {
 
 pub impl BasicImageData : ImageData {
     fn size() -> Size2D<uint> { self.size }
+    fn stride() -> uint { self.stride }
     fn format() -> Format { self.format }
     fn with_data(f: WithDataFn) { f(self.data) }
 }

@@ -3,15 +3,16 @@ use layers::{TiledImageLayerKind};
 use scene::Scene;
 
 use geom::matrix::{Matrix4, ortho};
+use opengles::gl2;
 use opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, CLAMP_TO_EDGE, COMPILE_STATUS};
 use opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, REPEAT, RGB, RGBA,
                       BGRA};
 use opengles::gl2::{STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
 use opengles::gl2::{TEXTURE_RECTANGLE_ARB, TEXTURE_WRAP_S, TEXTURE_WRAP_T};
 use opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNPACK_CLIENT_STORAGE_APPLE, UNSIGNED_BYTE};
-use opengles::gl2::{UNSIGNED_INT_8_8_8_8_REV, VERTEX_SHADER, GLclampf};
-use opengles::gl2::{GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer, bind_texture};
-use opengles::gl2::{buffer_data, create_program, clear, clear_color};
+use opengles::gl2::{UNPACK_ROW_LENGTH, UNSIGNED_BYTE, UNSIGNED_INT_8_8_8_8_REV, VERTEX_SHADER};
+use opengles::gl2::{GLclampf, GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer};
+use opengles::gl2::{bind_texture, buffer_data, create_program, clear, clear_color};
 use opengles::gl2::{compile_shader, create_shader, draw_arrays, enable};
 use opengles::gl2::{enable_vertex_attrib_array, gen_buffers, gen_textures};
 use opengles::gl2::{get_attrib_location, get_error, get_program_iv};
@@ -162,10 +163,16 @@ pub fn create_texture_for_image_if_necessary(image: @Image) {
     tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MAG_FILTER, LINEAR as GLint);
     tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MIN_FILTER, LINEAR as GLint);
 
-    //pixel_store_i(UNPACK_ALIGNMENT, 1);
+    // These two are needed for DMA on the Mac. Don't touch them unless you know what you're doing!
+    let stride = image.data.stride() as GLsizei;
+    pixel_store_i(UNPACK_ALIGNMENT, 4);
+    pixel_store_i(UNPACK_ROW_LENGTH, stride);
+    if stride % 32 != 0 {
+        info!("rust-layers: suggest using stride multiples of 32 for DMA on the Mac");
+    }
 
     // FIXME: This makes the lifetime requirements somewhat complex...
-    //pixel_store_i(UNPACK_CLIENT_STORAGE_APPLE, 1);
+    pixel_store_i(UNPACK_CLIENT_STORAGE_APPLE, 1);
 
     let size = image.data.size();
     match image.data.format() {
@@ -178,6 +185,9 @@ pub fn create_texture_for_image_if_necessary(image: @Image) {
         }
         ARGB32Format => {
             do image.data.with_data |data| {
+                tex_parameter_i(TEXTURE_RECTANGLE_ARB, gl2::TEXTURE_STORAGE_HINT_APPLE,
+                                gl2::STORAGE_CACHED_APPLE as GLint);
+
                 tex_image_2d(TEXTURE_RECTANGLE_ARB, 0 as GLint, RGBA as GLint,
                              size.width as GLsizei, size.height as GLsizei, 0 as GLint, BGRA,
                              UNSIGNED_INT_8_8_8_8_REV, Some(data));
