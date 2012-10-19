@@ -8,7 +8,8 @@ use opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, REP
                       BGRA};
 use opengles::gl2::{STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
 use opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T};
-use opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNSIGNED_BYTE, VERTEX_SHADER, GLclampf};
+use opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNSIGNED_BYTE, UNSIGNED_INT_8_8_8_8_REV};
+use opengles::gl2::{VERTEX_SHADER, GLclampf};
 use opengles::gl2::{GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer, bind_texture};
 use opengles::gl2::{buffer_data, create_program, clear, clear_color};
 use opengles::gl2::{compile_shader, create_shader, draw_arrays, enable};
@@ -23,6 +24,7 @@ use io::println;
 use libc::c_int;
 use str::to_bytes;
 
+// Convert ARGB to ABGR.
 pub fn FRAGMENT_SHADER_SOURCE() -> ~str {
     ~"
         #ifdef GLES2
@@ -88,14 +90,14 @@ pub struct RenderContext {
 pub fn RenderContext(program: GLuint) -> RenderContext {
     let (vertex_buffer, texture_coord_buffer) = init_buffers();
     let rc = RenderContext {
-        program : program,
-        vertex_position_attr : get_attrib_location(program, ~"aVertexPosition"),
-        texture_coord_attr : get_attrib_location(program, ~"aTextureCoord"),
-        modelview_uniform : get_uniform_location(program, ~"uMVMatrix"),
-        projection_uniform : get_uniform_location(program, ~"uPMatrix"),
-        sampler_uniform : get_uniform_location(program, ~"uSampler"),
-        vertex_buffer : vertex_buffer,
-        texture_coord_buffer : texture_coord_buffer,
+        program: program,
+        vertex_position_attr: get_attrib_location(program, ~"aVertexPosition"),
+        texture_coord_attr: get_attrib_location(program, ~"aTextureCoord"),
+        modelview_uniform: get_uniform_location(program, ~"uMVMatrix"),
+        projection_uniform: get_uniform_location(program, ~"uPMatrix"),
+        sampler_uniform: get_uniform_location(program, ~"uSampler"),
+        vertex_buffer: vertex_buffer,
+        texture_coord_buffer: texture_coord_buffer,
     };
 
     enable_vertex_attrib_array(rc.vertex_position_attr as GLuint);
@@ -181,7 +183,7 @@ pub fn create_texture_for_image_if_necessary(image: @Image) {
       }
       ARGB32Format => {
         tex_image_2d(TEXTURE_2D, 0 as GLint, RGBA as GLint, image.width as GLsizei,
-                     image.height as GLsizei, 0 as GLint, BGRA, UNSIGNED_BYTE,
+                     image.height as GLsizei, 0 as GLint, BGRA, UNSIGNED_INT_8_8_8_8_REV,
                      Some(borrow(image.data)));
       }
     }
