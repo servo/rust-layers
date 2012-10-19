@@ -172,21 +172,26 @@ pub fn create_texture_for_image_if_necessary(image: @Image) {
     tex_parameter_i(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR as GLint);
 
     pixel_store_i(UNPACK_ALIGNMENT, 1);
+
+    // FIXME: This makes the lifetime requirements somewhat complex...
     pixel_store_i(UNPACK_CLIENT_STORAGE_APPLE, 1);
 
-    fn borrow(a: &a/[u8]) -> &a/[u8] { a }
-
-    match image.format {
-      RGB24Format => {
-        tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint, image.width as GLsizei,
-                     image.height as GLsizei, 0 as GLint, RGB, UNSIGNED_BYTE,
-                     Some(borrow(image.data)));
-      }
-      ARGB32Format => {
-        tex_image_2d(TEXTURE_2D, 0 as GLint, RGBA as GLint, image.width as GLsizei,
-                     image.height as GLsizei, 0 as GLint, BGRA, UNSIGNED_INT_8_8_8_8_REV,
-                     Some(borrow(image.data)));
-      }
+    let size = image.data.size();
+    match image.data.format() {
+        RGB24Format => {
+            do image.data.with_data |data| {
+                tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint, size.width as GLsizei,
+                             size.height as GLsizei, 0 as GLint, RGB, UNSIGNED_BYTE,
+                             Some(data));
+            }
+        }
+        ARGB32Format => {
+            do image.data.with_data |data| {
+                tex_image_2d(TEXTURE_2D, 0 as GLint, RGBA as GLint, size.width as GLsizei,
+                             size.height as GLsizei, 0 as GLint, BGRA, UNSIGNED_INT_8_8_8_8_REV,
+                             Some(data));
+            }
+        }
     }
 
     image.texture = Some(texture);

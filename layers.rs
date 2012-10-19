@@ -1,4 +1,5 @@
 use geom::matrix::{Matrix4, identity};
+use geom::size::Size2D;
 use opengles::gl2::{GLuint, delete_textures};
 
 use std::cmp::FuzzyEq;
@@ -56,12 +57,16 @@ pub fn ContainerLayer() -> ContainerLayer {
     }
 }
 
+pub type WithDataFn = &fn(&[u8]);
+
+pub trait ImageData {
+    fn size() -> Size2D<uint>;
+    fn format() -> Format;
+    fn with_data(WithDataFn);
+}
 
 pub struct Image {
-    width: uint,
-    height: uint,
-    format: Format,
-    data: ~[u8],
+    data: @ImageData,
     mut texture: Option<GLuint>,
 
     drop {
@@ -76,15 +81,33 @@ pub struct Image {
     }
 }
 
-
-pub fn Image(width: uint, height: uint, format: Format, data: ~[u8]) -> Image {
-    Image {
-        width : width,
-        height : height,
-        format : format,
-        data : data,
-        texture : None,
+pub impl Image {
+    static fn new(data: @ImageData) -> Image {
+        Image { data: data, texture: None }
     }
+}
+
+/// Basic image data is a simple image data store that just owns the pixel data in memory.
+pub struct BasicImageData {
+    size: Size2D<uint>,
+    format: Format,
+    data: ~[u8]
+}
+
+pub impl BasicImageData {
+    static fn new(size: Size2D<uint>, format: Format, data: ~[u8]) -> BasicImageData {
+        BasicImageData {
+            size: size,
+            format: format,
+            data: move data
+        }
+    }
+}
+
+pub impl BasicImageData : ImageData {
+    fn size() -> Size2D<uint> { self.size }
+    fn format() -> Format { self.format }
+    fn with_data(f: WithDataFn) { f(self.data) }
 }
 
 pub struct ImageLayer {
