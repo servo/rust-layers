@@ -8,8 +8,8 @@ use opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, REP
                       BGRA};
 use opengles::gl2::{STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
 use opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T};
-use opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNSIGNED_BYTE, UNSIGNED_INT_8_8_8_8_REV};
-use opengles::gl2::{VERTEX_SHADER, GLclampf};
+use opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNPACK_CLIENT_STORAGE_APPLE, UNSIGNED_BYTE};
+use opengles::gl2::{UNSIGNED_INT_8_8_8_8_REV, VERTEX_SHADER, GLclampf};
 use opengles::gl2::{GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer, bind_texture};
 use opengles::gl2::{buffer_data, create_program, clear, clear_color};
 use opengles::gl2::{compile_shader, create_shader, draw_arrays, enable};
@@ -172,6 +172,7 @@ pub fn create_texture_for_image_if_necessary(image: @Image) {
     tex_parameter_i(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR as GLint);
 
     pixel_store_i(UNPACK_ALIGNMENT, 1);
+    pixel_store_i(UNPACK_CLIENT_STORAGE_APPLE, 1);
 
     fn borrow(a: &a/[u8]) -> &a/[u8] { a }
 
