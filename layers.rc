@@ -3,7 +3,10 @@
 #[crate_type = "lib"];
 
 extern mod std;
+
+extern mod azure;
 extern mod geom;
+extern mod glut;
 extern mod opengles;
 
 pub mod layers;
