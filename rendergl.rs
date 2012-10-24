@@ -237,7 +237,7 @@ impl @layers::ImageLayer : Render {
                            self.common.transform.to_array());
 
         bind_and_render_quad(
-            render_context, self.image.data.size(), option::get(&self.image.texture));
+            render_context, self.image.data.size(), option::get(self.image.texture));
     }
 }
 
@@ -257,7 +257,7 @@ impl @layers::TiledImageLayer : Render {
 
             uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
 
-            bind_and_render_quad(render_context, tile.data.size(), option::get(&tile.texture));
+            bind_and_render_quad(render_context, tile.data.size(), option::get(tile.texture));
         }
     }
 }
