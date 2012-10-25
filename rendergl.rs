@@ -226,15 +226,15 @@ pub fn bind_and_render_quad(render_context: RenderContext, size: Size2D<uint>, t
 // Layer rendering
 
 pub trait Render {
-    fn render(render_context: RenderContext);
+    fn render(render_context: RenderContext, transform: Matrix4<f32>);
 }
 
 impl @layers::ImageLayer : Render {
-    fn render(render_context: RenderContext) {
+    fn render(render_context: RenderContext, transform: Matrix4<f32>) {
         create_texture_for_image_if_necessary(self.image);
 
-        uniform_matrix_4fv(render_context.modelview_uniform, false,
-                           self.common.transform.to_array());
+        let transform = transform.mul(&self.common.transform);
+        uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
 
         bind_and_render_quad(
             render_context, self.image.data.size(), option::get(self.image.texture));
@@ -242,7 +242,7 @@ impl @layers::ImageLayer : Render {
 }
 
 impl @layers::TiledImageLayer : Render {
-    fn render(render_context: RenderContext) {
+    fn render(render_context: RenderContext, transform: Matrix4<f32>) {
         let tiles_down = self.tiles.len() / self.tiles_across;
         for self.tiles.eachi |i, tile| {
             create_texture_for_image_if_necessary(*tile);
@@ -250,9 +250,10 @@ impl @layers::TiledImageLayer : Render {
             let x = ((i % self.tiles_across) as f32);
             let y = ((i / self.tiles_across) as f32);
 
-            let transform = self.common.transform.scale(&(1.0f32 / (self.tiles_across as f32)),
-                                                        &(1.0f32 / (tiles_down as f32)),
-                                                        &1.0f32);
+            let transform = transform.mul(&self.common.transform);
+            let transform = transform.scale(&(1.0f32 / (self.tiles_across as f32)),
+                                            &(1.0f32 / (tiles_down as f32)),
+                                            &1.0f32);
             let transform = transform.translate(&(x * 1.0f32), &(y * 1.0f32), &0.0f32);
 
             uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
@@ -275,10 +276,15 @@ pub fn render_scene(render_context: RenderContext, scene: &Scene) {
                                   -10.0f32, 10.0f32);
     uniform_matrix_4fv(render_context.projection_uniform, false, projection_matrix.to_array());
 
+    // Set up the initial modelview matrix.
+    let transform = scene.transform;
+
     match copy scene.root {
         ContainerLayerKind(*) => fail ~"container layers unsupported",
-        ImageLayerKind(image_layer) => image_layer.render(render_context),
-        TiledImageLayerKind(tiled_image_layer) => tiled_image_layer.render(render_context)
+        ImageLayerKind(image_layer) => image_layer.render(render_context, transform),
+        TiledImageLayerKind(tiled_image_layer) => {
+            tiled_image_layer.render(render_context, transform)
+        }
     }
 }
 
