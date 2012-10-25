@@ -4,7 +4,6 @@
 
 extern mod std;
 
-extern mod azure;
 extern mod geom;
 extern mod glut;
 extern mod opengles;

@@ -1,6 +1,5 @@
-extern mod glut;
 extern mod azure;
-extern mod geom;
+extern mod cairo;
 
 use geom::point::Point2D;
 use geom::rect::Rect;
@@ -14,10 +13,10 @@ use util::convert_rgb32_to_rgb24;
 use glut::{DOUBLE, check_loop, create_window, destroy_window, display_func, init};
 use glut::{init_display_mode, post_redisplay, swap_buffers, timer_func};
 
-use azure::cairo::CAIRO_FORMAT_RGB24;
-use CairoContext = azure::cairo_hl::Context;
+use cairo::CAIRO_FORMAT_RGB24;
+use CairoContext = cairo::cairo_hl::Context;
 use azure::azure_hl::{Color, ColorPattern, DrawTarget};
-use azure::cairo_hl::ImageSurface;
+use cairo::cairo_hl::ImageSurface;
 
 use comm::{peek, recv, send, Port, Chan};
 use libc::c_uint;
