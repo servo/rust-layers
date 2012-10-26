@@ -229,6 +229,14 @@ pub trait Render {
     fn render(render_context: RenderContext, transform: Matrix4<f32>);
 }
 
+impl @layers::ContainerLayer : Render {
+    fn render(render_context: RenderContext, transform: Matrix4<f32>) {
+        for self.each_child |child| {
+            render_layer(render_context, transform, child);
+        }
+    }
+}
+
 impl @layers::ImageLayer : Render {
     fn render(render_context: RenderContext, transform: Matrix4<f32>) {
         create_texture_for_image_if_necessary(self.image);
@@ -263,6 +271,20 @@ impl @layers::TiledImageLayer : Render {
     }
 }
 
+fn render_layer(render_context: RenderContext, transform: Matrix4<f32>, layer: layers::Layer) {
+    match layer {
+        ContainerLayerKind(container_layer) => {
+            container_layer.render(render_context, transform);
+        }
+        ImageLayerKind(image_layer) => {
+            image_layer.render(render_context, transform);
+        }
+        TiledImageLayerKind(tiled_image_layer) => {
+            tiled_image_layer.render(render_context, transform);
+        }
+    }
+}
+
 pub fn render_scene(render_context: RenderContext, scene: &Scene) {
     // Set the viewport.
     viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
@@ -279,12 +301,7 @@ pub fn render_scene(render_context: RenderContext, scene: &Scene) {
     // Set up the initial modelview matrix.
     let transform = scene.transform;
 
-    match copy scene.root {
-        ContainerLayerKind(*) => fail ~"container layers unsupported",
-        ImageLayerKind(image_layer) => image_layer.render(render_context, transform),
-        TiledImageLayerKind(tiled_image_layer) => {
-            tiled_image_layer.render(render_context, transform)
-        }
-    }
+    // Render the root layer.
+    render_layer(render_context, transform, scene.root);
 }
 

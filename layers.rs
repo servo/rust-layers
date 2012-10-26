@@ -16,6 +16,16 @@ pub enum Layer {
     TiledImageLayerKind(@TiledImageLayer)
 }
 
+impl Layer {
+    pure fn with_common<T>(&self, f: &fn(&mut CommonLayer) -> T) -> T {
+        match *self {
+            ContainerLayerKind(container_layer) => f(&mut container_layer.common),
+            ImageLayerKind(image_layer) => f(&mut image_layer.common),
+            TiledImageLayerKind(tiled_image_layer) => f(&mut tiled_image_layer.common)
+        }
+    }
+}
+
 pub struct CommonLayer {
     mut parent: Option<Layer>,
     mut prev_sibling: Option<Layer>,
@@ -31,13 +41,12 @@ impl CommonLayer {
     }
 }
 
-
 pub fn CommonLayer() -> CommonLayer {
     CommonLayer {
-        parent : None,
-        prev_sibling : None,
-        next_sibling : None,
-        transform : identity(0.0f32),
+        parent: None,
+        prev_sibling: None,
+        next_sibling: None,
+        transform: identity(0.0f32),
     }
 }
 
@@ -51,9 +60,45 @@ pub struct ContainerLayer {
 
 pub fn ContainerLayer() -> ContainerLayer {
     ContainerLayer {
-        common : CommonLayer(),
-        first_child : None,
-        last_child : None,
+        common: CommonLayer(),
+        first_child: None,
+        last_child: None,
+    }
+}
+
+impl ContainerLayer {
+    fn each_child(&const self, f: &fn(Layer) -> bool) {
+        let mut child_opt = self.first_child;
+        while !child_opt.is_none() {
+            let child = child_opt.get();
+            if !f(child) { break; }
+            child_opt = child.with_common(|x| x.next_sibling);
+        }
+    }
+
+    /// Only works when the child is disconnected from the layer tree.
+    fn add_child(&const self, new_child: Layer) {
+        do new_child.with_common |new_child_common| {
+            assert new_child_common.parent.is_none();
+            assert new_child_common.prev_sibling.is_none();
+            assert new_child_common.next_sibling.is_none();
+
+            match self.first_child {
+                None => self.first_child = Some(new_child),
+                Some(copy first_child) => {
+                    do first_child.with_common |first_child_common| {
+                        assert first_child_common.prev_sibling.is_none();
+                        first_child_common.next_sibling = Some(new_child);
+                        new_child_common.prev_sibling = Some(first_child);
+                    }
+                }
+            }
+
+            match self.last_child {
+                None => self.last_child = Some(new_child),
+                Some(_) => {}
+            }
+        }
     }
 }
 
