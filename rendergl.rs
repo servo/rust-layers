@@ -199,7 +199,7 @@ pub fn create_texture_for_image_if_necessary(image: @Image) {
 }
 
 pub fn bind_and_render_quad(render_context: RenderContext, size: Size2D<uint>, texture: GLuint) {
-    bind_texture(TEXTURE_2D, texture);
+    bind_texture(TEXTURE_RECTANGLE_ARB, texture);
 
     uniform_1i(render_context.sampler_uniform, 0);
 

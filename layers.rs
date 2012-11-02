@@ -84,15 +84,17 @@ impl ContainerLayer {
             assert new_child_common.next_sibling.is_none();
 
             match self.first_child {
-                None => self.first_child = Some(new_child),
+                None => {}
                 Some(copy first_child) => {
                     do first_child.with_common |first_child_common| {
                         assert first_child_common.prev_sibling.is_none();
-                        first_child_common.next_sibling = Some(new_child);
-                        new_child_common.prev_sibling = Some(first_child);
+                        first_child_common.prev_sibling = Some(new_child);
+                        new_child_common.next_sibling = Some(first_child);
                     }
                 }
             }
+
+            self.first_child = Some(new_child);
 
             match self.last_child {
                 None => self.last_child = Some(new_child),
