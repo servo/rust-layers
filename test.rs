@@ -1,6 +1,3 @@
-extern mod azure;
-extern mod cairo;
-
 use geom::point::Point2D;
 use geom::rect::Rect;
 use geom::size::Size2D;
@@ -10,13 +7,14 @@ use scene::*;
 use rendergl::*;
 use util::convert_rgb32_to_rgb24;
 
-use glut::{DOUBLE, check_loop, create_window, destroy_window, display_func, init};
-use glut::{init_display_mode, post_redisplay, swap_buffers, timer_func};
+use azure::azure_hl::{Color, ColorPattern, DrawTarget};
 
 use cairo::CAIRO_FORMAT_RGB24;
 use CairoContext = cairo::cairo_hl::Context;
-use azure::azure_hl::{Color, ColorPattern, DrawTarget};
 use cairo::cairo_hl::ImageSurface;
+
+use glut::{DOUBLE, check_loop, create_window, destroy_window, display_func, init};
+use glut::{init_display_mode, post_redisplay, swap_buffers, timer_func};
 
 use comm::{peek, recv, send, Port, Chan};
 use libc::c_uint;
@@ -54,12 +52,13 @@ impl Renderer {
         };
 
         let t = self.t;
-        self.layer.common.transform = Matrix4(400.0f32 * t, 0.0f32,       0.0f32, 0.0f32,
-                                              0.0f32,       300.0f32 * t, 0.0f32, 0.0f32,
-                                              0.0f32,       0.0f32,       1.0f32, 0.0f32,
-                                              0.0f32,       0.0f32,       0.0f32, 1.0f32);
+        let transform =  Matrix4(400.0f32 * t, 0.0f32,       0.0f32, 0.0f32,
+                                 0.0f32,       300.0f32 * t, 0.0f32, 0.0f32,
+                                 0.0f32,       0.0f32,       1.0f32, 0.0f32,
+                                 0.0f32,       0.0f32,       0.0f32, 1.0f32);
+        self.layer.common.transform = transform;
 
-        let scene = Scene(TiledImageLayerKind(self.layer), Size2D(400.0f32, 300.0f32));
+        let scene = Scene(TiledImageLayerKind(self.layer), Size2D(400.0f32, 300.0f32), transform);
         render_scene(context, &scene);
 
         //self.t += self.delta;
@@ -86,14 +85,14 @@ fn Renderer() -> Renderer {
         let cairo_data = cairo_image.data();
 
         let tiles = DVec();
-        for 4.timesi |y| {
-            for 4.timesi |x| {
+        for uint::range(0,4) |y| {
+            for uint::range(0,4) |x| {
                 // Extract the relevant part of the image.
                 let data = DVec();
 
                 let mut scanline_start = (y * tile_height * width + x * tile_width) * 4;
                 for tile_height.times {
-                    for (tile_width * 4).timesi |offset| {
+                    for uint::range(0, tile_width * 4) |offset| {
                         data.push(cairo_data[scanline_start + offset]);
                     }
 
@@ -101,7 +100,7 @@ fn Renderer() -> Renderer {
                 }
 
                 let data = convert_rgb32_to_rgb24(dvec::unwrap(data));
-                let image = @Image(tile_width, tile_height, RGB24Format, data); 
+                let image = @Image::new(BasicImageData::new(Size2D(tile_width, tile_height), tile_width, RGB24Format, data) as ImageData); 
                 tiles.push(image);
             }
         }
@@ -122,7 +121,7 @@ fn test_triangle_and_square() unsafe {
     let builder = task::task().sched_mode(task::PlatformThread);
 
     let po: Port<()> = Port();
-    let ch = Chan(po);
+    let ch = Chan(&po);
     let _result_ch: Chan<()> = do builder.spawn_listener |_po| {
         let renderer = @Renderer();
 
@@ -131,8 +130,8 @@ fn test_triangle_and_square() unsafe {
         let window = create_window(~"Rust Layers");
         display_func(renderer.get_display_callback(renderer));
 
-        let wakeup = Port();
-        let wakeup_chan = Chan(wakeup);
+        let wakeup : Port<()> = Port();
+        let wakeup_chan = Chan(&wakeup);
         do timer_func(300) {
             send(wakeup_chan, ());
         }
