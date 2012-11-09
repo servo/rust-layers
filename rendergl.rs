@@ -153,28 +153,33 @@ pub fn create_texture_for_image_if_necessary(image: @Image) {
         Some(_) => { return; /* Nothing to do. */ }
     }
 
-    #debug("making texture");
-
     let texture = gen_textures(1 as GLsizei)[0];
+
+    #debug("making texture, id=%d, format=%?", texture as int, image.data.format());
+
     bind_texture(TEXTURE_RECTANGLE_ARB, texture);
+
+    // FIXME: This makes the lifetime requirements somewhat complex...
+    pixel_store_i(UNPACK_CLIENT_STORAGE_APPLE, 1);
+
+    let size = image.data.size();
+    let stride = image.data.stride() as GLsizei;
+
+    tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MAG_FILTER, NEAREST as GLint);
+    tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MIN_FILTER, NEAREST as GLint);
 
     tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_WRAP_S, CLAMP_TO_EDGE as GLint);
     tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_WRAP_T, CLAMP_TO_EDGE as GLint);
-    tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MAG_FILTER, LINEAR as GLint);
-    tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MIN_FILTER, LINEAR as GLint);
 
     // These two are needed for DMA on the Mac. Don't touch them unless you know what you're doing!
-    let stride = image.data.stride() as GLsizei;
     pixel_store_i(UNPACK_ALIGNMENT, 4);
     pixel_store_i(UNPACK_ROW_LENGTH, stride);
     if stride % 32 != 0 {
         info!("rust-layers: suggest using stride multiples of 32 for DMA on the Mac");
     }
 
-    // FIXME: This makes the lifetime requirements somewhat complex...
-    pixel_store_i(UNPACK_CLIENT_STORAGE_APPLE, 1);
+    debug!("rust-layers stride is %u", stride as uint);
 
-    let size = image.data.size();
     match image.data.format() {
         RGB24Format => {
             do image.data.with_data |data| {
@@ -185,6 +190,9 @@ pub fn create_texture_for_image_if_necessary(image: @Image) {
         }
         ARGB32Format => {
             do image.data.with_data |data| {
+                debug!("(rust-layers) data size=%u expected size=%u",
+                      data.len(), ((stride as uint) * size.height * 4) as uint);
+
                 tex_parameter_i(TEXTURE_RECTANGLE_ARB, gl2::TEXTURE_STORAGE_HINT_APPLE,
                                 gl2::STORAGE_CACHED_APPLE as GLint);
 
@@ -194,6 +202,8 @@ pub fn create_texture_for_image_if_necessary(image: @Image) {
             }
         }
     }
+
+    bind_texture(TEXTURE_RECTANGLE_ARB, 0);
 
     image.texture = Some(texture);
 }
@@ -221,6 +231,8 @@ pub fn bind_and_render_quad(render_context: RenderContext, size: Size2D<uint>, t
     vertex_attrib_pointer_f32(render_context.texture_coord_attr as GLuint, 2, false, 0, 0);
 
     draw_arrays(TRIANGLE_STRIP, 0, 4);
+
+    bind_texture(TEXTURE_RECTANGLE_ARB, 0);
 }
 
 // Layer rendering
