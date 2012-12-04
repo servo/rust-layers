@@ -3,6 +3,7 @@ use layers::{TiledImageLayerKind};
 use scene::Scene;
 
 use geom::matrix::{Matrix4, ortho};
+use geom::size::Size2D;
 use opengles::gl2;
 use opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, CLAMP_TO_EDGE, COMPILE_STATUS};
 use opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, REPEAT, RGB, RGBA,
@@ -155,7 +156,7 @@ pub fn create_texture_for_image_if_necessary(image: @Image) {
 
     let texture = gen_textures(1 as GLsizei)[0];
 
-    #debug("making texture, id=%d, format=%?", texture as int, image.data.format());
+    debug!("making texture, id=%d, format=%?", texture as int, image.data.format());
 
     bind_texture(TEXTURE_RECTANGLE_ARB, texture);
 

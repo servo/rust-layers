@@ -1,5 +1,6 @@
 use layers::Layer;
 use geom::size::Size2D;
+use geom::matrix::Matrix4;
 
 pub struct Scene {
     mut root: Layer,
