@@ -198,7 +198,7 @@ pub fn TiledImageLayer(in_tiles: &[@layers::Image], tiles_across: uint) -> Tiled
 
     TiledImageLayer {
         common: CommonLayer(),
-        tiles: tiles,
+        tiles: move tiles,
         tiles_across: tiles_across
     }
 }
