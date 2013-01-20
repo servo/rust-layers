@@ -167,17 +167,17 @@ pub impl BasicImageData : ImageData {
 
 pub struct ImageLayer {
     mut common: CommonLayer,
-    mut image: @layers::Image,
+    mut image: @Image,
 }
 
 impl ImageLayer {
     // FIXME: Workaround for cross-crate bug
-    fn set_image(new_image: @layers::Image) {
+    fn set_image(new_image: @Image) {
         self.image = new_image;
     }
 }
 
-pub fn ImageLayer(image: @layers::Image) -> ImageLayer {
+pub fn ImageLayer(image: @Image) -> ImageLayer {
     ImageLayer {
         common : CommonLayer(),
         image : image,
@@ -186,11 +186,11 @@ pub fn ImageLayer(image: @layers::Image) -> ImageLayer {
 
 pub struct TiledImageLayer {
     mut common: CommonLayer,
-    tiles: DVec<@layers::Image>,
+    tiles: DVec<@Image>,
     mut tiles_across: uint,
 }
 
-pub fn TiledImageLayer(in_tiles: &[@layers::Image], tiles_across: uint) -> TiledImageLayer {
+pub fn TiledImageLayer(in_tiles: &[@Image], tiles_across: uint) -> TiledImageLayer {
     let tiles = DVec();
     for in_tiles.each |tile| {
         tiles.push(*tile);

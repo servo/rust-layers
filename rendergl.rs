@@ -1,3 +1,4 @@
+use layers;
 use layers::{ARGB32Format, ContainerLayerKind, Image, ImageLayerKind, RGB24Format};
 use layers::{TiledImageLayerKind};
 use scene::Scene;
