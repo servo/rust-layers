@@ -9,14 +9,14 @@ use util::convert_rgb32_to_rgb24;
 
 use azure::azure_hl::{Color, ColorPattern, DrawTarget};
 
-use cairo::CAIRO_FORMAT_RGB24;
+use cairo::cairo::CAIRO_FORMAT_RGB24;
 use CairoContext = cairo::cairo_hl::Context;
 use cairo::cairo_hl::ImageSurface;
 
-use glut::{DOUBLE, check_loop, create_window, destroy_window, display_func, init};
-use glut::{init_display_mode, post_redisplay, swap_buffers, timer_func};
+use glut::glut::{DOUBLE, check_loop, create_window, destroy_window, display_func, init};
+use glut::glut::{init_display_mode, post_redisplay, swap_buffers, timer_func};
 
-use comm::{peek, recv, send, Port, Chan};
+use oldcomm::{peek, recv, send, Port, Chan};
 use libc::c_uint;
 use os::{getenv, setenv};
 use task::TaskBuilder;
@@ -116,6 +116,7 @@ fn Renderer() -> Renderer {
     }
 }
 
+/*
 #[test]
 fn test_triangle_and_square() unsafe {
     let builder = task::task().sched_mode(task::PlatformThread);
@@ -152,5 +153,5 @@ fn test_triangle_and_square() unsafe {
 
     recv(po);
 }
-
+*/
 
