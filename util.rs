@@ -18,7 +18,7 @@ pub fn convert_rgb32_to_rgb24(buffer: ~[u8]) -> ~[u8] {
                 val
             }
             _ => {
-                fail
+                fail!()
             }
         }
     }
