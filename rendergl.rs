@@ -273,10 +273,10 @@ impl @layers::TiledImageLayer : Render {
             let y = ((i / self.tiles_across) as f32);
 
             let transform = transform.mul(&self.common.transform);
-            let transform = transform.scale(&(1.0f32 / (self.tiles_across as f32)),
-                                            &(1.0f32 / (tiles_down as f32)),
-                                            &1.0f32);
-            let transform = transform.translate(&(x * 1.0f32), &(y * 1.0f32), &0.0f32);
+            let transform = transform.scale(1.0 / (self.tiles_across as f32),
+                                            1.0 / (tiles_down as f32),
+                                            1.0);
+            let transform = transform.translate(x, y, 0.0);
 
             uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
 

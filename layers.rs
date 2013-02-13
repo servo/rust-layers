@@ -46,7 +46,7 @@ pub fn CommonLayer() -> CommonLayer {
         parent: None,
         prev_sibling: None,
         next_sibling: None,
-        transform: identity(0.0f32),
+        transform: identity(),
     }
 }
 
