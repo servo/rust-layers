@@ -76,8 +76,8 @@ fn Renderer() -> Renderer {
         let cairo_image = ImageSurface(CAIRO_FORMAT_RGB24, 500, 704);
 
         let draw_target = DrawTarget(&cairo_image);
-        draw_target.fill_rect(&Rect(Point2D(50.0f32, 50.0f32), Size2D(300.0f32, 284.0f32)),
-                              &ColorPattern(Color(1.0f32, 1.0f32, 0.0f32, 1.0f32)));
+        draw_target.fill_rect(&Rect(Point2D(50.0, 50.0), Size2D(300.0, 284.0)),
+                              &ColorPattern(Color(1.0, 1.0, 0.0, 1.0)));
         draw_target.flush();
 
         let (width, height) = (cairo_image.width() as uint, cairo_image.height() as uint);

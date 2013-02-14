@@ -308,8 +308,7 @@ pub fn render_scene(render_context: RenderContext, scene: &Scene) {
     clear(COLOR_BUFFER_BIT);
 
     // Set the projection matrix.
-    let projection_matrix = ortho(0.0f32, copy scene.size.width, copy scene.size.height, 0.0f32,
-                                  -10.0f32, 10.0f32);
+    let projection_matrix = ortho(0.0, scene.size.width, scene.size.height, 0.0, -10.0, 10.0);
     uniform_matrix_4fv(render_context.projection_uniform, false, projection_matrix.to_array());
 
     // Set up the initial modelview matrix.
