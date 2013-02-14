@@ -16,7 +16,7 @@ use cairo::cairo_hl::ImageSurface;
 use glut::glut::{DOUBLE, check_loop, create_window, destroy_window, display_func, init};
 use glut::glut::{init_display_mode, post_redisplay, swap_buffers, timer_func};
 
-use oldcomm::{peek, recv, send, Port, Chan};
+use core::pipes::{Chan, Port};
 use libc::c_uint;
 use os::{getenv, setenv};
 use task::TaskBuilder;
@@ -47,7 +47,7 @@ impl Renderer {
             }
         }
         let context = match self.render_context {
-            None => fail,
+            None => fail!(),
             Some(ctx) => ctx
         };
 
@@ -76,7 +76,7 @@ fn Renderer() -> Renderer {
         let cairo_image = ImageSurface(CAIRO_FORMAT_RGB24, 500, 704);
 
         let draw_target = DrawTarget(&cairo_image);
-        draw_target.fill_rect(&Rect(Point2D(50.0, 50.0), Size2D(300.0, 284.0)),
+        draw_target.fill_rect(&Rect(Point2D(50.0f32, 50.0f32), Size2D(300.0f32, 284.0f32)),
                               &ColorPattern(Color(1.0, 1.0, 0.0, 1.0)));
         draw_target.flush();
 
