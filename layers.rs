@@ -153,12 +153,12 @@ pub impl BasicImageData {
             size: size,
             stride: stride,
             format: format,
-            data: move data
+            data: data
         }
     }
 }
 
-pub impl BasicImageData : ImageData {
+pub impl ImageData for BasicImageData {
     fn size() -> Size2D<uint> { self.size }
     fn stride() -> uint { self.stride }
     fn format() -> Format { self.format }
@@ -198,7 +198,7 @@ pub fn TiledImageLayer(in_tiles: &[@Image], tiles_across: uint) -> TiledImageLay
 
     TiledImageLayer {
         common: CommonLayer(),
-        tiles: move tiles,
+        tiles: tiles,
         tiles_across: tiles_across
     }
 }

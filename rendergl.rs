@@ -240,19 +240,19 @@ pub fn bind_and_render_quad(render_context: RenderContext, size: Size2D<uint>, t
 // Layer rendering
 
 pub trait Render {
-    fn render(render_context: RenderContext, transform: Matrix4<f32>);
+    fn render(@self, render_context: RenderContext, transform: Matrix4<f32>);
 }
 
-impl @layers::ContainerLayer : Render {
-    fn render(render_context: RenderContext, transform: Matrix4<f32>) {
+impl Render for layers::ContainerLayer {
+    fn render(@self, render_context: RenderContext, transform: Matrix4<f32>) {
         for self.each_child |child| {
             render_layer(render_context, transform, child);
         }
     }
 }
 
-impl @layers::ImageLayer : Render {
-    fn render(render_context: RenderContext, transform: Matrix4<f32>) {
+impl Render for layers::ImageLayer {
+    fn render(@self, render_context: RenderContext, transform: Matrix4<f32>) {
         create_texture_for_image_if_necessary(self.image);
 
         let transform = transform.mul(&self.common.transform);
@@ -263,8 +263,8 @@ impl @layers::ImageLayer : Render {
     }
 }
 
-impl @layers::TiledImageLayer : Render {
-    fn render(render_context: RenderContext, transform: Matrix4<f32>) {
+impl Render for layers::TiledImageLayer {
+    fn render(@self, render_context: RenderContext, transform: Matrix4<f32>) {
         let tiles_down = self.tiles.len() / self.tiles_across;
         for self.tiles.eachi |i, tile| {
             create_texture_for_image_if_necessary(*tile);
