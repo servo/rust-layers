@@ -16,7 +16,7 @@ use cairo::cairo_hl::ImageSurface;
 use glut::glut::{DOUBLE, check_loop, create_window, destroy_window, display_func, init};
 use glut::glut::{init_display_mode, post_redisplay, swap_buffers, timer_func};
 
-use core::pipes::{Chan, Port};
+use core::comm::{Chan, Port};
 use libc::c_uint;
 use os::{getenv, setenv};
 use task::TaskBuilder;
