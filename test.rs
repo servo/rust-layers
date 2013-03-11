@@ -31,8 +31,8 @@ struct Renderer {
 }
 
 impl Renderer {
-    fn get_display_callback(this: @Renderer) -> fn@() {
-        fn@() {
+    fn get_display_callback(this: @Renderer) -> @fn() {
+        || {
             (*this).display_callback();
         }
     }

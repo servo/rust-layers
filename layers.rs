@@ -3,7 +3,6 @@ use geom::size::Size2D;
 use opengles::gl2::{GLuint, delete_textures};
 
 use std::cmp::FuzzyEq;
-use dvec::DVec;
 
 pub enum Format {
     ARGB32Format,
@@ -11,9 +10,9 @@ pub enum Format {
 }
 
 pub enum Layer {
-    ContainerLayerKind(@ContainerLayer),
-    ImageLayerKind(@ImageLayer),
-    TiledImageLayerKind(@TiledImageLayer)
+    ContainerLayerKind(@mut ContainerLayer),
+    ImageLayerKind(@mut ImageLayer),
+    TiledImageLayerKind(@mut TiledImageLayer)
 }
 
 impl Layer {
@@ -27,16 +26,16 @@ impl Layer {
 }
 
 pub struct CommonLayer {
-    mut parent: Option<Layer>,
-    mut prev_sibling: Option<Layer>,
-    mut next_sibling: Option<Layer>,
+    parent: Option<Layer>,
+    prev_sibling: Option<Layer>,
+    next_sibling: Option<Layer>,
 
-    mut transform: Matrix4<f32>,
+    transform: Matrix4<f32>,
 }
 
-impl CommonLayer {
+pub impl CommonLayer {
     // FIXME: Workaround for cross-crate bug regarding mutability of class fields
-    fn set_transform(new_transform: Matrix4<f32>) {
+    fn set_transform(&mut self, new_transform: Matrix4<f32>) {
         self.transform = new_transform;
     }
 }
@@ -52,9 +51,9 @@ pub fn CommonLayer() -> CommonLayer {
 
 
 pub struct ContainerLayer {
-    mut common: CommonLayer,
-    mut first_child: Option<Layer>,
-    mut last_child: Option<Layer>,
+    common: CommonLayer,
+    first_child: Option<Layer>,
+    last_child: Option<Layer>,
 }
 
 
@@ -66,7 +65,7 @@ pub fn ContainerLayer() -> ContainerLayer {
     }
 }
 
-impl ContainerLayer {
+pub impl ContainerLayer {
     fn each_child(&const self, f: &fn(Layer) -> bool) {
         let mut child_opt = self.first_child;
         while !child_opt.is_none() {
@@ -77,7 +76,7 @@ impl ContainerLayer {
     }
 
     /// Only works when the child is disconnected from the layer tree.
-    fn add_child(&const self, new_child: Layer) {
+    fn add_child(&mut self, new_child: Layer) {
         do new_child.with_common |new_child_common| {
             assert new_child_common.parent.is_none();
             assert new_child_common.prev_sibling.is_none();
@@ -104,21 +103,21 @@ impl ContainerLayer {
     }
 }
 
-pub type WithDataFn = &fn(&[u8]);
+pub type WithDataFn = &'self fn(&'self [u8]);
 
 pub trait ImageData {
-    fn size() -> Size2D<uint>;
+    fn size(&self) -> Size2D<uint>;
 
     // NB: stride is in pixels, like OpenGL GL_UNPACK_ROW_LENGTH.
-    fn stride() -> uint;
+    fn stride(&self) -> uint;
 
-    fn format() -> Format;
-    fn with_data(WithDataFn);
+    fn format(&self) -> Format;
+    fn with_data(&self, WithDataFn);
 }
 
 pub struct Image {
-    data: @ImageData,
-    mut texture: Option<GLuint>,
+    data: @mut ImageData,
+    texture: Option<GLuint>,
 
     drop {
         match copy self.texture {
@@ -133,7 +132,7 @@ pub struct Image {
 }
 
 pub impl Image {
-    static fn new(data: @ImageData) -> Image {
+    static fn new(data: @mut ImageData) -> Image {
         Image { data: data, texture: None }
     }
 }
@@ -158,26 +157,26 @@ pub impl BasicImageData {
     }
 }
 
-pub impl ImageData for BasicImageData {
-    fn size() -> Size2D<uint> { self.size }
-    fn stride() -> uint { self.stride }
-    fn format() -> Format { self.format }
-    fn with_data(f: WithDataFn) { f(self.data) }
+impl ImageData for BasicImageData {
+    fn size(&self) -> Size2D<uint> { self.size }
+    fn stride(&self) -> uint { self.stride }
+    fn format(&self) -> Format { self.format }
+    fn with_data(&self, f: WithDataFn) { f(self.data) }
 }
 
 pub struct ImageLayer {
-    mut common: CommonLayer,
-    mut image: @Image,
+    common: CommonLayer,
+    image: @mut Image,
 }
 
-impl ImageLayer {
+pub impl ImageLayer {
     // FIXME: Workaround for cross-crate bug
-    fn set_image(new_image: @Image) {
+    fn set_image(&mut self, new_image: @mut Image) {
         self.image = new_image;
     }
 }
 
-pub fn ImageLayer(image: @Image) -> ImageLayer {
+pub fn ImageLayer(image: @mut Image) -> ImageLayer {
     ImageLayer {
         common : CommonLayer(),
         image : image,
@@ -185,13 +184,13 @@ pub fn ImageLayer(image: @Image) -> ImageLayer {
 }
 
 pub struct TiledImageLayer {
-    mut common: CommonLayer,
-    tiles: DVec<@Image>,
-    mut tiles_across: uint,
+    common: CommonLayer,
+    tiles: @mut ~[@mut Image],
+    tiles_across: uint,
 }
 
-pub fn TiledImageLayer(in_tiles: &[@Image], tiles_across: uint) -> TiledImageLayer {
-    let tiles = DVec();
+pub fn TiledImageLayer(in_tiles: &[@mut Image], tiles_across: uint) -> TiledImageLayer {
+    let mut tiles = @mut ~[];
     for in_tiles.each |tile| {
         tiles.push(*tile);
     }

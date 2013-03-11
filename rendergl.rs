@@ -23,9 +23,9 @@ use opengles::gl2::{get_uniform_location, link_program, pixel_store_i, shader_so
 use opengles::gl2::{tex_image_2d, tex_parameter_i, uniform_1i, uniform_matrix_4fv, use_program};
 use opengles::gl2::{vertex_attrib_pointer_f32, viewport};
 
-use io::println;
-use libc::c_int;
-use str::to_bytes;
+use core::io::println;
+use core::libc::c_int;
+use core::str::to_bytes;
 
 pub fn FRAGMENT_SHADER_SOURCE() -> ~str {
     ~"
@@ -149,7 +149,7 @@ pub fn init_buffers() -> (GLuint, GLuint) {
     return (triangle_vertex_buffer, texture_coord_buffer);
 }
 
-pub fn create_texture_for_image_if_necessary(image: @Image) {
+pub fn create_texture_for_image_if_necessary(image: @mut Image) {
     match image.texture {
         None => {}
         Some(_) => { return; /* Nothing to do. */ }
@@ -240,11 +240,11 @@ pub fn bind_and_render_quad(render_context: RenderContext, size: Size2D<uint>, t
 // Layer rendering
 
 pub trait Render {
-    fn render(@self, render_context: RenderContext, transform: Matrix4<f32>);
+    fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>);
 }
 
 impl Render for layers::ContainerLayer {
-    fn render(@self, render_context: RenderContext, transform: Matrix4<f32>) {
+    fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
         for self.each_child |child| {
             render_layer(render_context, transform, child);
         }
@@ -252,7 +252,7 @@ impl Render for layers::ContainerLayer {
 }
 
 impl Render for layers::ImageLayer {
-    fn render(@self, render_context: RenderContext, transform: Matrix4<f32>) {
+    fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
         create_texture_for_image_if_necessary(self.image);
 
         let transform = transform.mul(&self.common.transform);
@@ -264,7 +264,7 @@ impl Render for layers::ImageLayer {
 }
 
 impl Render for layers::TiledImageLayer {
-    fn render(@self, render_context: RenderContext, transform: Matrix4<f32>) {
+    fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
         let tiles_down = self.tiles.len() / self.tiles_across;
         for self.tiles.eachi |i, tile| {
             create_texture_for_image_if_necessary(*tile);

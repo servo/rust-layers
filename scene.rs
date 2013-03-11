@@ -3,9 +3,9 @@ use geom::size::Size2D;
 use geom::matrix::Matrix4;
 
 pub struct Scene {
-    mut root: Layer,
-    mut size: Size2D<f32>,
-    mut transform: Matrix4<f32>
+    root: Layer,
+    size: Size2D<f32>,
+    transform: Matrix4<f32>
 }
 
 pub fn Scene(root: Layer, size: Size2D<f32>, transform: Matrix4<f32>) -> Scene {
@@ -18,7 +18,7 @@ pub fn Scene(root: Layer, size: Size2D<f32>, transform: Matrix4<f32>) -> Scene {
 
 impl Scene {
     // FIXME: Workaround for cross-crate bug regarding mutability of class fields
-    fn set_transform(new_transform: Matrix4<f32>) {
+    fn set_transform(&mut self, new_transform: Matrix4<f32>) {
         self.transform = new_transform;
     }
 }
