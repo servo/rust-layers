@@ -2,8 +2,6 @@ use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
 use opengles::gl2::{GLuint, delete_textures};
 
-use std::cmp::FuzzyEq;
-
 pub enum Format {
     ARGB32Format,
     RGB24Format
@@ -78,15 +76,15 @@ pub impl ContainerLayer {
     /// Only works when the child is disconnected from the layer tree.
     fn add_child(&mut self, new_child: Layer) {
         do new_child.with_common |new_child_common| {
-            assert new_child_common.parent.is_none();
-            assert new_child_common.prev_sibling.is_none();
-            assert new_child_common.next_sibling.is_none();
+            fail_unless!(new_child_common.parent.is_none());
+            fail_unless!(new_child_common.prev_sibling.is_none());
+            fail_unless!(new_child_common.next_sibling.is_none());
 
             match self.first_child {
                 None => {}
                 Some(copy first_child) => {
                     do first_child.with_common |first_child_common| {
-                        assert first_child_common.prev_sibling.is_none();
+                        fail_unless!(first_child_common.prev_sibling.is_none());
                         first_child_common.prev_sibling = Some(new_child);
                         new_child_common.next_sibling = Some(first_child);
                     }
@@ -116,10 +114,12 @@ pub trait ImageData {
 }
 
 pub struct Image {
-    data: @mut ImageData,
+    data: @ImageData,
     texture: Option<GLuint>,
+}
 
-    drop {
+impl Drop for Image {
+    fn finalize(&self) {
         match copy self.texture {
             None => {
                 // Nothing to do.
@@ -132,7 +132,7 @@ pub struct Image {
 }
 
 pub impl Image {
-    static fn new(data: @mut ImageData) -> Image {
+    static fn new(data: @ImageData) -> Image {
         Image { data: data, texture: None }
     }
 }

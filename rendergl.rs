@@ -157,15 +157,19 @@ pub fn create_texture_for_image_if_necessary(image: @mut Image) {
 
     let texture = gen_textures(1 as GLsizei)[0];
 
-    debug!("making texture, id=%d, format=%?", texture as int, image.data.format());
+    //XXXjdm This block is necessary to avoid a task failure that occurs
+    //       when |image.data| is borrowed and we mutate |image.texture|.
+    {
+    let data = &mut image.data;
+    debug!("making texture, id=%d, format=%?", texture as int, data.format());
 
     bind_texture(TEXTURE_RECTANGLE_ARB, texture);
 
     // FIXME: This makes the lifetime requirements somewhat complex...
     pixel_store_i(UNPACK_CLIENT_STORAGE_APPLE, 1);
 
-    let size = image.data.size();
-    let stride = image.data.stride() as GLsizei;
+    let size = data.size();
+    let stride = data.stride() as GLsizei;
 
     tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MAG_FILTER, NEAREST as GLint);
     tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MIN_FILTER, NEAREST as GLint);
@@ -182,16 +186,16 @@ pub fn create_texture_for_image_if_necessary(image: @mut Image) {
 
     debug!("rust-layers stride is %u", stride as uint);
 
-    match image.data.format() {
+    match data.format() {
         RGB24Format => {
-            do image.data.with_data |data| {
+            do data.with_data |data| {
                 tex_image_2d(TEXTURE_RECTANGLE_ARB, 0 as GLint, RGB as GLint,
                              size.width as GLsizei, size.height as GLsizei, 0 as GLint, RGB,
                              UNSIGNED_BYTE, Some(data));
             }
         }
         ARGB32Format => {
-            do image.data.with_data |data| {
+            do data.with_data |data| {
                 debug!("(rust-layers) data size=%u expected size=%u",
                       data.len(), ((stride as uint) * size.height * 4) as uint);
 
@@ -206,6 +210,7 @@ pub fn create_texture_for_image_if_necessary(image: @mut Image) {
     }
 
     bind_texture(TEXTURE_RECTANGLE_ARB, 0);
+    } //XXXjdm This block avoids a segfault. See opening comment.
 
     image.texture = Some(texture);
 }
@@ -258,8 +263,9 @@ impl Render for layers::ImageLayer {
         let transform = transform.mul(&self.common.transform);
         uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
 
+        let data = &mut self.image.data;
         bind_and_render_quad(
-            render_context, self.image.data.size(), option::get(self.image.texture));
+            render_context, data.size(), option::get(self.image.texture));
     }
 }
 
@@ -268,7 +274,7 @@ impl Render for layers::TiledImageLayer {
         let tiles_down = self.tiles.len() / self.tiles_across;
         for self.tiles.eachi |i, tile| {
             create_texture_for_image_if_necessary(*tile);
-
+;
             let x = ((i % self.tiles_across) as f32);
             let y = ((i / self.tiles_across) as f32);
 
@@ -280,7 +286,8 @@ impl Render for layers::TiledImageLayer {
 
             uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
 
-            bind_and_render_quad(render_context, tile.data.size(), option::get(tile.texture));
+            let data = &mut tile.data;
+            bind_and_render_quad(render_context, data.size(), option::get(tile.texture));
         }
     }
 }
