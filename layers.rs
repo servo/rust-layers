@@ -14,7 +14,7 @@ pub enum Layer {
 }
 
 impl Layer {
-    pure fn with_common<T>(&self, f: &fn(&mut CommonLayer) -> T) -> T {
+    fn with_common<T>(&self, f: &fn(&mut CommonLayer) -> T) -> T {
         match *self {
             ContainerLayerKind(container_layer) => f(&mut container_layer.common),
             ImageLayerKind(image_layer) => f(&mut image_layer.common),
@@ -64,7 +64,7 @@ pub fn ContainerLayer() -> ContainerLayer {
 }
 
 pub impl ContainerLayer {
-    fn each_child(&const self, f: &fn(Layer) -> bool) {
+    fn each_child(&self, f: &fn(Layer) -> bool) {
         let mut child_opt = self.first_child;
         while !child_opt.is_none() {
             let child = child_opt.get();
@@ -101,7 +101,7 @@ pub impl ContainerLayer {
     }
 }
 
-pub type WithDataFn = &'self fn(&'self [u8]);
+pub type WithDataFn<'self> = &'self fn(&'self [u8]);
 
 pub trait ImageData {
     fn size(&self) -> Size2D<uint>;
@@ -114,7 +114,7 @@ pub trait ImageData {
 }
 
 pub struct Image {
-    data: @ImageData,
+    data: ~ImageData,
     texture: Option<GLuint>,
 }
 
@@ -132,7 +132,7 @@ impl Drop for Image {
 }
 
 pub impl Image {
-    static fn new(data: @ImageData) -> Image {
+    fn new(data: ~ImageData) -> Image {
         Image { data: data, texture: None }
     }
 }
@@ -146,7 +146,7 @@ pub struct BasicImageData {
 }
 
 pub impl BasicImageData {
-    static fn new(size: Size2D<uint>, stride: uint, format: Format, data: ~[u8]) ->
+    fn new(size: Size2D<uint>, stride: uint, format: Format, data: ~[u8]) ->
             BasicImageData {
         BasicImageData {
             size: size,
