@@ -7,13 +7,13 @@ use geom::matrix::{Matrix4, ortho};
 use geom::size::Size2D;
 use opengles::gl2;
 use opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, CLAMP_TO_EDGE, COMPILE_STATUS};
-use opengles::gl2::{FRAGMENT_SHADER, LINEAR, LINK_STATUS, NEAREST, NO_ERROR, REPEAT, RGB, RGBA,
+use opengles::gl2::{FRAGMENT_SHADER, LINK_STATUS, NEAREST, NO_ERROR, RGB, RGBA,
                       BGRA};
 use opengles::gl2::{STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
 use opengles::gl2::{TEXTURE_RECTANGLE_ARB, TEXTURE_WRAP_S, TEXTURE_WRAP_T};
 use opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNPACK_CLIENT_STORAGE_APPLE, UNSIGNED_BYTE};
 use opengles::gl2::{UNPACK_ROW_LENGTH, UNSIGNED_BYTE, UNSIGNED_INT_8_8_8_8_REV, VERTEX_SHADER};
-use opengles::gl2::{GLclampf, GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer};
+use opengles::gl2::{GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer};
 use opengles::gl2::{bind_texture, buffer_data, create_program, clear, clear_color};
 use opengles::gl2::{compile_shader, create_shader, draw_arrays, enable};
 use opengles::gl2::{enable_vertex_attrib_array, gen_buffers, gen_textures};
