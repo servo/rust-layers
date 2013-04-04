@@ -114,10 +114,11 @@ pub trait ImageData {
 }
 
 pub struct Image {
-    data: ~ImageData,
+    data: @ImageData,
     texture: Option<GLuint>,
 }
 
+#[unsafe_destructor]
 impl Drop for Image {
     fn finalize(&self) {
         match copy self.texture {
@@ -132,7 +133,7 @@ impl Drop for Image {
 }
 
 pub impl Image {
-    fn new(data: ~ImageData) -> Image {
+    fn new(data: @ImageData) -> Image {
         Image { data: data, texture: None }
     }
 }
