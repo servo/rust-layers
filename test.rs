@@ -10,34 +10,27 @@ use util::convert_rgb32_to_rgb24;
 use azure::azure_hl::{Color, ColorPattern, DrawTarget};
 
 use cairo::cairo::CAIRO_FORMAT_RGB24;
-use CairoContext = cairo::cairo_hl::Context;
 use cairo::cairo_hl::ImageSurface;
 
-use glut::glut::{DOUBLE, check_loop, create_window, destroy_window, display_func, init};
-use glut::glut::{init_display_mode, post_redisplay, swap_buffers, timer_func};
-
-use core::comm::{Chan, Port};
-use libc::c_uint;
-use os::{getenv, setenv};
-use task::TaskBuilder;
+use glut::glut::{post_redisplay, swap_buffers};
 
 struct Renderer {
-    mut layer: @TiledImageLayer,
+    layer: @mut TiledImageLayer,
     //mut layer: @ImageLayer,
-    mut t: f32,
-    mut delta: f32,
-    mut render_context: Option<RenderContext>,
-    mut image: Option<@Image>,
+    t: f32,
+    delta: f32,
+    render_context: Option<RenderContext>,
+    image: Option<@mut Image>,
 }
 
 impl Renderer {
-    fn get_display_callback(this: @Renderer) -> @fn() {
+    fn get_display_callback(&self, this: @mut Renderer) -> @fn() {
         || {
-            (*this).display_callback();
+            this.display_callback();
         }
     }
 
-    fn display_callback() {
+    fn display_callback(&mut self) {
         match self.render_context {
             None => {
                 self.render_context = Some(init_render_context());
@@ -84,11 +77,11 @@ fn Renderer() -> Renderer {
         let (tile_width, tile_height) = (width / 4, height / 4);
         let cairo_data = cairo_image.data();
 
-        let tiles = DVec();
+        let mut tiles = ~[];
         for uint::range(0,4) |y| {
             for uint::range(0,4) |x| {
                 // Extract the relevant part of the image.
-                let data = DVec();
+                let mut data = ~[];
 
                 let mut scanline_start = (y * tile_height * width + x * tile_width) * 4;
                 for tile_height.times {
@@ -99,17 +92,17 @@ fn Renderer() -> Renderer {
                     scanline_start += width * 4;
                 }
 
-                let data = convert_rgb32_to_rgb24(dvec::unwrap(data));
-                let image = @Image::new(BasicImageData::new(Size2D(tile_width, tile_height), tile_width, RGB24Format, data) as ImageData); 
+                let data = convert_rgb32_to_rgb24(data);
+                let image = @mut Image::new(@BasicImageData::new(Size2D(tile_width, tile_height), tile_width, RGB24Format, data) as @ImageData); 
                 tiles.push(image);
             }
         }
 
-        let tiles = dvec::unwrap(tiles);
+        let tiles = tiles;
     
     Renderer {
         image : Some(tiles[0]),
-        layer : @TiledImageLayer(tiles, 4),
+        layer : @mut TiledImageLayer(tiles, 4),
         t : 1.0f32,
         delta : -0.001f32,
         render_context : None
