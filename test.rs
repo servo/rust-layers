@@ -18,11 +18,9 @@ use util::convert_rgb32_to_rgb24;
 
 use azure::azure_hl::{Color, ColorPattern, DrawTarget};
 
-use cairo::cairo::CAIRO_FORMAT_RGB24;
-use cairo::cairo_hl::ImageSurface;
-
 use glut::glut::{post_redisplay, swap_buffers};
 
+/*
 struct Renderer {
     layer: @mut TiledImageLayer,
     //mut layer: @ImageLayer,
@@ -117,6 +115,7 @@ fn Renderer() -> Renderer {
         render_context : None
     }
 }
+*/
 
 /*
 #[test]
