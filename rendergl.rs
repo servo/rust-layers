@@ -188,7 +188,7 @@ pub fn create_texture_for_image_if_necessary(image: @mut Image) {
 
     // These two are needed for DMA on the Mac. Don't touch them unless you know what you're doing!
     pixel_store_i(UNPACK_ALIGNMENT, 4);
-    pixel_store_i(UNPACK_ROW_LENGTH, stride);
+    pixel_store_i(UNPACK_ROW_LENGTH, size.width as GLint);
     if stride % 32 != 0 {
         info!("rust-layers: suggest using stride multiples of 32 for DMA on the Mac");
     }
@@ -206,7 +206,7 @@ pub fn create_texture_for_image_if_necessary(image: @mut Image) {
         ARGB32Format => {
             do data.with_data |data| {
                 debug!("(rust-layers) data size=%u expected size=%u",
-                      data.len(), ((stride as uint) * size.height * 4) as uint);
+                      data.len(), ((stride as uint) * size.height) as uint);
 
                 tex_parameter_i(TEXTURE_RECTANGLE_ARB, gl2::TEXTURE_STORAGE_HINT_APPLE,
                                 gl2::STORAGE_CACHED_APPLE as GLint);
