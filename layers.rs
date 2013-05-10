@@ -200,7 +200,7 @@ pub struct TiledImageLayer {
 }
 
 pub fn TiledImageLayer(in_tiles: &[@mut Image], tiles_across: uint) -> TiledImageLayer {
-    let mut tiles = @mut ~[];
+    let tiles = @mut ~[];
     for in_tiles.each |tile| {
         tiles.push(*tile);
     }
