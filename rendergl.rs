@@ -269,10 +269,7 @@ impl Render for layers::ImageLayer {
     fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
         create_texture_for_image_if_necessary(self.image);
 
-        // FIXME: will not be necessary to borrow self after new borrow check lands
-        let borrowed_self: &mut layers::ImageLayer = self;
-
-        let transform = transform.mul(&borrowed_self.common.transform);
+        let transform = transform.mul(&self.common.transform);
         uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
 
         let data = &mut self.image.data;
@@ -283,18 +280,14 @@ impl Render for layers::ImageLayer {
 
 impl Render for layers::TiledImageLayer {
     fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
-        // FIXME: will not be necessary to borrow self/tiles after new borrow check lands
-        let borrowed_self: &mut layers::TiledImageLayer = self;
-        let borrowed_tiles: &mut ~[@mut Image] = self.tiles;
-
-        let tiles_down = borrowed_tiles.len() / self.tiles_across;
+        let tiles_down = self.tiles.len() / self.tiles_across;
         for self.tiles.eachi |i, tile| {
             create_texture_for_image_if_necessary(*tile);
 
             let x = ((i % self.tiles_across) as f32);
             let y = ((i / self.tiles_across) as f32);
 
-            let transform = transform.mul(&borrowed_self.common.transform);
+            let transform = transform.mul(&self.common.transform);
             let transform = transform.scale(1.0 / (self.tiles_across as f32),
                                             1.0 / (tiles_down as f32),
                                             1.0);
