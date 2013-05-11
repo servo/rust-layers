@@ -36,6 +36,22 @@ use core::io::println;
 use core::libc::c_int;
 use core::str::to_bytes;
 
+#[cfg(target_os = "android")]
+pub fn FRAGMENT_SHADER_SOURCE() -> ~str {
+    ~"
+        precision mediump float;
+
+        varying vec2 vTextureCoord;
+
+        uniform sampler2D uSampler;
+
+        void main(void) {
+            gl_FragColor = texture2D(uSampler, vTextureCoord.st);
+        }
+    "
+}
+
+#[cfg(not(target_os = "android"))]
 pub fn FRAGMENT_SHADER_SOURCE() -> ~str {
     ~"
         #ifdef GLES2
@@ -69,6 +85,29 @@ pub fn VERTEX_SHADER_SOURCE() -> ~str {
     "
 }
 
+#[cfg(target_os = "android")]
+pub fn load_shader(source_string: ~str, shader_type: GLenum) -> GLuint {
+    let mut shader_id = create_shader(shader_type);
+    println(fmt!("shader id: %?", shader_id));
+    shader_source(shader_id, ~[ to_bytes(source_string) ]);
+    compile_shader(shader_id);
+
+    let glerror = get_error();
+    if glerror != NO_ERROR {
+        println(fmt!("error: %d", glerror as int));
+        fail!(~"failed to compile shader");
+    }
+
+    if get_shader_iv(shader_id, COMPILE_STATUS) == (0 as GLint) {
+        println(fmt!("shader info log: %s", get_shader_info_log(shader_id)));
+        fail!(~"failed to compile shader");
+        shader_id = 0;
+    }
+
+    return shader_id;
+}
+
+#[cfg(not(target_os = "android"))]
 pub fn load_shader(source_string: ~str, shader_type: GLenum) -> GLuint {
     let shader_id = create_shader(shader_type);
     shader_source(shader_id, ~[ to_bytes(source_string) ]);
@@ -117,6 +156,28 @@ pub fn RenderContext(program: GLuint) -> RenderContext {
     rc
 }
 
+#[cfg(target_os = "android")]
+pub fn init_render_context() -> RenderContext {
+    let vertex_shader = load_shader(VERTEX_SHADER_SOURCE(), VERTEX_SHADER);
+    let fragment_shader = load_shader(FRAGMENT_SHADER_SOURCE(), FRAGMENT_SHADER);
+
+    let program = create_program();
+    attach_shader(program, vertex_shader);
+    attach_shader(program, fragment_shader);
+    link_program(program);
+
+    if get_program_iv(program, LINK_STATUS) == (0 as GLint) {
+        fail!(~"failed to initialize program");
+    }
+
+    use_program(program);
+
+    enable(TEXTURE_2D);
+
+    return RenderContext(program);
+}
+
+#[cfg(not(target_os = "android"))]
 pub fn init_render_context() -> RenderContext {
     let vertex_shader = load_shader(VERTEX_SHADER_SOURCE(), VERTEX_SHADER);
     let fragment_shader = load_shader(FRAGMENT_SHADER_SOURCE(), FRAGMENT_SHADER);
@@ -158,6 +219,68 @@ pub fn init_buffers() -> (GLuint, GLuint) {
     return (triangle_vertex_buffer, texture_coord_buffer);
 }
 
+#[cfg(target_os = "android")]
+pub fn create_texture_for_image_if_necessary(image: @mut Image) {
+    match image.texture {
+        None => {}
+        Some(_) => { return; /* Nothing to do. */ }
+    }
+
+    let texture = gen_textures(1 as GLsizei)[0];
+
+    //XXXjdm This block is necessary to avoid a task failure that occurs
+    //       when |image.data| is borrowed and we mutate |image.texture|.
+    {
+    let data = &mut image.data;
+    debug!("making texture, id=%d, format=%?", texture as int, data.format());
+
+    bind_texture(TEXTURE_2D, texture);
+
+    let size = data.size();
+    let stride = data.stride() as GLsizei;
+
+    tex_parameter_i(TEXTURE_2D, TEXTURE_MAG_FILTER, NEAREST as GLint);
+    tex_parameter_i(TEXTURE_2D, TEXTURE_MIN_FILTER, NEAREST as GLint);
+
+    tex_parameter_i(TEXTURE_2D, TEXTURE_WRAP_S, CLAMP_TO_EDGE as GLint);
+    tex_parameter_i(TEXTURE_2D, TEXTURE_WRAP_T, CLAMP_TO_EDGE as GLint);
+
+    // These two are needed for DMA on the Mac. Don't touch them unless you know what you're doing!
+    pixel_store_i(UNPACK_ALIGNMENT, 4);
+    if stride % 32 != 0 {
+        info!("rust-layers: suggest using stride multiples of 32 for DMA on the Mac");
+    }
+
+    debug!("rust-layers stride is %u", stride as uint);
+    debug!("rust-layers width: %?, height: %?", size.width, size.height);
+
+    match data.format() {
+        RGB24Format => {
+            do data.with_data |data| {
+                debug!("RGB24Format - (rust-layers) data size=%u expected size=%u", data.len(), ((stride as uint) * size.height) as uint);
+                tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint,
+                             size.width as GLsizei, size.height as GLsizei, 0 as GLint, RGB,
+                             UNSIGNED_BYTE as libc::c_uint, Some(data));
+            }
+        }
+        ARGB32Format => {
+            do data.with_data |data| {
+                debug!("ARGB32Format - (rust-layers) data size=%u expected size=%u", data.len(), ((stride as uint) * size.height) as uint);
+
+                tex_image_2d(TEXTURE_2D, 0 as GLint, RGBA as GLint,
+                             size.width as GLsizei, size.height as GLsizei, 0 as GLint, RGBA,
+                             UNSIGNED_BYTE as libc::c_uint, Some(data));
+            }
+        }
+    }
+
+    bind_texture(TEXTURE_2D, 0);
+    } //XXXjdm This block avoids a segfault. See opening comment.
+
+    image.texture = Some(texture);
+}
+
+#[cfg(not(target_os = "android"))]
 pub fn create_texture_for_image_if_necessary(image: @mut Image) {
     match image.texture {
         None => {}
@@ -224,6 +347,35 @@ pub fn create_texture_for_image_if_necessary(image: @mut Image) {
     image.texture = Some(texture);
 }
 
+#[cfg(target_os = "android")]
+pub fn bind_and_render_quad(render_context: RenderContext, size: Size2D<uint>, texture: GLuint) {
+    bind_texture(TEXTURE_2D, texture);
+
+    uniform_1i(render_context.sampler_uniform, 0);
+
+    bind_buffer(ARRAY_BUFFER, render_context.vertex_buffer);
+    vertex_attrib_pointer_f32(render_context.vertex_position_attr as GLuint, 3, false, 0, 0);
+
+    // Create the texture coordinate array.
+    bind_buffer(ARRAY_BUFFER, render_context.texture_coord_buffer);
+
+    let (width, height) = (size.width as f32, size.height as f32);
+    let vertices = [
+        0.0f32, 0.0f32,
+        0.0f32, 1.0f32,
+        1.0f32, 0.0f32,
+        1.0f32, 1.0f32
+    ];
+    buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
+
+    vertex_attrib_pointer_f32(render_context.texture_coord_attr as GLuint, 2, false, 0, 0);
+
+    draw_arrays(TRIANGLE_STRIP, 0, 4);
+
+    bind_texture(TEXTURE_2D, 0);
+}
+
+#[cfg(not(target_os = "android"))]
 pub fn bind_and_render_quad(render_context: RenderContext, size: Size2D<uint>, texture: GLuint) {
     bind_texture(TEXTURE_RECTANGLE_ARB, texture);
 
@@ -315,6 +467,27 @@ fn render_layer(render_context: RenderContext, transform: Matrix4<f32>, layer: l
     }
 }
 
+#[cfg(target_os = "android")]
+pub fn render_scene(render_context: RenderContext, scene: &Scene) {
+    // Set the viewport.
+    viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
+
+    // Clear the screen.
+    clear_color(1.38f32, 0.36f32, 0.36f32, 1.0f32);
+    clear(COLOR_BUFFER_BIT);
+
+    // Set the projection matrix.
+    let projection_matrix = ortho(0.0, scene.size.width, scene.size.height, 0.0, -10.0, 10.0);
+    uniform_matrix_4fv(render_context.projection_uniform, false, projection_matrix.to_array());
+
+    // Set up the initial modelview matrix.
+    let transform = scene.transform;
+
+    // Render the root layer.
+    render_layer(render_context, transform, scene.root);
+}
+
+#[cfg(not(target_os = "android"))]
 pub fn render_scene(render_context: RenderContext, scene: &Scene) {
     // Set the viewport.
     viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
