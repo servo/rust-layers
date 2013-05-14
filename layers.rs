@@ -73,13 +73,16 @@ pub fn ContainerLayer() -> ContainerLayer {
 }
 
 pub impl ContainerLayer {
-    fn each_child(&self, f: &fn(Layer) -> bool) {
+    fn each_child(&self, f: &fn(Layer) -> bool) -> bool {
         let mut child_opt = self.first_child;
         while !child_opt.is_none() {
             let child = child_opt.get();
-            if !f(child) { break; }
+            if !f(child) {
+                break
+            }
             child_opt = child.with_common(|x| x.next_sibling);
         }
+        true
     }
 
     /// Only works when the child is disconnected from the layer tree.
