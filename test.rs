@@ -16,8 +16,6 @@ use scene::*;
 use rendergl::*;
 use util::convert_rgb32_to_rgb24;
 
-use azure::azure_hl::{Color, ColorPattern, DrawTarget};
-
 use glut::glut::{post_redisplay, swap_buffers};
 
 /*
