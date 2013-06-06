@@ -16,7 +16,7 @@ use geom::matrix::{Matrix4, ortho};
 use geom::size::Size2D;
 use opengles::gl2;
 use opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, CLAMP_TO_EDGE, COMPILE_STATUS};
-use opengles::gl2::{FRAGMENT_SHADER, LINK_STATUS, NEAREST, NO_ERROR, RGB, RGBA, BGRA};
+use opengles::gl2::{FRAGMENT_SHADER, LINK_STATUS, NEAREST, LINEAR, NO_ERROR, RGB, RGBA, BGRA};
 use opengles::gl2::{STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
 use opengles::gl2::{TEXTURE_RECTANGLE_ARB, TEXTURE_WRAP_S, TEXTURE_WRAP_T};
 use opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNPACK_CLIENT_STORAGE_APPLE, UNSIGNED_BYTE};
@@ -179,7 +179,7 @@ pub fn create_texture_for_image_if_necessary(image: @mut Image) {
     let size = data.size();
     let stride = data.stride() as GLsizei;
 
-    tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MAG_FILTER, NEAREST as GLint);
+    tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MAG_FILTER, LINEAR as GLint);
     tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MIN_FILTER, NEAREST as GLint);
 
     tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_WRAP_S, CLAMP_TO_EDGE as GLint);
