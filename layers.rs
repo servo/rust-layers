@@ -18,6 +18,7 @@ pub enum Format {
 
 pub enum Layer {
     ContainerLayerKind(@mut ContainerLayer),
+    TextureLayerKind(@mut TextureLayer),
     ImageLayerKind(@mut ImageLayer),
     TiledImageLayerKind(@mut TiledImageLayer)
 }
@@ -26,6 +27,7 @@ impl Layer {
     fn with_common<T>(&self, f: &fn(&mut CommonLayer) -> T) -> T {
         match *self {
             ContainerLayerKind(container_layer) => f(&mut container_layer.common),
+            TextureLayerKind(texture_layer) => f(&mut texture_layer.common),
             ImageLayerKind(image_layer) => f(&mut image_layer.common),
             TiledImageLayerKind(tiled_image_layer) => f(&mut tiled_image_layer.common)
         }
@@ -109,6 +111,26 @@ pub impl ContainerLayer {
                 None => self.last_child = Some(new_child),
                 Some(_) => {}
             }
+        }
+    }
+}
+
+trait TextureManager {
+    pub fn get_texture(&self) -> GLuint;
+}
+
+pub struct TextureLayer {
+    common: CommonLayer,
+    manager: @TextureManager,
+    size: Size2D<uint>
+}
+
+impl TextureLayer {
+    pub fn new(manager: @TextureManager, size: Size2D<uint>) -> TextureLayer {
+        TextureLayer {
+            common: CommonLayer(),
+            manager: manager,
+            size: size,
         }
     }
 }
