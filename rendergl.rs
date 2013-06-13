@@ -8,17 +8,15 @@
 // except according to those terms.
 
 use layers;
-use layers::{ARGB32Format, ContainerLayerKind, Image, ImageLayerKind, RGB24Format};
+use layers::{ARGB32Format, ContainerLayerKind, TextureLayerKind, Image, ImageLayerKind, RGB24Format};
 use layers::{TiledImageLayerKind};
 use scene::Scene;
 
 use geom::matrix::{Matrix4, ortho};
-use geom::size::Size2D;
-use opengles::gl2;
 use opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, CLAMP_TO_EDGE, COMPILE_STATUS};
-use opengles::gl2::{FRAGMENT_SHADER, LINK_STATUS, NEAREST, LINEAR, NO_ERROR, RGB, RGBA, BGRA};
+use opengles::gl2::{FRAGMENT_SHADER, LINK_STATUS, LINEAR, NO_ERROR, RGB, RGBA, BGRA};
 use opengles::gl2::{STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
-use opengles::gl2::{TEXTURE_RECTANGLE_ARB, TEXTURE_WRAP_S, TEXTURE_WRAP_T};
+use opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T, TEXTURE0};
 use opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNPACK_CLIENT_STORAGE_APPLE, UNSIGNED_BYTE};
 use opengles::gl2::{UNPACK_ROW_LENGTH, UNSIGNED_BYTE, UNSIGNED_INT_8_8_8_8_REV, VERTEX_SHADER};
 use opengles::gl2::{GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer};
@@ -26,12 +24,11 @@ use opengles::gl2::{bind_texture, buffer_data, create_program, clear, clear_colo
 use opengles::gl2::{compile_shader, create_shader, draw_arrays, enable};
 use opengles::gl2::{enable_vertex_attrib_array, gen_buffers, gen_textures};
 use opengles::gl2::{get_attrib_location, get_error, get_program_iv};
-use opengles::gl2::{get_shader_info_log, get_shader_iv};
+use opengles::gl2::{get_shader_info_log, get_shader_iv, active_texture};
 use opengles::gl2::{get_uniform_location, link_program, pixel_store_i, shader_source};
 use opengles::gl2::{tex_image_2d, tex_parameter_i, uniform_1i, uniform_matrix_4fv, use_program};
 use opengles::gl2::{vertex_attrib_pointer_f32, viewport};
 
-use core::io::println;
 use core::libc::c_int;
 use core::str::to_bytes;
 
@@ -43,10 +40,10 @@ pub fn FRAGMENT_SHADER_SOURCE() -> ~str {
 
         varying vec2 vTextureCoord;
 
-        uniform sampler2DRect uSampler;
+        uniform sampler2D uSampler;
 
         void main(void) {
-            gl_FragColor = texture2DRect(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+            gl_FragColor = texture2D(uSampler, vTextureCoord);
         }
     "
 }
@@ -130,9 +127,7 @@ pub fn init_render_context() -> RenderContext {
     }
 
     use_program(program);
-
     enable(TEXTURE_2D);
-    enable(TEXTURE_RECTANGLE_ARB);
 
     return RenderContext(program);
 }
@@ -171,7 +166,7 @@ pub fn create_texture_for_image_if_necessary(image: @mut Image) {
     let data = &mut image.data;
     debug!("making texture, id=%d, format=%?", texture as int, data.format());
 
-    bind_texture(TEXTURE_RECTANGLE_ARB, texture);
+    bind_texture(TEXTURE_2D, texture);
 
     // FIXME: This makes the lifetime requirements somewhat complex...
     pixel_store_i(UNPACK_CLIENT_STORAGE_APPLE, 1);
@@ -179,11 +174,11 @@ pub fn create_texture_for_image_if_necessary(image: @mut Image) {
     let size = data.size();
     let stride = data.stride() as GLsizei;
 
-    tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MAG_FILTER, LINEAR as GLint);
-    tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_MIN_FILTER, NEAREST as GLint);
+    tex_parameter_i(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR as GLint);
+    tex_parameter_i(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR as GLint);
 
-    tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_WRAP_S, CLAMP_TO_EDGE as GLint);
-    tex_parameter_i(TEXTURE_RECTANGLE_ARB, TEXTURE_WRAP_T, CLAMP_TO_EDGE as GLint);
+    tex_parameter_i(TEXTURE_2D, TEXTURE_WRAP_S, CLAMP_TO_EDGE as GLint);
+    tex_parameter_i(TEXTURE_2D, TEXTURE_WRAP_T, CLAMP_TO_EDGE as GLint);
 
     // These two are needed for DMA on the Mac. Don't touch them unless you know what you're doing!
     pixel_store_i(UNPACK_ALIGNMENT, 4);
@@ -197,34 +192,27 @@ pub fn create_texture_for_image_if_necessary(image: @mut Image) {
     match data.format() {
         RGB24Format => {
             do data.with_data |data| {
-                tex_image_2d(TEXTURE_RECTANGLE_ARB, 0 as GLint, RGB as GLint,
+                tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint,
                              size.width as GLsizei, size.height as GLsizei, 0 as GLint, RGB,
                              UNSIGNED_BYTE, Some(data));
             }
         }
         ARGB32Format => {
             do data.with_data |data| {
-                debug!("(rust-layers) data size=%u expected size=%u",
-                      data.len(), ((stride as uint) * size.height) as uint);
-
-                tex_parameter_i(TEXTURE_RECTANGLE_ARB, gl2::TEXTURE_STORAGE_HINT_APPLE,
-                                gl2::STORAGE_CACHED_APPLE as GLint);
-
-                tex_image_2d(TEXTURE_RECTANGLE_ARB, 0 as GLint, RGBA as GLint,
+                tex_image_2d(TEXTURE_2D, 0 as GLint, RGBA as GLint,
                              size.width as GLsizei, size.height as GLsizei, 0 as GLint, BGRA,
                              UNSIGNED_INT_8_8_8_8_REV, Some(data));
             }
         }
     }
-
-    bind_texture(TEXTURE_RECTANGLE_ARB, 0);
     } //XXXjdm This block avoids a segfault. See opening comment.
 
     image.texture = Some(texture);
 }
 
-pub fn bind_and_render_quad(render_context: RenderContext, size: Size2D<uint>, texture: GLuint) {
-    bind_texture(TEXTURE_RECTANGLE_ARB, texture);
+pub fn bind_and_render_quad(render_context: RenderContext, texture: GLuint) {
+    active_texture(TEXTURE0);
+    bind_texture(TEXTURE_2D, texture);
 
     uniform_1i(render_context.sampler_uniform, 0);
 
@@ -234,20 +222,16 @@ pub fn bind_and_render_quad(render_context: RenderContext, size: Size2D<uint>, t
     // Create the texture coordinate array.
     bind_buffer(ARRAY_BUFFER, render_context.texture_coord_buffer);
 
-    let (width, height) = (size.width as f32, size.height as f32);
     let vertices = [
+        0.0f32, 1.0f32,
         0.0f32, 0.0f32,
-        0.0f32, height,
-        width,  0.0f32,
-        width,  height
+        1.0f32, 1.0f32,
+        1.0f32, 0.0f32,
     ];
     buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
-
     vertex_attrib_pointer_f32(render_context.texture_coord_attr as GLuint, 2, false, 0, 0);
-
     draw_arrays(TRIANGLE_STRIP, 0, 4);
-
-    bind_texture(TEXTURE_RECTANGLE_ARB, 0);
+    bind_texture(TEXTURE_2D, 0);
 }
 
 // Layer rendering
@@ -265,16 +249,22 @@ impl Render for layers::ContainerLayer {
     }
 }
 
+impl Render for layers::TextureLayer {
+    fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
+        let transform = transform.mul(&self.common.transform);
+        uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
+
+        bind_and_render_quad(render_context, self.manager.get_texture());
+    }
+}
+
 impl Render for layers::ImageLayer {
     fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
         create_texture_for_image_if_necessary(self.image);
 
         let transform = transform.mul(&self.common.transform);
         uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
-
-        let data = &mut self.image.data;
-        bind_and_render_quad(
-            render_context, data.size(), self.image.texture.get());
+        bind_and_render_quad(render_context, self.image.texture.get());
     }
 }
 
@@ -294,9 +284,7 @@ impl Render for layers::TiledImageLayer {
             let transform = transform.translate(x, y, 0.0);
 
             uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
-
-            let data = &mut tile.data;
-            bind_and_render_quad(render_context, data.size(), tile.texture.get());
+            bind_and_render_quad(render_context, tile.texture.get());
         }
     }
 }
@@ -305,6 +293,9 @@ fn render_layer(render_context: RenderContext, transform: Matrix4<f32>, layer: l
     match layer {
         ContainerLayerKind(container_layer) => {
             container_layer.render(render_context, transform);
+        }
+        TextureLayerKind(texture_layer) => {
+            texture_layer.render(render_context, transform);
         }
         ImageLayerKind(image_layer) => {
             image_layer.render(render_context, transform);
