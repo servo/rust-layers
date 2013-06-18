@@ -10,6 +10,7 @@
 use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
 use opengles::gl2::{GLuint, delete_textures};
+use core::managed::mut_ptr_eq;
 
 pub enum Format {
     ARGB32Format,
@@ -88,11 +89,13 @@ pub impl ContainerLayer {
     }
 
     /// Only works when the child is disconnected from the layer tree.
-    fn add_child(&mut self, new_child: Layer) {
+    fn add_child(@mut self, new_child: Layer) {
         do new_child.with_common |new_child_common| {
             assert!(new_child_common.parent.is_none());
             assert!(new_child_common.prev_sibling.is_none());
             assert!(new_child_common.next_sibling.is_none());
+
+            new_child_common.parent = Some(ContainerLayerKind(self));
 
             match self.first_child {
                 None => {}
@@ -111,6 +114,39 @@ pub impl ContainerLayer {
                 None => self.last_child = Some(new_child),
                 Some(_) => {}
             }
+        }
+    }
+    
+    fn remove_child(@mut self, child: Layer) {
+        do child.with_common |child_common| {
+            assert!(child_common.parent.is_some());
+            match child_common.parent.get() {
+                ContainerLayerKind(ref container) => {
+                    assert!(mut_ptr_eq(*container, self));
+                },
+                _ => fail!(~"Invalid parent of child in layer tree"),
+            }
+
+            match child_common.next_sibling {
+                None => { // this is the last child
+                    self.last_child = child_common.prev_sibling;
+                },
+                Some(ref sibling) => {
+                    do sibling.with_common |sibling_common| {
+                        sibling_common.prev_sibling = child_common.prev_sibling;
+                    }
+                }
+            }
+            match child_common.prev_sibling {
+                None => { // this is the first child
+                    self.first_child = child_common.next_sibling;
+                },
+                Some(ref sibling) => {
+                    do sibling.with_common |sibling_common| {
+                        sibling_common.next_sibling = child_common.next_sibling;
+                    }
+                }
+            }           
         }
     }
 }
