@@ -20,6 +20,7 @@ extern mod opengles;
 pub mod layers;
 pub mod scene;
 pub mod rendergl;
+pub mod texturegl;
 pub mod util;
 
 #[cfg(test)]

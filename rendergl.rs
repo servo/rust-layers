@@ -11,6 +11,7 @@ use layers;
 use layers::{ARGB32Format, ContainerLayerKind, TextureLayerKind, Image, ImageLayerKind, RGB24Format};
 use layers::{TiledImageLayerKind};
 use scene::Scene;
+use texturegl::{Texture, TextureImageData};
 
 use geom::matrix::{Matrix4, ortho};
 use opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, CLAMP_TO_EDGE, COMPILE_STATUS};
@@ -158,61 +159,36 @@ pub fn create_texture_for_image_if_necessary(image: @mut Image) {
         Some(_) => { return; /* Nothing to do. */ }
     }
 
-    let texture = gen_textures(1 as GLsizei)[0];
+    let texture = Texture::new();
 
     //XXXjdm This block is necessary to avoid a task failure that occurs
     //       when |image.data| is borrowed and we mutate |image.texture|.
     {
-    let data = &mut image.data;
-    debug!("making texture, id=%d, format=%?", texture as int, data.format());
+        let data = &mut image.data;
 
-    bind_texture(TEXTURE_2D, texture);
+        debug!("making texture, id=%d, format=%?",
+               texture.native_texture() as int,
+               data.format());
 
-    // FIXME: This makes the lifetime requirements somewhat complex...
-    pixel_store_i(UNPACK_CLIENT_STORAGE_APPLE, 1);
+        // FIXME(pcwalton): Use GL_UNPACK_CLIENT_STORAGE_APPLE again where available.
 
-    let size = data.size();
-    let stride = data.stride() as GLsizei;
-
-    tex_parameter_i(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR as GLint);
-    tex_parameter_i(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR as GLint);
-
-    tex_parameter_i(TEXTURE_2D, TEXTURE_WRAP_S, CLAMP_TO_EDGE as GLint);
-    tex_parameter_i(TEXTURE_2D, TEXTURE_WRAP_T, CLAMP_TO_EDGE as GLint);
-
-    // These two are needed for DMA on the Mac. Don't touch them unless you know what you're doing!
-    pixel_store_i(UNPACK_ALIGNMENT, 4);
-    pixel_store_i(UNPACK_ROW_LENGTH, size.width as GLint);
-    if stride % 32 != 0 {
-        info!("rust-layers: suggest using stride multiples of 32 for DMA on the Mac");
-    }
-
-    debug!("rust-layers stride is %u", stride as uint);
-
-    match data.format() {
-        RGB24Format => {
-            do data.with_data |data| {
-                tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint,
-                             size.width as GLsizei, size.height as GLsizei, 0 as GLint, RGB,
-                             UNSIGNED_BYTE, Some(data));
-            }
+        do data.with_data |pixel_data| {
+            let texture_image_data = TextureImageData {
+                size: data.size(),
+                stride: data.stride(),
+                format: data.format(),
+                data: pixel_data,
+            };
+            texture.upload_image(&texture_image_data)
         }
-        ARGB32Format => {
-            do data.with_data |data| {
-                tex_image_2d(TEXTURE_2D, 0 as GLint, RGBA as GLint,
-                             size.width as GLsizei, size.height as GLsizei, 0 as GLint, BGRA,
-                             UNSIGNED_INT_8_8_8_8_REV, Some(data));
-            }
-        }
-    }
     } //XXXjdm This block avoids a segfault. See opening comment.
 
     image.texture = Some(texture);
 }
 
-pub fn bind_and_render_quad(render_context: RenderContext, texture: GLuint) {
+pub fn bind_and_render_quad(render_context: RenderContext, texture: &Texture) {
     active_texture(TEXTURE0);
-    bind_texture(TEXTURE_2D, texture);
+    let _bound_texture = texture.bind();
 
     uniform_1i(render_context.sampler_uniform, 0);
 
@@ -231,7 +207,6 @@ pub fn bind_and_render_quad(render_context: RenderContext, texture: GLuint) {
     buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
     vertex_attrib_pointer_f32(render_context.texture_coord_attr as GLuint, 2, false, 0, 0);
     draw_arrays(TRIANGLE_STRIP, 0, 4);
-    bind_texture(TEXTURE_2D, 0);
 }
 
 // Layer rendering
@@ -254,7 +229,7 @@ impl Render for layers::TextureLayer {
         let transform = transform.mul(&self.common.transform);
         uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
 
-        bind_and_render_quad(render_context, self.manager.get_texture());
+        bind_and_render_quad(render_context, &self.manager.get_texture());
     }
 }
 
@@ -264,7 +239,7 @@ impl Render for layers::ImageLayer {
 
         let transform = transform.mul(&self.common.transform);
         uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
-        bind_and_render_quad(render_context, self.image.texture.get());
+        bind_and_render_quad(render_context, self.image.texture.get_ref());
     }
 }
 
@@ -284,7 +259,7 @@ impl Render for layers::TiledImageLayer {
             let transform = transform.translate(x, y, 0.0);
 
             uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
-            bind_and_render_quad(render_context, tile.texture.get());
+            bind_and_render_quad(render_context, tile.texture.get_ref());
         }
     }
 }
