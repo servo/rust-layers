@@ -7,6 +7,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use texturegl::Texture;
+
 use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
 use opengles::gl2::{GLuint, delete_textures};
@@ -152,7 +154,7 @@ pub impl ContainerLayer {
 }
 
 trait TextureManager {
-    pub fn get_texture(&self) -> GLuint;
+    pub fn get_texture(&self) -> Texture;
 }
 
 pub struct TextureLayer {
@@ -185,26 +187,15 @@ pub trait ImageData {
 
 pub struct Image {
     data: @ImageData,
-    texture: Option<GLuint>,
-}
-
-#[unsafe_destructor]
-impl Drop for Image {
-    fn finalize(&self) {
-        match copy self.texture {
-            None => {
-                // Nothing to do.
-            }
-            Some(texture) => {
-                delete_textures(&[texture]);
-            }
-        }
-    }
+    texture: Option<Texture>,
 }
 
 pub impl Image {
     fn new(data: @ImageData) -> Image {
-        Image { data: data, texture: None }
+        Image {
+            data: data,
+            texture: None,
+        }
     }
 }
 
