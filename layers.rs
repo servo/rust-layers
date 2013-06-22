@@ -153,21 +153,17 @@ pub impl ContainerLayer {
     }
 }
 
-trait TextureManager {
-    pub fn get_texture(&self) -> Texture;
-}
-
 pub struct TextureLayer {
     common: CommonLayer,
-    manager: @TextureManager,
-    size: Size2D<uint>
+    texture: Texture,
+    size: Size2D<uint>,
 }
 
 impl TextureLayer {
-    pub fn new(manager: @TextureManager, size: Size2D<uint>) -> TextureLayer {
+    pub fn new(texture: Texture, size: Size2D<uint>) -> TextureLayer {
         TextureLayer {
             common: CommonLayer(),
-            manager: manager,
+            texture: texture,
             size: size,
         }
     }
