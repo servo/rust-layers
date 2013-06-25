@@ -8,8 +8,7 @@
 // except according to those terms.
 
 use layers;
-use layers::{ARGB32Format, ContainerLayerKind, TextureLayerKind, Image, ImageLayerKind, RGB24Format};
-use layers::{TiledImageLayerKind};
+use layers::{ARGB32Format, ContainerLayerKind, TextureLayerKind, RGB24Format};
 use scene::Scene;
 use texturegl::{Texture, TextureImageData};
 
@@ -33,40 +32,36 @@ use opengles::gl2::{vertex_attrib_pointer_f32, viewport};
 use core::libc::c_int;
 use core::str::to_bytes;
 
-pub fn FRAGMENT_SHADER_SOURCE() -> ~str {
-    ~"
-        #ifdef GLES2
-            precision mediump float;
-        #endif
+static FRAGMENT_SHADER_SOURCE: &'static str = "
+    #ifdef GLES2
+        precision mediump float;
+    #endif
 
-        varying vec2 vTextureCoord;
+    varying vec2 vTextureCoord;
 
-        uniform sampler2D uSampler;
+    uniform sampler2D uSampler;
 
-        void main(void) {
-            gl_FragColor = texture2D(uSampler, vTextureCoord);
-        }
-    "
-}
+    void main(void) {
+        gl_FragColor = texture2D(uSampler, vTextureCoord);
+    }
+";
 
-pub fn VERTEX_SHADER_SOURCE() -> ~str {
-    ~"
-        attribute vec3 aVertexPosition;
-        attribute vec2 aTextureCoord;
+static VERTEX_SHADER_SOURCE: &'static str = "
+    attribute vec3 aVertexPosition;
+    attribute vec2 aTextureCoord;
 
-        uniform mat4 uMVMatrix;
-        uniform mat4 uPMatrix;
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
 
-        varying vec2 vTextureCoord;
+    varying vec2 vTextureCoord;
 
-        void main(void) {
-            gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
-            vTextureCoord = aTextureCoord;
-        }
-    "
-}
+    void main(void) {
+        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+        vTextureCoord = aTextureCoord;
+    }
+";
 
-pub fn load_shader(source_string: ~str, shader_type: GLenum) -> GLuint {
+pub fn load_shader(source_string: &str, shader_type: GLenum) -> GLuint {
     let shader_id = create_shader(shader_type);
     shader_source(shader_id, ~[ to_bytes(source_string) ]);
     compile_shader(shader_id);
@@ -115,8 +110,8 @@ pub fn RenderContext(program: GLuint) -> RenderContext {
 }
 
 pub fn init_render_context() -> RenderContext {
-    let vertex_shader = load_shader(VERTEX_SHADER_SOURCE(), VERTEX_SHADER);
-    let fragment_shader = load_shader(FRAGMENT_SHADER_SOURCE(), FRAGMENT_SHADER);
+    let vertex_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
+    let fragment_shader = load_shader(FRAGMENT_SHADER_SOURCE, FRAGMENT_SHADER);
 
     let program = create_program();
     attach_shader(program, vertex_shader);
@@ -151,39 +146,6 @@ pub fn init_buffers() -> (GLuint, GLuint) {
     bind_buffer(ARRAY_BUFFER, texture_coord_buffer);
 
     return (triangle_vertex_buffer, texture_coord_buffer);
-}
-
-pub fn create_texture_for_image_if_necessary(image: @mut Image) {
-    match image.texture {
-        None => {}
-        Some(_) => { return; /* Nothing to do. */ }
-    }
-
-    let texture = Texture::new();
-
-    //XXXjdm This block is necessary to avoid a task failure that occurs
-    //       when |image.data| is borrowed and we mutate |image.texture|.
-    {
-        let data = &mut image.data;
-
-        debug!("making texture, id=%d, format=%?",
-               texture.native_texture() as int,
-               data.format());
-
-        // FIXME(pcwalton): Use GL_UNPACK_CLIENT_STORAGE_APPLE again where available.
-
-        do data.with_data |pixel_data| {
-            let texture_image_data = TextureImageData {
-                size: data.size(),
-                stride: data.stride(),
-                format: data.format(),
-                data: pixel_data,
-            };
-            texture.upload_image(&texture_image_data)
-        }
-    } //XXXjdm This block avoids a segfault. See opening comment.
-
-    image.texture = Some(texture);
 }
 
 pub fn bind_and_render_quad(render_context: RenderContext, texture: &Texture) {
@@ -233,51 +195,10 @@ impl Render for layers::TextureLayer {
     }
 }
 
-impl Render for layers::ImageLayer {
-    fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
-        create_texture_for_image_if_necessary(self.image);
-
-        let transform = transform.mul(&self.common.transform);
-        uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
-        bind_and_render_quad(render_context, self.image.texture.get_ref());
-    }
-}
-
-impl Render for layers::TiledImageLayer {
-    fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
-        let tiles_down = self.tiles.len() / self.tiles_across;
-        for self.tiles.eachi |i, tile| {
-            create_texture_for_image_if_necessary(*tile);
-
-            let x = ((i % self.tiles_across) as f32);
-            let y = ((i / self.tiles_across) as f32);
-
-            let transform = transform.mul(&self.common.transform);
-            let transform = transform.scale(1.0 / (self.tiles_across as f32),
-                                            1.0 / (tiles_down as f32),
-                                            1.0);
-            let transform = transform.translate(x, y, 0.0);
-
-            uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
-            bind_and_render_quad(render_context, tile.texture.get_ref());
-        }
-    }
-}
-
 fn render_layer(render_context: RenderContext, transform: Matrix4<f32>, layer: layers::Layer) {
     match layer {
-        ContainerLayerKind(container_layer) => {
-            container_layer.render(render_context, transform);
-        }
-        TextureLayerKind(texture_layer) => {
-            texture_layer.render(render_context, transform);
-        }
-        ImageLayerKind(image_layer) => {
-            image_layer.render(render_context, transform);
-        }
-        TiledImageLayerKind(tiled_image_layer) => {
-            tiled_image_layer.render(render_context, transform);
-        }
+        ContainerLayerKind(container_layer) => container_layer.render(render_context, transform),
+        TextureLayerKind(texture_layer) => texture_layer.render(render_context, transform),
     }
 }
 
