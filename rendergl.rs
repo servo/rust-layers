@@ -7,27 +7,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use layers::{ContainerLayerKind, Flip, NoFlip, TextureLayerKind, VerticalFlip};
 use layers;
-use layers::{ARGB32Format, ContainerLayerKind, TextureLayerKind, RGB24Format};
 use scene::Scene;
-use texturegl::{Texture, TextureImageData};
+use texturegl::{Texture};
 
 use geom::matrix::{Matrix4, ortho};
-use opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, CLAMP_TO_EDGE, COMPILE_STATUS};
-use opengles::gl2::{FRAGMENT_SHADER, LINK_STATUS, LINEAR, NO_ERROR, RGB, RGBA, BGRA};
-use opengles::gl2::{STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
-use opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T, TEXTURE0};
-use opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNPACK_CLIENT_STORAGE_APPLE, UNSIGNED_BYTE};
-use opengles::gl2::{UNPACK_ROW_LENGTH, UNSIGNED_BYTE, UNSIGNED_INT_8_8_8_8_REV, VERTEX_SHADER};
-use opengles::gl2::{GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer};
-use opengles::gl2::{bind_texture, buffer_data, create_program, clear, clear_color};
-use opengles::gl2::{compile_shader, create_shader, draw_arrays, enable};
-use opengles::gl2::{enable_vertex_attrib_array, gen_buffers, gen_textures};
-use opengles::gl2::{get_attrib_location, get_error, get_program_iv};
-use opengles::gl2::{get_shader_info_log, get_shader_iv, active_texture};
-use opengles::gl2::{get_uniform_location, link_program, pixel_store_i, shader_source};
-use opengles::gl2::{tex_image_2d, tex_parameter_i, uniform_1i, uniform_matrix_4fv, use_program};
-use opengles::gl2::{vertex_attrib_pointer_f32, viewport};
+use opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, COMPILE_STATUS, FRAGMENT_SHADER, LINK_STATUS};
+use opengles::gl2::{NO_ERROR, STATIC_DRAW, TEXTURE_2D, TEXTURE0, TRIANGLE_STRIP, VERTEX_SHADER};
+use opengles::gl2::{GLenum, GLint, GLsizei, GLuint, active_texture, attach_shader, bind_buffer};
+use opengles::gl2::{buffer_data, create_program, clear, clear_color, compile_shader};
+use opengles::gl2::{create_shader, draw_arrays, enable, enable_vertex_attrib_array, gen_buffers};
+use opengles::gl2::{get_attrib_location, get_error, get_program_iv, get_shader_info_log};
+use opengles::gl2::{get_shader_iv, get_uniform_location, link_program, shader_source, uniform_1i};
+use opengles::gl2::{uniform_matrix_4fv, use_program, vertex_attrib_pointer_f32, viewport};
 
 use core::libc::c_int;
 use core::str::to_bytes;
@@ -148,7 +141,7 @@ pub fn init_buffers() -> (GLuint, GLuint) {
     return (triangle_vertex_buffer, texture_coord_buffer);
 }
 
-pub fn bind_and_render_quad(render_context: RenderContext, texture: &Texture) {
+pub fn bind_and_render_quad(render_context: RenderContext, texture: &Texture, flip: Flip) {
     active_texture(TEXTURE0);
     let _bound_texture = texture.bind();
 
@@ -160,12 +153,25 @@ pub fn bind_and_render_quad(render_context: RenderContext, texture: &Texture) {
     // Create the texture coordinate array.
     bind_buffer(ARRAY_BUFFER, render_context.texture_coord_buffer);
 
-    let vertices = [
-        0.0f32, 1.0f32,
-        0.0f32, 0.0f32,
-        1.0f32, 1.0f32,
-        1.0f32, 0.0f32,
-    ];
+    let vertices: [f32, ..8] = match flip {
+        NoFlip => {
+            [
+                0.0, 0.0,
+                0.0, 1.0,
+                1.0, 0.0,
+                1.0, 1.0,
+            ]
+        }
+        VerticalFlip => {
+            [
+                0.0, 1.0,
+                0.0, 0.0,
+                1.0, 1.0,
+                1.0, 0.0,
+            ]
+        }
+    };
+
     buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
     vertex_attrib_pointer_f32(render_context.texture_coord_attr as GLuint, 2, false, 0, 0);
     draw_arrays(TRIANGLE_STRIP, 0, 4);
@@ -191,7 +197,7 @@ impl Render for layers::TextureLayer {
         let transform = transform.mul(&self.common.transform);
         uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
 
-        bind_and_render_quad(render_context, &self.texture);
+        bind_and_render_quad(render_context, &self.texture, self.flip);
     }
 }
 

@@ -9,10 +9,9 @@
 
 use texturegl::Texture;
 
+use core::managed::mut_ptr_eq;
 use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
-use opengles::gl2::{GLuint, delete_textures};
-use core::managed::mut_ptr_eq;
 
 pub enum Format {
     ARGB32Format,
@@ -149,18 +148,36 @@ pub impl ContainerLayer {
     }
 }
 
+/// Whether a texture should be flipped.
+#[deriving(Eq)]
+pub enum Flip {
+    /// The texture should not be flipped.
+    NoFlip,
+    /// The texture should be flipped vertically.
+    VerticalFlip,
+}
+
 pub struct TextureLayer {
+    /// Common layer data.
     common: CommonLayer,
+
+    /// A handle to the GPU texture.
     texture: Texture,
+
+    /// The size of the texture in pixels.
     size: Size2D<uint>,
+
+    /// Whether this texture is flipped vertically.
+    flip: Flip,
 }
 
 impl TextureLayer {
-    pub fn new(texture: Texture, size: Size2D<uint>) -> TextureLayer {
+    pub fn new(texture: Texture, size: Size2D<uint>, flip: Flip) -> TextureLayer {
         TextureLayer {
             common: CommonLayer(),
             texture: texture,
             size: size,
+            flip: flip,
         }
     }
 }
