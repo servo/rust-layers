@@ -10,7 +10,7 @@
 use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
 use opengles::gl2::{GLuint, delete_textures};
-use core::managed::mut_ptr_eq;
+use std::managed::mut_ptr_eq;
 
 pub enum Format {
     ARGB32Format,
@@ -43,9 +43,9 @@ pub struct CommonLayer {
     transform: Matrix4<f32>,
 }
 
-pub impl CommonLayer {
+impl CommonLayer {
     // FIXME: Workaround for cross-crate bug regarding mutability of class fields
-    fn set_transform(&mut self, new_transform: Matrix4<f32>) {
+    pub fn set_transform(&mut self, new_transform: Matrix4<f32>) {
         self.transform = new_transform;
     }
 }
@@ -75,8 +75,8 @@ pub fn ContainerLayer() -> ContainerLayer {
     }
 }
 
-pub impl ContainerLayer {
-    fn each_child(&self, f: &fn(Layer) -> bool) -> bool {
+impl ContainerLayer {
+    pub fn each_child(&self, f: &fn(Layer) -> bool) -> bool {
         let mut child_opt = self.first_child;
         while !child_opt.is_none() {
             let child = child_opt.get();
@@ -89,7 +89,7 @@ pub impl ContainerLayer {
     }
 
     /// Only works when the child is disconnected from the layer tree.
-    fn add_child(@mut self, new_child: Layer) {
+    pub fn add_child(@mut self, new_child: Layer) {
         do new_child.with_common |new_child_common| {
             assert!(new_child_common.parent.is_none());
             assert!(new_child_common.prev_sibling.is_none());
@@ -99,7 +99,7 @@ pub impl ContainerLayer {
 
             match self.first_child {
                 None => {}
-                Some(copy first_child) => {
+                Some(first_child) => {
                     do first_child.with_common |first_child_common| {
                         assert!(first_child_common.prev_sibling.is_none());
                         first_child_common.prev_sibling = Some(new_child);
@@ -117,7 +117,7 @@ pub impl ContainerLayer {
         }
     }
     
-    fn remove_child(@mut self, child: Layer) {
+    pub fn remove_child(@mut self, child: Layer) {
         do child.with_common |child_common| {
             assert!(child_common.parent.is_some());
             match child_common.parent.get() {
@@ -202,8 +202,8 @@ impl Drop for Image {
     }
 }
 
-pub impl Image {
-    fn new(data: @ImageData) -> Image {
+impl Image {
+    pub fn new(data: @ImageData) -> Image {
         Image { data: data, texture: None }
     }
 }
@@ -216,8 +216,8 @@ pub struct BasicImageData {
     data: ~[u8]
 }
 
-pub impl BasicImageData {
-    fn new(size: Size2D<uint>, stride: uint, format: Format, data: ~[u8]) ->
+impl BasicImageData {
+    pub fn new(size: Size2D<uint>, stride: uint, format: Format, data: ~[u8]) ->
             BasicImageData {
         BasicImageData {
             size: size,
@@ -240,9 +240,9 @@ pub struct ImageLayer {
     image: @mut Image,
 }
 
-pub impl ImageLayer {
+impl ImageLayer {
     // FIXME: Workaround for cross-crate bug
-    fn set_image(&mut self, new_image: @mut Image) {
+    pub fn set_image(&mut self, new_image: @mut Image) {
         self.image = new_image;
     }
 }
