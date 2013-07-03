@@ -22,8 +22,7 @@ use opengles::gl2::{get_attrib_location, get_error, get_program_iv, get_shader_i
 use opengles::gl2::{get_shader_iv, get_uniform_location, link_program, shader_source, uniform_1i};
 use opengles::gl2::{uniform_matrix_4fv, use_program, vertex_attrib_pointer_f32, viewport};
 
-use core::libc::c_int;
-use core::str::to_bytes;
+use std::libc::c_int;
 
 static FRAGMENT_SHADER_SOURCE: &'static str = "
     #ifdef GLES2
@@ -56,7 +55,7 @@ static VERTEX_SHADER_SOURCE: &'static str = "
 
 pub fn load_shader(source_string: &str, shader_type: GLenum) -> GLuint {
     let shader_id = create_shader(shader_type);
-    shader_source(shader_id, ~[ to_bytes(source_string) ]);
+    shader_source(shader_id, [ source_string.as_bytes().to_owned() ]);
     compile_shader(shader_id);
 
     if get_error() != NO_ERROR {

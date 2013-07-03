@@ -9,7 +9,7 @@
 
 // Miscellaneous utilities.
 
-use core::vec::from_fn;
+use std::vec::from_fn;
 
 pub fn convert_rgb32_to_rgb24(buffer: ~[u8]) -> ~[u8] {
     let mut i = 0;
