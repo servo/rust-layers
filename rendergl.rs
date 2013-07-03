@@ -196,7 +196,7 @@ impl Render for layers::TextureLayer {
         let transform = transform.mul(&self.common.transform);
         uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
 
-        bind_and_render_quad(render_context, &self.texture, self.flip);
+        bind_and_render_quad(render_context, self.texture.get(), self.flip);
     }
 }
 
