@@ -16,9 +16,9 @@ use scene::*;
 use rendergl::*;
 use util::convert_rgb32_to_rgb24;
 
+/*
 use glut::glut::{post_redisplay, swap_buffers};
 
-/*
 struct Renderer {
     layer: @mut TiledImageLayer,
     //mut layer: @ImageLayer,
