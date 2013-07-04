@@ -11,8 +11,7 @@
        vers = "0.1")];
 #[crate_type = "lib"];
 
-extern mod std;
-
+extern mod extra;
 extern mod geom;
 extern mod glut;
 extern mod opengles;
