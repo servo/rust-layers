@@ -13,7 +13,6 @@
 
 extern mod extra;
 extern mod geom;
-extern mod glut;
 extern mod opengles;
 
 pub mod layers;
