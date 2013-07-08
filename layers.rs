@@ -12,7 +12,6 @@ use texturegl::Texture;
 use extra::arc::ARC;
 use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
-use opengles::gl2::{GLuint, delete_textures};
 use std::managed::mut_ptr_eq;
 
 pub enum Format {

@@ -21,6 +21,3 @@ pub mod rendergl;
 pub mod texturegl;
 pub mod util;
 
-#[cfg(test)]
-pub mod test;
-
