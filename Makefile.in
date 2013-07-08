@@ -19,11 +19,8 @@ librustlayers.dummy: layers.rc $(RUST_SRC)
 	$(RUSTC) $(RUSTFLAGS) $< -o $@
 	touch $@
 
-rustlayers-test: layers.rc $(RUST_SRC)
-	$(RUSTC) $(RUSTFLAGS) $< -o $@ --test
-
-check: rustlayers-test
-	./rustlayers-test
+.PHONY: check
+check:
 
 .PHONY: clean
 clean:
