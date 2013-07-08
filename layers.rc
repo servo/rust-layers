@@ -21,6 +21,3 @@ pub mod scene;
 pub mod rendergl;
 pub mod util;
 
-#[cfg(test)]
-pub mod test;
-
