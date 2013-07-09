@@ -190,7 +190,7 @@ pub struct Image {
 
 #[unsafe_destructor]
 impl Drop for Image {
-    fn finalize(&self) {
+    fn drop(&self) {
         match copy self.texture {
             None => {
                 // Nothing to do.
@@ -262,7 +262,7 @@ pub struct TiledImageLayer {
 
 pub fn TiledImageLayer(in_tiles: &[@mut Image], tiles_across: uint) -> TiledImageLayer {
     let tiles = @mut ~[];
-    for in_tiles.each |tile| {
+    for in_tiles.iter().advance |tile| {
         tiles.push(*tile);
     }
 

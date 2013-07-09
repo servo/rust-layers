@@ -270,7 +270,7 @@ impl Render for layers::ImageLayer {
 impl Render for layers::TiledImageLayer {
     fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
         let tiles_down = self.tiles.len() / self.tiles_across;
-        for self.tiles.eachi |i, tile| {
+        for (*self.tiles).iter().enumerate().advance |(i, tile)| {
             create_texture_for_image_if_necessary(*tile);
 
             let x = ((i % self.tiles_across) as f32);
