@@ -9,6 +9,7 @@
 
 use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
+use geom::rect::Rect;
 use opengles::gl2::{GLuint, delete_textures};
 use std::managed::mut_ptr_eq;
 
@@ -64,6 +65,7 @@ pub struct ContainerLayer {
     common: CommonLayer,
     first_child: Option<Layer>,
     last_child: Option<Layer>,
+    scissor: Option<Rect<f32>>,
 }
 
 
@@ -72,6 +74,7 @@ pub fn ContainerLayer() -> ContainerLayer {
         common: CommonLayer(),
         first_child: None,
         last_child: None,
+        scissor: None,
     }
 }
 
