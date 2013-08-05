@@ -78,17 +78,25 @@ pub fn ContainerLayer() -> ContainerLayer {
     }
 }
 
-impl ContainerLayer {
-    pub fn each_child(&self, f: &fn(Layer) -> bool) -> bool {
-        let mut child_opt = self.first_child;
-        while !child_opt.is_none() {
-            let child = child_opt.get();
-            if !f(child) {
-                break
+struct ChildIterator {
+    priv current: Option<Layer>,
+}
+
+impl Iterator<Layer> for ChildIterator {
+    fn next(&mut self) -> Option<Layer> {
+        match self.current {
+            None => None,
+            Some(child) => {
+                self.current = child.with_common(|x| x.next_sibling);
+                Some(child)
             }
-            child_opt = child.with_common(|x| x.next_sibling);
         }
-        true
+    }
+}
+
+impl ContainerLayer {
+    pub fn children(&self) -> ChildIterator {
+        ChildIterator { current: self.first_child }
     }
 
     /// Only works when the child is disconnected from the layer tree.
@@ -123,7 +131,7 @@ impl ContainerLayer {
     pub fn remove_child(@mut self, child: Layer) {
         do child.with_common |child_common| {
             assert!(child_common.parent.is_some());
-            match child_common.parent.get() {
+            match child_common.parent.unwrap() {
                 ContainerLayerKind(ref container) => {
                     assert!(mut_ptr_eq(*container, self));
                 },
@@ -194,7 +202,7 @@ pub struct Image {
 #[unsafe_destructor]
 impl Drop for Image {
     fn drop(&self) {
-        match copy self.texture {
+        match self.texture.clone() {
             None => {
                 // Nothing to do.
             }
@@ -265,7 +273,7 @@ pub struct TiledImageLayer {
 
 pub fn TiledImageLayer(in_tiles: &[@mut Image], tiles_across: uint) -> TiledImageLayer {
     let tiles = @mut ~[];
-    for in_tiles.iter().advance |tile| {
+    for tile in in_tiles.iter() {
         tiles.push(*tile);
     }
 

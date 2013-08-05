@@ -330,7 +330,7 @@ impl Render for layers::ContainerLayer {
         }
 
         let transform = transform.mul(&self.common.transform);
-        for self.each_child |child| {
+        for child in self.children() {
             render_layer(render_context, transform, child);
         }
         
@@ -365,14 +365,14 @@ impl Render for layers::ImageLayer {
 
         let transform = transform.mul(&self.common.transform);
         uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
-        bind_and_render_quad(render_context, self.image.texture.get());
+        bind_and_render_quad(render_context, self.image.texture.unwrap());
     }
 }
 
 impl Render for layers::TiledImageLayer {
     fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
         let tiles_down = self.tiles.len() / self.tiles_across;
-        for (*self.tiles).iter().enumerate().advance |(i, tile)| {
+        for (i, tile) in (*self.tiles).iter().enumerate() {
             create_texture_for_image_if_necessary(*tile);
 
             let x = ((i % self.tiles_across) as f32);
@@ -385,7 +385,7 @@ impl Render for layers::TiledImageLayer {
             let transform = transform.translate(x, y, 0.0);
 
             uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
-            bind_and_render_quad(render_context, tile.texture.get());
+            bind_and_render_quad(render_context, tile.texture.unwrap());
         }
     }
 }
