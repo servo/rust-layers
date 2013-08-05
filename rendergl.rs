@@ -13,19 +13,22 @@ use layers::{TiledImageLayerKind};
 use scene::Scene;
 
 use geom::matrix::{Matrix4, ortho};
+use geom::point::Point2D;
+use geom::size::Size2D;
+use geom::rect::Rect;
 use opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, CLAMP_TO_EDGE, COMPILE_STATUS};
-use opengles::gl2::{FRAGMENT_SHADER, LINK_STATUS, LINEAR, NO_ERROR, RGB, RGBA, BGRA};
-use opengles::gl2::{STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
+use opengles::gl2::{FRAGMENT_SHADER, LINK_STATUS, LINEAR, NO_ERROR, RGB, RGBA, BGRA, SCISSOR_BOX};
+use opengles::gl2::{SCISSOR_TEST, STATIC_DRAW, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER};
 use opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T, TEXTURE0};
 use opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNPACK_CLIENT_STORAGE_APPLE};
-use opengles::gl2::{UNPACK_ROW_LENGTH, UNSIGNED_BYTE, UNSIGNED_INT_8_8_8_8_REV, VERTEX_SHADER};
+use opengles::gl2::{UNPACK_ROW_LENGTH, UNSIGNED_BYTE, UNSIGNED_INT_8_8_8_8_REV, VERTEX_SHADER, VIEWPORT};
 use opengles::gl2::{GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer};
 use opengles::gl2::{bind_texture, buffer_data, create_program, clear, clear_color};
-use opengles::gl2::{compile_shader, create_shader, draw_arrays, enable};
+use opengles::gl2::{compile_shader, create_shader, draw_arrays, disable, enable, is_enabled};
 use opengles::gl2::{enable_vertex_attrib_array, gen_buffers, gen_textures};
-use opengles::gl2::{get_attrib_location, get_error, get_program_iv};
+use opengles::gl2::{get_attrib_location, get_error, get_integer_v, get_program_iv};
 use opengles::gl2::{get_shader_info_log, get_shader_iv, active_texture};
-use opengles::gl2::{get_uniform_location, link_program, pixel_store_i, shader_source};
+use opengles::gl2::{get_uniform_location, link_program, pixel_store_i, scissor, shader_source};
 use opengles::gl2::{tex_image_2d, tex_parameter_i, uniform_1i, uniform_matrix_4fv, use_program};
 use opengles::gl2::{vertex_attrib_pointer_f32, viewport};
 
@@ -241,9 +244,90 @@ pub trait Render {
 
 impl Render for layers::ContainerLayer {
     fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
+        let old_rect_opt = if is_enabled(SCISSOR_TEST) {
+            let mut old_rect = [0 as GLint, ..4];
+            get_integer_v(SCISSOR_BOX, old_rect);
+            Some(Rect(Point2D(old_rect[0], old_rect[1]), Size2D(old_rect[2], old_rect[3])))
+        } else {
+            None
+        };
+
+        match self.scissor {
+            Some(rect) => {
+                let size = Size2D((rect.size.width * transform.m11) as GLint,
+                                  (rect.size.height * transform.m22) as GLint);
+                
+                // Get the viewport height so we can flip the origin horizontally
+                // since glScissor measures from the bottom left of the viewport
+                let mut viewport = [0 as GLint, ..4];
+                get_integer_v(VIEWPORT, viewport);
+                let w_height = viewport[3];
+                let origin = Point2D((rect.origin.x * transform.m11 + transform.m41) as GLint,
+                                     w_height
+                                     - ((rect.origin.y * transform.m22 + transform.m42) as GLint)
+                                     - size.height);                
+                let rect = Rect(origin, size);
+                
+                match old_rect_opt {
+                    Some(old_rect) => {
+                        // A parent ContainerLayer is already being scissored, so set the
+                        // new scissor to the intersection of the two rects.
+                        let intersection = rect.intersection(&old_rect);
+                        match intersection {
+                            Some(new_rect) => {
+                                scissor(new_rect.origin.x,
+                                        new_rect.origin.y,
+                                        new_rect.size.width as GLsizei,
+                                        new_rect.size.height as GLsizei);
+                                maybe_get_error();
+                            }
+                            None => {
+                                return; // Layer is occluded/offscreen
+                            }
+                        }
+                    }
+                    None => {
+                        // We are the first ContainerLayer to be scissored.
+                        // Check against the viewport to prevent invalid values
+                        let w_rect = Rect(Point2D(0 as GLint, 0 as GLint),
+                                          Size2D(viewport[2], viewport[3]));
+                        let intersection = rect.intersection(&w_rect);
+                        match intersection {
+                            Some(new_rect) => {
+                                enable(SCISSOR_TEST);
+                                scissor(new_rect.origin.x,
+                                        new_rect.origin.y,
+                                        new_rect.size.width as GLsizei,
+                                        new_rect.size.height as GLsizei);
+                                maybe_get_error();
+                            }
+                            None => {
+                                return; // Layer is offscreen
+                            }
+                        }
+                    }
+                }
+            }
+            None => {} // Nothing to do
+        }
+
         let transform = transform.mul(&self.common.transform);
         for self.each_child |child| {
             render_layer(render_context, transform, child);
+        }
+        
+        match (self.scissor, old_rect_opt) {
+            (Some(_), Some(old_rect)) => {
+                // Set scissor back to the parent's scissoring rect.
+                scissor(old_rect.origin.x, old_rect.origin.y, 
+                        old_rect.size.width as GLsizei,
+                        old_rect.size.height as GLsizei);
+            }
+            (Some(_), None) => {
+                // Our parents are not being scissored, so disable scissoring for now
+                disable(SCISSOR_TEST);
+            }
+            (None, _) => {} // Nothing to do
         }
     }
 }
@@ -324,3 +408,14 @@ pub fn render_scene(render_context: RenderContext, scene: &Scene) {
     render_layer(render_context, transform, scene.root);
 }
 
+#[cfg(debug)]
+fn maybe_get_error() {
+    if get_error() != NO_ERROR {
+        fail!("GL error: %d", get_error() as int);
+    }
+}
+
+#[cfg(not(debug))]
+fn maybe_get_error() {
+    // do nothing
+}
