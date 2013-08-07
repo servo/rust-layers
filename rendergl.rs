@@ -33,10 +33,11 @@ use opengles::gl2::{tex_image_2d, tex_parameter_i, uniform_1i, uniform_matrix_4f
 use opengles::gl2::{vertex_attrib_pointer_f32, viewport};
 
 use std::libc::c_int;
+use std::libc::c_uint;
 
 pub fn FRAGMENT_SHADER_SOURCE() -> ~str {
     ~"
-        #ifdef GLES2
+        #ifdef GL_ES
             precision mediump float;
         #endif
 
@@ -155,6 +156,23 @@ pub fn init_buffers() -> (GLuint, GLuint) {
 }
 
 pub fn create_texture_for_image_if_necessary(image: @mut Image) {
+    #[cfg(target_os = "android")]
+    fn colorspace() -> c_uint {
+        RGBA
+    }
+    #[cfg(not(target_os = "android"))]
+    fn colorspace() -> c_uint {
+        BGRA
+    }
+    #[cfg(target_os = "android")]
+    fn datatype() -> c_uint {
+        UNSIGNED_BYTE
+    }
+    #[cfg(not(target_os = "android"))]
+    fn datatype() -> c_uint {
+        UNSIGNED_INT_8_8_8_8_REV
+    }
+
     match image.texture {
         None => {}
         Some(_) => { return; /* Nothing to do. */ }
@@ -202,8 +220,8 @@ pub fn create_texture_for_image_if_necessary(image: @mut Image) {
         ARGB32Format => {
             do data.with_data |data| {
                 tex_image_2d(TEXTURE_2D, 0 as GLint, RGBA as GLint,
-                             size.width as GLsizei, size.height as GLsizei, 0 as GLint, BGRA,
-                             UNSIGNED_INT_8_8_8_8_REV, Some(data));
+                             size.width as GLsizei, size.height as GLsizei, 0 as GLint, colorspace(),
+                             datatype(), Some(data));
             }
         }
     }
