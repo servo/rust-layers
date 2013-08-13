@@ -26,7 +26,7 @@ pub enum Layer {
 }
 
 impl Layer {
-    fn with_common<T>(&self, f: &fn(&mut CommonLayer) -> T) -> T {
+    pub fn with_common<T>(&self, f: &fn(&mut CommonLayer) -> T) -> T {
         match *self {
             ContainerLayerKind(container_layer) => f(&mut container_layer.common),
             TextureLayerKind(texture_layer) => f(&mut texture_layer.common),
