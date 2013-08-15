@@ -162,8 +162,8 @@ impl ContainerLayer {
     }
 }
 
-trait TextureManager {
-    pub fn get_texture(&self) -> GLuint;
+pub trait TextureManager {
+    fn get_texture(&self) -> GLuint;
 }
 
 pub struct TextureLayer {
