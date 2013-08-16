@@ -16,7 +16,7 @@ all:	librustlayers.dummy
 	$(CC) $< -o $@ -c $(CFLAGS)
 
 librustlayers.dummy: layers.rc $(RUST_SRC)
-	$(RUSTC) $(RUSTFLAGS) $< -o $@
+	$(RUSTC) $(RUSTFLAGS) $< --out-dir .
 	touch $@
 
 .PHONY: check
