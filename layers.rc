@@ -11,13 +11,13 @@
        vers = "0.1")];
 #[crate_type = "lib"];
 
-extern mod extra;
+extern mod std;
+
 extern mod geom;
 extern mod opengles;
 
 pub mod layers;
 pub mod scene;
 pub mod rendergl;
-pub mod texturegl;
 pub mod util;
 

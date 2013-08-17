@@ -7,11 +7,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use texturegl::Texture;
-
-use extra::arc::ARC;
 use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
+use geom::rect::Rect;
+use opengles::gl2::{GLuint, delete_textures};
 use std::managed::mut_ptr_eq;
 
 pub enum Format {
@@ -22,13 +21,17 @@ pub enum Format {
 pub enum Layer {
     ContainerLayerKind(@mut ContainerLayer),
     TextureLayerKind(@mut TextureLayer),
+    ImageLayerKind(@mut ImageLayer),
+    TiledImageLayerKind(@mut TiledImageLayer)
 }
 
 impl Layer {
-    fn with_common<T>(&self, f: &fn(&mut CommonLayer) -> T) -> T {
+    pub fn with_common<T>(&self, f: &fn(&mut CommonLayer) -> T) -> T {
         match *self {
             ContainerLayerKind(container_layer) => f(&mut container_layer.common),
             TextureLayerKind(texture_layer) => f(&mut texture_layer.common),
+            ImageLayerKind(image_layer) => f(&mut image_layer.common),
+            TiledImageLayerKind(tiled_image_layer) => f(&mut tiled_image_layer.common)
         }
     }
 }
@@ -62,6 +65,7 @@ pub struct ContainerLayer {
     common: CommonLayer,
     first_child: Option<Layer>,
     last_child: Option<Layer>,
+    scissor: Option<Rect<f32>>,
 }
 
 
@@ -70,20 +74,29 @@ pub fn ContainerLayer() -> ContainerLayer {
         common: CommonLayer(),
         first_child: None,
         last_child: None,
+        scissor: None,
+    }
+}
+
+struct ChildIterator {
+    priv current: Option<Layer>,
+}
+
+impl Iterator<Layer> for ChildIterator {
+    fn next(&mut self) -> Option<Layer> {
+        match self.current {
+            None => None,
+            Some(child) => {
+                self.current = child.with_common(|x| x.next_sibling);
+                Some(child)
+            }
+        }
     }
 }
 
 impl ContainerLayer {
-    pub fn each_child(&self, f: &fn(Layer) -> bool) -> bool {
-        let mut child_opt = self.first_child;
-        while !child_opt.is_none() {
-            let child = child_opt.get();
-            if !f(child) {
-                break
-            }
-            child_opt = child.with_common(|x| x.next_sibling);
-        }
-        true
+    pub fn children(&self) -> ChildIterator {
+        ChildIterator { current: self.first_child }
     }
 
     /// Only works when the child is disconnected from the layer tree.
@@ -118,7 +131,7 @@ impl ContainerLayer {
     pub fn remove_child(@mut self, child: Layer) {
         do child.with_common |child_common| {
             assert!(child_common.parent.is_some());
-            match child_common.parent.get() {
+            match child_common.parent.unwrap() {
                 ContainerLayerKind(ref container) => {
                     assert!(mut_ptr_eq(*container, self));
                 },
@@ -149,37 +162,125 @@ impl ContainerLayer {
     }
 }
 
-/// Whether a texture should be flipped.
-#[deriving(Eq)]
-pub enum Flip {
-    /// The texture should not be flipped.
-    NoFlip,
-    /// The texture should be flipped vertically.
-    VerticalFlip,
+pub trait TextureManager {
+    fn get_texture(&self) -> GLuint;
 }
 
 pub struct TextureLayer {
-    /// Common layer data.
     common: CommonLayer,
-
-    /// A handle to the GPU texture.
-    texture: ARC<Texture>,
-
-    /// The size of the texture in pixels.
-    size: Size2D<uint>,
-
-    /// Whether this texture is flipped vertically.
-    flip: Flip,
+    manager: @TextureManager,
+    size: Size2D<uint>
 }
 
 impl TextureLayer {
-    pub fn new(texture: ARC<Texture>, size: Size2D<uint>, flip: Flip) -> TextureLayer {
+    pub fn new(manager: @TextureManager, size: Size2D<uint>) -> TextureLayer {
         TextureLayer {
             common: CommonLayer(),
-            texture: texture,
+            manager: manager,
             size: size,
-            flip: flip,
         }
+    }
+}
+
+pub type WithDataFn<'self> = &'self fn(&'self [u8]);
+
+pub trait ImageData {
+    fn size(&self) -> Size2D<uint>;
+
+    // NB: stride is in pixels, like OpenGL GL_UNPACK_ROW_LENGTH.
+    fn stride(&self) -> uint;
+
+    fn format(&self) -> Format;
+    fn with_data(&self, WithDataFn);
+}
+
+pub struct Image {
+    data: @ImageData,
+    texture: Option<GLuint>,
+}
+
+#[unsafe_destructor]
+impl Drop for Image {
+    fn drop(&self) {
+        match self.texture.clone() {
+            None => {
+                // Nothing to do.
+            }
+            Some(texture) => {
+                delete_textures(&[texture]);
+            }
+        }
+    }
+}
+
+impl Image {
+    pub fn new(data: @ImageData) -> Image {
+        Image { data: data, texture: None }
+    }
+}
+
+/// Basic image data is a simple image data store that just owns the pixel data in memory.
+pub struct BasicImageData {
+    size: Size2D<uint>,
+    stride: uint,
+    format: Format,
+    data: ~[u8]
+}
+
+impl BasicImageData {
+    pub fn new(size: Size2D<uint>, stride: uint, format: Format, data: ~[u8]) ->
+            BasicImageData {
+        BasicImageData {
+            size: size,
+            stride: stride,
+            format: format,
+            data: data
+        }
+    }
+}
+
+impl ImageData for BasicImageData {
+    fn size(&self) -> Size2D<uint> { self.size }
+    fn stride(&self) -> uint { self.stride }
+    fn format(&self) -> Format { self.format }
+    fn with_data(&self, f: WithDataFn) { f(self.data) }
+}
+
+pub struct ImageLayer {
+    common: CommonLayer,
+    image: @mut Image,
+}
+
+impl ImageLayer {
+    // FIXME: Workaround for cross-crate bug
+    pub fn set_image(&mut self, new_image: @mut Image) {
+        self.image = new_image;
+    }
+}
+
+pub fn ImageLayer(image: @mut Image) -> ImageLayer {
+    ImageLayer {
+        common : CommonLayer(),
+        image : image,
+    }
+}
+
+pub struct TiledImageLayer {
+    common: CommonLayer,
+    tiles: @mut ~[@mut Image],
+    tiles_across: uint,
+}
+
+pub fn TiledImageLayer(in_tiles: &[@mut Image], tiles_across: uint) -> TiledImageLayer {
+    let tiles = @mut ~[];
+    for tile in in_tiles.iter() {
+        tiles.push(*tile);
+    }
+
+    TiledImageLayer {
+        common: CommonLayer(),
+        tiles: tiles,
+        tiles_across: tiles_across
     }
 }
 
