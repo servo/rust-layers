@@ -99,8 +99,9 @@ impl ContainerLayer {
         ChildIterator { current: self.first_child }
     }
 
+    /// Adds a child to the beginning of the list.
     /// Only works when the child is disconnected from the layer tree.
-    pub fn add_child(@mut self, new_child: Layer) {
+    pub fn add_child_start(@mut self, new_child: Layer) {
         do new_child.with_common |new_child_common| {
             assert!(new_child_common.parent.is_none());
             assert!(new_child_common.prev_sibling.is_none());
@@ -123,6 +124,36 @@ impl ContainerLayer {
 
             match self.last_child {
                 None => self.last_child = Some(new_child),
+                Some(_) => {}
+            }
+        }
+    }
+
+    /// Adds a child to the end of the list.
+    /// Only works when the child is disconnected from the layer tree.
+    pub fn add_child_end(@mut self, new_child: Layer) {
+        do new_child.with_common |new_child_common| {
+            assert!(new_child_common.parent.is_none());
+            assert!(new_child_common.prev_sibling.is_none());
+            assert!(new_child_common.next_sibling.is_none());
+
+            new_child_common.parent = Some(ContainerLayerKind(self));
+
+            match self.last_child {
+                None => {}
+                Some(last_child) => {
+                    do last_child.with_common |last_child_common| {
+                        assert!(last_child_common.next_sibling.is_none());
+                        last_child_common.next_sibling = Some(new_child);
+                        new_child_common.prev_sibling = Some(last_child);
+                    }
+                }
+            }
+
+            self.last_child = Some(new_child);
+
+            match self.first_child {
+                None => self.first_child = Some(new_child),
                 Some(_) => {}
             }
         }
