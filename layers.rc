@@ -12,6 +12,7 @@
 #[crate_type = "lib"];
 
 extern mod std;
+extern mod extra;
 
 extern mod geom;
 extern mod opengles;
@@ -19,5 +20,6 @@ extern mod opengles;
 pub mod layers;
 pub mod scene;
 pub mod rendergl;
+pub mod texturegl;
 pub mod util;
 

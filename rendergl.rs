@@ -7,10 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use layers::{ARGB32Format, ContainerLayerKind, Flip, NoFlip, RGB24Format, TextureLayerKind};
+use layers::{VerticalFlip};
 use layers;
-use layers::{ARGB32Format, ContainerLayerKind, TextureLayerKind, Image, ImageLayerKind, RGB24Format};
-use layers::{TiledImageLayerKind};
 use scene::Scene;
+use texturegl::Texture;
 
 use geom::matrix::{Matrix4, ortho};
 use geom::point::Point2D;
@@ -23,7 +24,7 @@ use opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T, TEXTURE0};
 use opengles::gl2::{TRIANGLE_STRIP, UNPACK_ALIGNMENT, UNPACK_CLIENT_STORAGE_APPLE};
 use opengles::gl2::{UNPACK_ROW_LENGTH, UNSIGNED_BYTE, UNSIGNED_INT_8_8_8_8_REV, VERTEX_SHADER, VIEWPORT};
 use opengles::gl2::{GLenum, GLint, GLsizei, GLuint, attach_shader, bind_buffer};
-use opengles::gl2::{bind_texture, buffer_data, create_program, clear, clear_color};
+use opengles::gl2::{buffer_data, create_program, clear, clear_color};
 use opengles::gl2::{compile_shader, create_shader, draw_arrays, disable, enable, is_enabled};
 use opengles::gl2::{enable_vertex_attrib_array, gen_buffers, gen_textures};
 use opengles::gl2::{get_attrib_location, get_error, get_integer_v, get_program_iv};
@@ -94,11 +95,12 @@ pub struct RenderContext {
     projection_uniform: c_int,
     sampler_uniform: c_int,
     vertex_buffer: GLuint,
+    flipped_vertex_buffer: GLuint,
     texture_coord_buffer: GLuint,
 }
 
 pub fn RenderContext(program: GLuint) -> RenderContext {
-    let (vertex_buffer, texture_coord_buffer) = init_buffers();
+    let (vertex_buffer, flipped_vertex_buffer, texture_coord_buffer) = init_buffers();
     let rc = RenderContext {
         program: program,
         vertex_position_attr: get_attrib_location(program, ~"aVertexPosition"),
@@ -107,6 +109,7 @@ pub fn RenderContext(program: GLuint) -> RenderContext {
         projection_uniform: get_uniform_location(program, ~"uPMatrix"),
         sampler_uniform: get_uniform_location(program, ~"uSampler"),
         vertex_buffer: vertex_buffer,
+        flipped_vertex_buffer: flipped_vertex_buffer,
         texture_coord_buffer: texture_coord_buffer,
     };
 
@@ -135,108 +138,44 @@ pub fn init_render_context() -> RenderContext {
     return RenderContext(program);
 }
 
-pub fn init_buffers() -> (GLuint, GLuint) {
-    let triangle_vertex_buffer = gen_buffers(1 as GLsizei)[0];
-    bind_buffer(ARRAY_BUFFER, triangle_vertex_buffer);
-
-    let (_0, _1) = (0.0f32, 1.0f32);
-    let vertices = ~[
-        _0, _0, _0,
-        _0, _1, _0,
-        _1, _0, _0,
-        _1, _1, _0
+pub fn init_buffers() -> (GLuint, GLuint, GLuint) {
+    let vertex_buffer = gen_buffers(1 as GLsizei)[0];
+    bind_buffer(ARRAY_BUFFER, vertex_buffer);
+    let vertices: [f32, ..8] = [
+        0.0, 0.0,
+        0.0, 1.0,
+        1.0, 0.0,
+        1.0, 1.0,
     ];
-
     buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
+
+    let flipped_vertex_buffer = gen_buffers(1 as GLsizei)[0];
+    bind_buffer(ARRAY_BUFFER, flipped_vertex_buffer);
+    let flipped_vertices: [f32, ..8] = [
+        0.0, 1.0,
+        0.0, 0.0,
+        1.0, 1.0,
+        1.0, 0.0,
+    ];
+    buffer_data(ARRAY_BUFFER, flipped_vertices, STATIC_DRAW);
 
     let texture_coord_buffer = gen_buffers(1 as GLsizei)[0];
     bind_buffer(ARRAY_BUFFER, texture_coord_buffer);
 
-    return (triangle_vertex_buffer, texture_coord_buffer);
+    return (vertex_buffer, flipped_vertex_buffer, texture_coord_buffer);
 }
 
-pub fn create_texture_for_image_if_necessary(image: @mut Image) {
-    #[cfg(target_os = "android")]
-    fn colorspace() -> c_uint {
-        RGBA
-    }
-    #[cfg(not(target_os = "android"))]
-    fn colorspace() -> c_uint {
-        BGRA
-    }
-    #[cfg(target_os = "android")]
-    fn datatype() -> c_uint {
-        UNSIGNED_BYTE
-    }
-    #[cfg(not(target_os = "android"))]
-    fn datatype() -> c_uint {
-        UNSIGNED_INT_8_8_8_8_REV
-    }
-
-    match image.texture {
-        None => {}
-        Some(_) => { return; /* Nothing to do. */ }
-    }
-
-    let texture = gen_textures(1 as GLsizei)[0];
-
-    //XXXjdm This block is necessary to avoid a task failure that occurs
-    //       when |image.data| is borrowed and we mutate |image.texture|.
-    {
-    let data = &mut image.data;
-    debug!("making texture, id=%d, format=%?", texture as int, data.format());
-
-    bind_texture(TEXTURE_2D, texture);
-
-    // FIXME: This makes the lifetime requirements somewhat complex...
-    pixel_store_i(UNPACK_CLIENT_STORAGE_APPLE, 1);
-
-    let size = data.size();
-    let stride = data.stride() as GLsizei;
-
-    tex_parameter_i(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR as GLint);
-    tex_parameter_i(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR as GLint);
-
-    tex_parameter_i(TEXTURE_2D, TEXTURE_WRAP_S, CLAMP_TO_EDGE as GLint);
-    tex_parameter_i(TEXTURE_2D, TEXTURE_WRAP_T, CLAMP_TO_EDGE as GLint);
-
-    // These two are needed for DMA on the Mac. Don't touch them unless you know what you're doing!
-    pixel_store_i(UNPACK_ALIGNMENT, 4);
-    pixel_store_i(UNPACK_ROW_LENGTH, size.width as GLint);
-    if stride % 32 != 0 {
-        info!("rust-layers: suggest using stride multiples of 32 for DMA on the Mac");
-    }
-
-    debug!("rust-layers stride is %u", stride as uint);
-
-    match data.format() {
-        RGB24Format => {
-            do data.with_data |data| {
-                tex_image_2d(TEXTURE_2D, 0 as GLint, RGB as GLint,
-                             size.width as GLsizei, size.height as GLsizei, 0 as GLint, RGB,
-                             UNSIGNED_BYTE, Some(data));
-            }
-        }
-        ARGB32Format => {
-            do data.with_data |data| {
-                tex_image_2d(TEXTURE_2D, 0 as GLint, RGBA as GLint,
-                             size.width as GLsizei, size.height as GLsizei, 0 as GLint, colorspace(),
-                             datatype(), Some(data));
-            }
-        }
-    }
-    } //XXXjdm This block avoids a segfault. See opening comment.
-
-    image.texture = Some(texture);
-}
-
-pub fn bind_and_render_quad(render_context: RenderContext, texture: GLuint) {
+pub fn bind_and_render_quad(render_context: RenderContext, texture: &Texture, flip: Flip) {
     active_texture(TEXTURE0);
-    bind_texture(TEXTURE_2D, texture);
+    let _bound_texture = texture.bind();
 
     uniform_1i(render_context.sampler_uniform, 0);
 
-    bind_buffer(ARRAY_BUFFER, render_context.vertex_buffer);
+    match flip {
+        NoFlip => bind_buffer(ARRAY_BUFFER, render_context.vertex_buffer),
+        VerticalFlip => bind_buffer(ARRAY_BUFFER, render_context.flipped_vertex_buffer),
+    }
+
     vertex_attrib_pointer_f32(render_context.vertex_position_attr as GLuint, 3, false, 0, 0);
 
     // Create the texture coordinate array.
@@ -251,7 +190,6 @@ pub fn bind_and_render_quad(render_context: RenderContext, texture: GLuint) {
     buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
     vertex_attrib_pointer_f32(render_context.texture_coord_attr as GLuint, 2, false, 0, 0);
     draw_arrays(TRIANGLE_STRIP, 0, 4);
-    bind_texture(TEXTURE_2D, 0);
 }
 
 // Layer rendering
@@ -354,39 +292,7 @@ impl Render for layers::TextureLayer {
     fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
         let transform = transform.mul(&self.common.transform);
         uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
-
-        bind_and_render_quad(render_context, self.manager.get_texture());
-    }
-}
-
-impl Render for layers::ImageLayer {
-    fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
-        create_texture_for_image_if_necessary(self.image);
-
-        let transform = transform.mul(&self.common.transform);
-        uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
-        bind_and_render_quad(render_context, self.image.texture.unwrap());
-    }
-}
-
-impl Render for layers::TiledImageLayer {
-    fn render(@mut self, render_context: RenderContext, transform: Matrix4<f32>) {
-        let tiles_down = self.tiles.len() / self.tiles_across;
-        for (i, tile) in (*self.tiles).iter().enumerate() {
-            create_texture_for_image_if_necessary(*tile);
-
-            let x = ((i % self.tiles_across) as f32);
-            let y = ((i / self.tiles_across) as f32);
-
-            let transform = transform.mul(&self.common.transform);
-            let transform = transform.scale(1.0 / (self.tiles_across as f32),
-                                            1.0 / (tiles_down as f32),
-                                            1.0);
-            let transform = transform.translate(x, y, 0.0);
-
-            uniform_matrix_4fv(render_context.modelview_uniform, false, transform.to_array());
-            bind_and_render_quad(render_context, tile.texture.unwrap());
-        }
+        bind_and_render_quad(render_context, self.texture.get(), self.flip);
     }
 }
 
@@ -397,12 +303,6 @@ fn render_layer(render_context: RenderContext, transform: Matrix4<f32>, layer: l
         }
         TextureLayerKind(texture_layer) => {
             texture_layer.render(render_context, transform);
-        }
-        ImageLayerKind(image_layer) => {
-            image_layer.render(render_context, transform);
-        }
-        TiledImageLayerKind(tiled_image_layer) => {
-            tiled_image_layer.render(render_context, transform);
         }
     }
 }
