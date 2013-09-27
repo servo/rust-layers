@@ -37,7 +37,7 @@ pub struct Texture {
 }
 
 impl Drop for Texture {
-    fn drop(&self) {
+    fn drop(&mut self) {
         if !self.weak {
             gl2::delete_textures([ self.id ])
         }
@@ -64,7 +64,7 @@ struct BoundTexture {
 }
 
 impl Drop for BoundTexture {
-    fn drop(&self) {
+    fn drop(&mut self) {
         gl2::bind_texture(TEXTURE_2D, 0)
     }
 }
