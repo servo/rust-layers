@@ -232,7 +232,7 @@ pub struct Image {
 
 #[unsafe_destructor]
 impl Drop for Image {
-    fn drop(&self) {
+    fn drop(&mut self) {
         match self.texture.clone() {
             None => {
                 // Nothing to do.
