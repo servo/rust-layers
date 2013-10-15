@@ -36,78 +36,55 @@ use opengles::gl2::{vertex_attrib_pointer_f32, viewport};
 use std::libc::c_int;
 use std::libc::c_uint;
 
-static FRAGMENT_SHADER_SOURCE: &'static str = "
-    #ifdef GL_ES
-        precision mediump float;
-    #endif
+pub fn FRAGMENT_SHADER_SOURCE() -> ~str {
+    ~"
+        #ifdef GL_ES
+            precision mediump float;
+        #endif
 
-    varying vec2 vTextureCoord;
+        varying vec2 vTextureCoord;
 
-    uniform sampler2D uSampler;
+        uniform sampler2D uSampler;
 
-    void main(void) {
-        gl_FragColor = texture2D(uSampler, vTextureCoord);
-    }
-";
+        void main(void) {
+            gl_FragColor = texture2D(uSampler, vTextureCoord);
+        }
+    "
+}
 
-static VERTEX_SHADER_SOURCE: &'static str = "
-    attribute vec3 aVertexPosition;
-    attribute vec2 aTextureCoord;
+pub fn VERTEX_SHADER_SOURCE() -> ~str {
+    ~"
+        attribute vec3 aVertexPosition;
+        attribute vec2 aTextureCoord;
 
-    uniform mat4 uMVMatrix;
-    uniform mat4 uPMatrix;
+        uniform mat4 uMVMatrix;
+        uniform mat4 uPMatrix;
 
-    varying vec2 vTextureCoord;
+        varying vec2 vTextureCoord;
 
-    void main(void) {
-        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
-        vTextureCoord = aTextureCoord;
-    }
-";
+        void main(void) {
+            gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+            vTextureCoord = aTextureCoord;
+        }
+    "
+}
 
-static VERTICES: [f32, ..12] = [
-    0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0,
-    1.0, 0.0, 0.0,
-    1.0, 1.0, 0.0,
-];
-
-static TEXTURE_COORDINATES: [f32, ..8] = [
-    0.0, 0.0,
-    0.0, 1.0,
-    1.0, 0.0,
-    1.0, 1.0,
-];
-
-static FLIPPED_TEXTURE_COORDINATES: [f32, ..8] = [
-    0.0, 1.0,
-    0.0, 0.0,
-    1.0, 1.0,
-    1.0, 0.0,
-];
-
-pub fn load_shader(source_string: &str, shader_type: GLenum) -> GLuint {
+pub fn load_shader(source_string: ~str, shader_type: GLenum) -> GLuint {
     let shader_id = create_shader(shader_type);
     shader_source(shader_id, [ source_string.as_bytes().to_owned() ]);
     compile_shader(shader_id);
 
     if get_error() != NO_ERROR {
         println(fmt!("error: %d", get_error() as int));
-        fail!("failed to compile shader");
+        fail!(~"failed to compile shader");
     }
 
     if get_shader_iv(shader_id, COMPILE_STATUS) == (0 as GLint) {
         println(fmt!("shader info log: %s", get_shader_info_log(shader_id)));
-        fail!("failed to compile shader");
+        fail!(~"failed to compile shader");
     }
 
     return shader_id;
-}
-
-struct Buffers {
-    vertex_buffer: GLuint,
-    texture_coordinate_buffer: GLuint,
-    flipped_texture_coordinate_buffer: GLuint,
 }
 
 pub struct RenderContext {
@@ -117,51 +94,34 @@ pub struct RenderContext {
     modelview_uniform: c_int,
     projection_uniform: c_int,
     sampler_uniform: c_int,
-    buffers: Buffers,
+    vertex_buffer: GLuint,
+    flipped_vertex_buffer: GLuint,
+    texture_coord_buffer: GLuint,
 }
 
-impl RenderContext {
-    fn new(program: GLuint) -> RenderContext {
-        let render_context = RenderContext {
-            program: program,
-            vertex_position_attr: get_attrib_location(program, ~"aVertexPosition"),
-            texture_coord_attr: get_attrib_location(program, ~"aTextureCoord"),
-            modelview_uniform: get_uniform_location(program, ~"uMVMatrix"),
-            projection_uniform: get_uniform_location(program, ~"uPMatrix"),
-            sampler_uniform: get_uniform_location(program, ~"uSampler"),
-            buffers: RenderContext::init_buffers(),
-        };
+pub fn RenderContext(program: GLuint) -> RenderContext {
+    let (vertex_buffer, flipped_vertex_buffer, texture_coord_buffer) = init_buffers();
+    let rc = RenderContext {
+        program: program,
+        vertex_position_attr: get_attrib_location(program, ~"aVertexPosition"),
+        texture_coord_attr: get_attrib_location(program, ~"aTextureCoord"),
+        modelview_uniform: get_uniform_location(program, ~"uMVMatrix"),
+        projection_uniform: get_uniform_location(program, ~"uPMatrix"),
+        sampler_uniform: get_uniform_location(program, ~"uSampler"),
+        vertex_buffer: vertex_buffer,
+        flipped_vertex_buffer: flipped_vertex_buffer,
+        texture_coord_buffer: texture_coord_buffer,
+    };
 
-        enable_vertex_attrib_array(render_context.vertex_position_attr as GLuint);
-        enable_vertex_attrib_array(render_context.texture_coord_attr as GLuint);
+    enable_vertex_attrib_array(rc.vertex_position_attr as GLuint);
+    enable_vertex_attrib_array(rc.texture_coord_attr as GLuint);
 
-        render_context
-    }
-
-    fn init_buffers() -> Buffers {
-        let vertex_buffer = gen_buffers(1)[0];
-        bind_buffer(ARRAY_BUFFER, vertex_buffer);
-        buffer_data(ARRAY_BUFFER, VERTICES, STATIC_DRAW);
-
-        let texture_coordinate_buffer = gen_buffers(1)[0];
-        bind_buffer(ARRAY_BUFFER, texture_coordinate_buffer);
-        buffer_data(ARRAY_BUFFER, TEXTURE_COORDINATES, STATIC_DRAW);
-
-        let flipped_texture_coordinate_buffer = gen_buffers(1)[0];
-        bind_buffer(ARRAY_BUFFER, flipped_texture_coordinate_buffer);
-        buffer_data(ARRAY_BUFFER, FLIPPED_TEXTURE_COORDINATES, STATIC_DRAW);
-
-        Buffers {
-            vertex_buffer: vertex_buffer,
-            texture_coordinate_buffer: texture_coordinate_buffer,
-            flipped_texture_coordinate_buffer: flipped_texture_coordinate_buffer,
-        }
-    }
+    rc
 }
 
 pub fn init_render_context() -> RenderContext {
-    let vertex_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
-    let fragment_shader = load_shader(FRAGMENT_SHADER_SOURCE, FRAGMENT_SHADER);
+    let vertex_shader = load_shader(VERTEX_SHADER_SOURCE(), VERTEX_SHADER);
+    let fragment_shader = load_shader(FRAGMENT_SHADER_SOURCE(), FRAGMENT_SHADER);
 
     let program = create_program();
     attach_shader(program, vertex_shader);
@@ -169,13 +129,40 @@ pub fn init_render_context() -> RenderContext {
     link_program(program);
 
     if get_program_iv(program, LINK_STATUS) == (0 as GLint) {
-        fail!("failed to initialize program");
+        fail!(~"failed to initialize program");
     }
 
     use_program(program);
     enable(TEXTURE_2D);
 
-    RenderContext::new(program)
+    return RenderContext(program);
+}
+
+pub fn init_buffers() -> (GLuint, GLuint, GLuint) {
+    let vertex_buffer = gen_buffers(1 as GLsizei)[0];
+    bind_buffer(ARRAY_BUFFER, vertex_buffer);
+    let vertices: [f32, ..8] = [
+        0.0, 0.0,
+        0.0, 1.0,
+        1.0, 0.0,
+        1.0, 1.0,
+    ];
+    buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
+
+    let flipped_vertex_buffer = gen_buffers(1 as GLsizei)[0];
+    bind_buffer(ARRAY_BUFFER, flipped_vertex_buffer);
+    let flipped_vertices: [f32, ..8] = [
+        0.0, 1.0,
+        0.0, 0.0,
+        1.0, 1.0,
+        1.0, 0.0,
+    ];
+    buffer_data(ARRAY_BUFFER, flipped_vertices, STATIC_DRAW);
+
+    let texture_coord_buffer = gen_buffers(1 as GLsizei)[0];
+    bind_buffer(ARRAY_BUFFER, texture_coord_buffer);
+
+    return (vertex_buffer, flipped_vertex_buffer, texture_coord_buffer);
 }
 
 pub fn bind_and_render_quad(render_context: RenderContext, texture: &Texture, flip: Flip) {
@@ -184,17 +171,24 @@ pub fn bind_and_render_quad(render_context: RenderContext, texture: &Texture, fl
 
     uniform_1i(render_context.sampler_uniform, 0);
 
-    bind_buffer(ARRAY_BUFFER, render_context.buffers.vertex_buffer);
+    match flip {
+        NoFlip => bind_buffer(ARRAY_BUFFER, render_context.vertex_buffer),
+        VerticalFlip => bind_buffer(ARRAY_BUFFER, render_context.flipped_vertex_buffer),
+    }
+
     vertex_attrib_pointer_f32(render_context.vertex_position_attr as GLuint, 3, false, 0, 0);
 
-    match flip {
-        NoFlip => bind_buffer(ARRAY_BUFFER, render_context.buffers.texture_coordinate_buffer),
-        VerticalFlip => {
-            bind_buffer(ARRAY_BUFFER, render_context.buffers.flipped_texture_coordinate_buffer)
-        }
-    }
-    vertex_attrib_pointer_f32(render_context.texture_coord_attr as GLuint, 2, false, 0, 0);
+    // Create the texture coordinate array.
+    bind_buffer(ARRAY_BUFFER, render_context.texture_coord_buffer);
 
+    let vertices = [
+        0.0f32, 1.0f32,
+        0.0f32, 0.0f32,
+        1.0f32, 1.0f32,
+        1.0f32, 0.0f32,
+    ];
+    buffer_data(ARRAY_BUFFER, vertices, STATIC_DRAW);
+    vertex_attrib_pointer_f32(render_context.texture_coord_attr as GLuint, 2, false, 0, 0);
     draw_arrays(TRIANGLE_STRIP, 0, 4);
 }
 
