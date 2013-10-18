@@ -101,11 +101,11 @@ pub fn RenderContext(program: GLuint) -> RenderContext {
     let (vertex_buffer, texture_coord_buffer) = init_buffers();
     let rc = RenderContext {
         program: program,
-        vertex_position_attr: get_attrib_location(program, ~"aVertexPosition"),
-        texture_coord_attr: get_attrib_location(program, ~"aTextureCoord"),
-        modelview_uniform: get_uniform_location(program, ~"uMVMatrix"),
-        projection_uniform: get_uniform_location(program, ~"uPMatrix"),
-        sampler_uniform: get_uniform_location(program, ~"uSampler"),
+        vertex_position_attr: get_attrib_location(program, "aVertexPosition"),
+        texture_coord_attr: get_attrib_location(program, "aTextureCoord"),
+        modelview_uniform: get_uniform_location(program, "uMVMatrix"),
+        projection_uniform: get_uniform_location(program, "uPMatrix"),
+        sampler_uniform: get_uniform_location(program, "uSampler"),
         vertex_buffer: vertex_buffer,
         texture_coord_buffer: texture_coord_buffer,
     };
