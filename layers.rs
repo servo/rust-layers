@@ -7,10 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use texturegl::Texture;
+
 use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
 use geom::rect::Rect;
-use opengles::gl2::{GLuint, delete_textures};
 use std::managed::mut_ptr_eq;
 
 pub enum Format {
@@ -21,8 +22,6 @@ pub enum Format {
 pub enum Layer {
     ContainerLayerKind(@mut ContainerLayer),
     TextureLayerKind(@mut TextureLayer),
-    ImageLayerKind(@mut ImageLayer),
-    TiledImageLayerKind(@mut TiledImageLayer)
 }
 
 impl Layer {
@@ -30,8 +29,6 @@ impl Layer {
         match *self {
             ContainerLayerKind(container_layer) => f(&mut container_layer.common),
             TextureLayerKind(texture_layer) => f(&mut texture_layer.common),
-            ImageLayerKind(image_layer) => f(&mut image_layer.common),
-            TiledImageLayerKind(tiled_image_layer) => f(&mut tiled_image_layer.common)
         }
     }
 }
@@ -193,125 +190,33 @@ impl ContainerLayer {
     }
 }
 
-pub trait TextureManager {
-    fn get_texture(&self) -> GLuint;
+/// Whether a texture should be flipped.
+#[deriving(Eq)]
+pub enum Flip {
+    /// The texture should not be flipped.
+    NoFlip,
+    /// The texture should be flipped vertically.
+    VerticalFlip,
 }
 
 pub struct TextureLayer {
     common: CommonLayer,
-    manager: @TextureManager,
-    size: Size2D<uint>
+    /// A handle to the GPU texture.
+    texture: Texture,
+    /// The size of the texture in pixels.
+    size: Size2D<uint>,
+    /// Whether this texture is flipped vertically.
+    flip: Flip,
 }
 
 impl TextureLayer {
-    pub fn new(manager: @TextureManager, size: Size2D<uint>) -> TextureLayer {
+    pub fn new(texture: Texture, size: Size2D<uint>, flip: Flip) -> TextureLayer {
         TextureLayer {
             common: CommonLayer(),
-            manager: manager,
+            texture: texture,
             size: size,
+            flip: flip,
         }
-    }
-}
-
-pub type WithDataFn<'self> = &'self fn(&'self [u8]);
-
-pub trait ImageData {
-    fn size(&self) -> Size2D<uint>;
-
-    // NB: stride is in pixels, like OpenGL GL_UNPACK_ROW_LENGTH.
-    fn stride(&self) -> uint;
-
-    fn format(&self) -> Format;
-    fn with_data(&self, WithDataFn);
-}
-
-pub struct Image {
-    data: @ImageData,
-    texture: Option<GLuint>,
-}
-
-#[unsafe_destructor]
-impl Drop for Image {
-    fn drop(&mut self) {
-        match self.texture.clone() {
-            None => {
-                // Nothing to do.
-            }
-            Some(texture) => {
-                delete_textures(&[texture]);
-            }
-        }
-    }
-}
-
-impl Image {
-    pub fn new(data: @ImageData) -> Image {
-        Image { data: data, texture: None }
-    }
-}
-
-/// Basic image data is a simple image data store that just owns the pixel data in memory.
-pub struct BasicImageData {
-    size: Size2D<uint>,
-    stride: uint,
-    format: Format,
-    data: ~[u8]
-}
-
-impl BasicImageData {
-    pub fn new(size: Size2D<uint>, stride: uint, format: Format, data: ~[u8]) ->
-            BasicImageData {
-        BasicImageData {
-            size: size,
-            stride: stride,
-            format: format,
-            data: data
-        }
-    }
-}
-
-impl ImageData for BasicImageData {
-    fn size(&self) -> Size2D<uint> { self.size }
-    fn stride(&self) -> uint { self.stride }
-    fn format(&self) -> Format { self.format }
-    fn with_data(&self, f: WithDataFn) { f(self.data) }
-}
-
-pub struct ImageLayer {
-    common: CommonLayer,
-    image: @mut Image,
-}
-
-impl ImageLayer {
-    // FIXME: Workaround for cross-crate bug
-    pub fn set_image(&mut self, new_image: @mut Image) {
-        self.image = new_image;
-    }
-}
-
-pub fn ImageLayer(image: @mut Image) -> ImageLayer {
-    ImageLayer {
-        common : CommonLayer(),
-        image : image,
-    }
-}
-
-pub struct TiledImageLayer {
-    common: CommonLayer,
-    tiles: @mut ~[@mut Image],
-    tiles_across: uint,
-}
-
-pub fn TiledImageLayer(in_tiles: &[@mut Image], tiles_across: uint) -> TiledImageLayer {
-    let tiles = @mut ~[];
-    for tile in in_tiles.iter() {
-        tiles.push(*tile);
-    }
-
-    TiledImageLayer {
-        common: CommonLayer(),
-        tiles: tiles,
-        tiles_across: tiles_across
     }
 }
 
