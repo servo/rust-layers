@@ -12,7 +12,6 @@
 use platform::surface::NativeSurfaceMethods;
 use texturegl::Texture;
 
-use extra::arc::Arc;
 use geom::size::Size2D;
 use opengles::glx::{GLXFBConfig, GLXDrawable, GLXPixmap, GLX_BIND_TO_TEXTURE_RGBA_EXT};
 use opengles::glx::{GLX_DEPTH_SIZE, GLX_DRAWABLE_TYPE, GLX_FRONT_EXT, GLX_PIXMAP_BIT, GLX_RGBA};
