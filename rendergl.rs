@@ -100,12 +100,12 @@ pub fn load_shader(source_string: &str, shader_type: GLenum) -> GLuint {
     compile_shader(shader_id);
 
     if get_error() != NO_ERROR {
-        println(fmt!("error: %d", get_error() as int));
+        println(format!("error: {:d}", get_error() as int));
         fail!("failed to compile shader");
     }
 
     if get_shader_iv(shader_id, COMPILE_STATUS) == (0 as GLint) {
-        println(fmt!("shader info log: %s", get_shader_info_log(shader_id)));
+        println(format!("shader info log: {:s}", get_shader_info_log(shader_id)));
         fail!("failed to compile shader");
     }
 
@@ -453,7 +453,7 @@ pub fn render_scene(render_context: RenderContext, scene: &Scene) {
 #[cfg(debug)]
 fn maybe_get_error() {
     if get_error() != NO_ERROR {
-        fail!("GL error: %d", get_error() as int);
+        fail!("GL error: {:d}", get_error() as int);
     }
 }
 
