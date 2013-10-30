@@ -13,11 +13,11 @@ use platform::surface::NativeSurfaceMethods;
 use texturegl::Texture;
 
 use geom::size::Size2D;
-use opengles::glx::{GLXFBConfig, GLXDrawable, GLXPixmap, GLX_BIND_TO_TEXTURE_RGBA_EXT};
+use opengles::glx::{GLXFBConfig, GLXDrawable, GLX_BIND_TO_TEXTURE_RGBA_EXT};
 use opengles::glx::{GLX_DEPTH_SIZE, GLX_DRAWABLE_TYPE, GLX_FRONT_EXT, GLX_PIXMAP_BIT, GLX_RGBA};
 use opengles::glx::{GLX_TEXTURE_2D_EXT, GLX_TEXTURE_FORMAT_EXT, GLX_TEXTURE_FORMAT_RGBA_EXT};
 use opengles::glx::{GLX_TEXTURE_TARGET_EXT, glXChooseVisual, glXCreatePixmap, glXDestroyPixmap};
-use opengles::glx::{glXGetFBConfigs, glXGetProcAddress, glXGetFBConfigAttrib, glXGetFBConfigs};
+use opengles::glx::{glXGetProcAddress, glXGetFBConfigAttrib, glXGetFBConfigs};
 use opengles::glx::{glXGetVisualFromFBConfig};
 use opengles::glx;
 use opengles::gl2::NO_ERROR;
@@ -213,7 +213,7 @@ impl NativeSurfaceMethods for NativeSurface {
     fn bind_to_texture(&self,
                        native_context: &NativeCompositingGraphicsContext,
                        texture: &Texture,
-                       size: Size2D<int>) {
+                       _size: Size2D<int>) {
         unsafe {
             // Create the GLX pixmap.
             //
