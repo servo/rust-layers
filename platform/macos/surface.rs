@@ -10,6 +10,7 @@
 //! Mac OS-specific implementation of cross-process surfaces. This uses `IOSurface`, introduced
 //! in Mac OS X 10.6 Snow Leopard.
 
+use core_foundation::base::TCFType;
 use core_foundation::boolean::CFBoolean;
 use core_foundation::dictionary::CFDictionary;
 use core_foundation::number::CFNumber;
@@ -72,34 +73,35 @@ impl NativeSurface {
 
 impl NativeSurfaceMethods for NativeSurface {
     fn new(_: &NativePaintingGraphicsContext, size: Size2D<i32>, stride: i32) -> NativeSurface {
-        let width_key = CFString::wrap_shared(kIOSurfaceWidth);
-        let width_value = CFNumber::new(size.width);
+        unsafe {
+            let width_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceWidth);
+            let width_value: CFNumber = FromPrimitive::from_i32(size.width).unwrap();
 
-        let height_key = CFString::wrap_shared(kIOSurfaceHeight);
-        let height_value = CFNumber::new(size.height);
+            let height_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceHeight);
+            let height_value: CFNumber = FromPrimitive::from_i32(size.height).unwrap();
 
-        let bytes_per_row_key = CFString::wrap_shared(kIOSurfaceBytesPerRow);
-        let bytes_per_row_value = CFNumber::new(stride);
+            let bytes_per_row_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceBytesPerRow);
+            let bytes_per_row_value: CFNumber = FromPrimitive::from_i32(stride).unwrap();
 
-        let bytes_per_elem_key = CFString::wrap_shared(kIOSurfaceBytesPerElement);
-        let bytes_per_elem_value = CFNumber::new(4i32);
+            let bytes_per_elem_key: CFString =
+                TCFType::wrap_under_get_rule(kIOSurfaceBytesPerElement);
+            let bytes_per_elem_value: CFNumber = FromPrimitive::from_i32(4).unwrap();
 
-        let is_global_key = CFString::wrap_shared(kIOSurfaceIsGlobal);
-        let is_global_value = CFBoolean::true_value();
+            let is_global_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceIsGlobal);
+            let is_global_value = CFBoolean::true_value();
 
-        let surface = io_surface::new(&CFDictionary::new([
-            (*width_key.contents.borrow_ref(), *width_value.contents.borrow_type_ref()),
-            (*height_key.contents.borrow_ref(), *height_value.contents.borrow_type_ref()),
-            (*bytes_per_row_key.contents.borrow_ref(),
-             *bytes_per_row_value.contents.borrow_type_ref()),
-            (*bytes_per_elem_key.contents.borrow_ref(),
-             *bytes_per_elem_value.contents.borrow_type_ref()),
-            (*is_global_key.contents.borrow_ref(), *is_global_value.contents.borrow_type_ref()),
-        ]));
+            let surface = io_surface::new(&CFDictionary::from_CFType_pairs([
+                (width_key.as_CFType(), width_value.as_CFType()),
+                (height_key.as_CFType(), height_value.as_CFType()),
+                (bytes_per_row_key.as_CFType(), bytes_per_row_value.as_CFType()),
+                (bytes_per_elem_key.as_CFType(), bytes_per_elem_value.as_CFType()),
+                (is_global_key.as_CFType(), is_global_value.as_CFType()),
+            ]));
 
-        NativeSurface {
-            io_surface: Some(surface),
-            will_leak: true,
+            NativeSurface {
+                io_surface: Some(surface),
+                will_leak: true,
+            }
         }
     }
 
