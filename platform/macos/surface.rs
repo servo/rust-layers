@@ -17,12 +17,18 @@ use core_foundation::number::CFNumber;
 use core_foundation::string::CFString;
 use geom::size::Size2D;
 use io_surface::{kIOSurfaceBytesPerElement, kIOSurfaceBytesPerRow, kIOSurfaceHeight};
-use io_surface::{kIOSurfaceIsGlobal, kIOSurfaceWidth, IOSurface};
+use io_surface::{kIOSurfaceIsGlobal, kIOSurfaceWidth, IOSurface, IOSurfaceID};
 use io_surface;
 use opengles::cgl::CGLPixelFormatObj;
 use platform::surface::NativeSurfaceMethods;
+use std::cast;
+use std::cell::Cell;
+use std::hashmap::HashMap;
+use std::local_data;
 use std::util;
 use texturegl::Texture;
+
+local_data_key!(io_surface_repository: HashMap<IOSurfaceID,IOSurface>)
 
 pub struct NativeGraphicsMetadata {
     pixel_format: CGLPixelFormatObj,
@@ -56,17 +62,34 @@ impl NativeCompositingGraphicsContext {
     }
 }
 
+#[deriving(Decodable, Encodable)]
 pub struct NativeSurface {
-    io_surface: Option<IOSurface>,
+    io_surface_id: Option<IOSurfaceID>,
     will_leak: bool,
 }
 
 impl NativeSurface {
     #[fixed_stack_segment]
     pub fn from_io_surface(io_surface: IOSurface) -> NativeSurface {
-        NativeSurface {
-            io_surface: Some(io_surface),
-            will_leak: true,
+        unsafe {
+            // Take the surface by ID (so that we can send it cross-process) and consume its
+            // reference.
+            let id = io_surface.get_id();
+
+            let io_surface_cell = Cell::new(io_surface);
+            local_data::modify(io_surface_repository, |opt_repository| {
+                let mut repository = match opt_repository {
+                    None => HashMap::new(),
+                    Some(repository) => repository,
+                };
+                repository.insert(id, io_surface_cell.take());
+                Some(repository)
+            });
+
+            NativeSurface {
+                io_surface_id: Some(id),
+                will_leak: true,
+            }
         }
     }
 }
@@ -98,10 +121,7 @@ impl NativeSurfaceMethods for NativeSurface {
                 (is_global_key.as_CFType(), is_global_value.as_CFType()),
             ]));
 
-            NativeSurface {
-                io_surface: Some(surface),
-                will_leak: true,
-            }
+            NativeSurface::from_io_surface(surface)
         }
     }
 
@@ -110,22 +130,27 @@ impl NativeSurfaceMethods for NativeSurface {
                        texture: &Texture,
                        size: Size2D<int>) {
         let _bound_texture = texture.bind();
-        self.io_surface.get_ref().bind_to_gl_texture(size)
+        let io_surface = io_surface::lookup(self.io_surface_id.unwrap());
+        io_surface.bind_to_gl_texture(size)
     }
 
     fn upload(&self, _: &NativePaintingGraphicsContext, data: &[u8]) {
-        self.io_surface.get_ref().upload(data)
+        let io_surface = io_surface::lookup(self.io_surface_id.unwrap());
+        io_surface.upload(data)
     }
 
     fn get_id(&self) -> int {
-        match self.io_surface {
+        match self.io_surface_id {
             None => 0,
-            Some(ref io_surface) => io_surface.get_id() as int,
+            Some(id) => id as int,
         }
     }
 
     fn destroy(&mut self, _: &NativePaintingGraphicsContext) {
-        let _ = util::replace(&mut self.io_surface, None);
+        local_data::get_mut(io_surface_repository, |opt_repository| {
+            opt_repository.unwrap().remove(&self.io_surface_id.unwrap())
+        });
+        self.io_surface_id = None;
         self.mark_wont_leak()
     }
 
