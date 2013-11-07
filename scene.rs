@@ -8,20 +8,28 @@
 // except according to those terms.
 
 use layers::Layer;
+use color::Color;
 use geom::size::Size2D;
 use geom::matrix::Matrix4;
 
 pub struct Scene {
     root: Layer,
     size: Size2D<f32>,
-    transform: Matrix4<f32>
+    transform: Matrix4<f32>,
+    background_color: Color
 }
 
 pub fn Scene(root: Layer, size: Size2D<f32>, transform: Matrix4<f32>) -> Scene {
     Scene {
         root: root,
         size: size,
-        transform: transform
+        transform: transform,
+        background_color: Color {
+                  r: 0.38f32,
+                  g: 0.36f32,
+                  b: 0.36f32,
+                  a: 1.0f32
+              }
     }
 }
 
