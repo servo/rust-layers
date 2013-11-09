@@ -21,6 +21,8 @@ pub use platform::macos::surface::NativeCompositingGraphicsContext;
 #[cfg(target_os="macos")]
 pub use platform::macos::surface::NativeGraphicsMetadata;
 #[cfg(target_os="macos")]
+pub use platform::macos::surface::NativeGraphicsMetadataDescriptor;
+#[cfg(target_os="macos")]
 pub use platform::macos::surface::NativeSurface;
 #[cfg(target_os="linux")]
 pub use platform::linux::surface::NativePaintingGraphicsContext;
@@ -28,6 +30,8 @@ pub use platform::linux::surface::NativePaintingGraphicsContext;
 pub use platform::linux::surface::NativeCompositingGraphicsContext;
 #[cfg(target_os="linux")]
 pub use platform::linux::surface::NativeGraphicsMetadata;
+#[cfg(target_os="linux")]
+pub use platform::linux::surface::NativeGraphicsMetadataDescriptor;
 #[cfg(target_os="linux")]
 pub use platform::linux::surface::NativeSurface;
 
