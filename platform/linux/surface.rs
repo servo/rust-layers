@@ -23,7 +23,7 @@ use opengles::glx;
 use opengles::gl2::NO_ERROR;
 use opengles::gl2;
 use std::cast;
-use std::libc::{c_char, c_int, c_uint, c_void};
+use std::libc::{c_int, c_uint, c_void};
 use std::ptr;
 use xlib::xlib::{Display, Pixmap, XCloseDisplay, XCreateGC, XCreateImage, XCreatePixmap};
 use xlib::xlib::{XDefaultScreen, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage, XRootWindow};
@@ -42,7 +42,7 @@ impl NativePaintingGraphicsContext {
     #[fixed_stack_segment]
     pub fn from_metadata(metadata: &NativeGraphicsMetadata) -> NativePaintingGraphicsContext {
         unsafe {
-            let display = XOpenDisplay(*metadata);
+            let display = XOpenDisplay(metadata.display.to_c_str().with_ref(|c_str| c_str));
 
             // FIXME(pcwalton): It would be more robust to actually have the compositor pass the
             // visual.
@@ -154,7 +154,37 @@ impl NativeCompositingGraphicsContext {
 }
 
 /// The X display string.
-pub type NativeGraphicsMetadata = *c_char;
+#[deriving(Clone)]
+pub struct NativeGraphicsMetadata {
+    display: ~str,
+}
+
+impl NativeGraphicsMetadata {
+    /// Creates graphics metadata from a metadata descriptor.
+    #[fixed_stack_segment]
+    pub fn from_descriptor(descriptor: &NativeGraphicsMetadataDescriptor)
+                           -> NativeGraphicsMetadata {
+        NativeGraphicsMetadata {
+            display: descriptor.display.to_str(),
+        }
+    }
+}
+
+/// A sendable form of the X display string.
+#[deriving(Clone, Decodable, Encodable)]
+pub struct NativeGraphicsMetadataDescriptor {
+    display: ~str,
+}
+
+impl NativeGraphicsMetadataDescriptor {
+    /// Creates a metadata descriptor from metadata.
+    #[fixed_stack_segment]
+    pub fn from_metadata(metadata: NativeGraphicsMetadata) -> NativeGraphicsMetadataDescriptor {
+        NativeGraphicsMetadataDescriptor {
+            display: metadata.display.to_str()
+        }
+    }
+}
 
 #[deriving(Eq)]
 pub enum NativeSurfaceTransientData {
@@ -162,6 +192,7 @@ pub enum NativeSurfaceTransientData {
     RenderTaskTransientData(*Display, *XVisualInfo),
 }
 
+#[deriving(Decodable, Encodable)]
 pub struct NativeSurface {
     /// The pixmap.
     pixmap: Pixmap,
