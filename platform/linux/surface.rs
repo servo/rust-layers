@@ -46,6 +46,10 @@ impl NativePaintingGraphicsContext {
                 XOpenDisplay(c_str)
             };
 
+            if display.is_null() {
+                fail!("XOpenDisplay() failed!");
+            }
+
             // FIXME(pcwalton): It would be more robust to actually have the compositor pass the
             // visual.
             let compositor_visual_info =
