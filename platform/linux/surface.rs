@@ -42,7 +42,9 @@ impl NativePaintingGraphicsContext {
     #[fixed_stack_segment]
     pub fn from_metadata(metadata: &NativeGraphicsMetadata) -> NativePaintingGraphicsContext {
         unsafe {
-            let display = XOpenDisplay(metadata.display.to_c_str().with_ref(|c_str| c_str));
+            let display = do metadata.display.with_c_str |c_str| {
+                XOpenDisplay(c_str)
+            };
 
             // FIXME(pcwalton): It would be more robust to actually have the compositor pass the
             // visual.
