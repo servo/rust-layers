@@ -23,6 +23,7 @@ extern mod io_surface = "rust-io-surface";
 extern mod xlib = "rust-xlib";
 
 pub mod layers;
+pub mod color;
 pub mod rendergl;
 pub mod scene;
 pub mod texturegl;
