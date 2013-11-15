@@ -30,6 +30,11 @@ use std::local_data;
 use std::ptr;
 
 use platform::surface::NativeSurfaceMethods;
+use std::cast;
+use std::cell::Cell;
+use std::hashmap::HashMap;
+use std::local_data;
+use std::util;
 use texturegl::Texture;
 
 local_data_key!(io_surface_repository: HashMap<IOSurfaceID,IOSurface>)
