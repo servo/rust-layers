@@ -24,6 +24,9 @@ extern mod io_surface;
 #[cfg(target_os="linux")]
 extern mod xlib;
 
+#[cfg(target_os="android")]
+extern mod egl;
+
 pub mod layers;
 pub mod color;
 pub mod rendergl;
@@ -38,6 +41,10 @@ pub mod platform {
     }
     #[cfg(target_os="macos")]
     pub mod macos {
+        pub mod surface;
+    }
+    #[cfg(target_os="android")]
+    pub mod android {
         pub mod surface;
     }
     pub mod surface;
