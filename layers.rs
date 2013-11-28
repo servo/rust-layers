@@ -25,7 +25,7 @@ pub enum Layer {
 }
 
 impl Layer {
-    pub fn with_common<T>(&self, f: &fn(&mut CommonLayer) -> T) -> T {
+    pub fn with_common<T>(&self, f: |&mut CommonLayer| -> T) -> T {
         match *self {
             ContainerLayerKind(container_layer) => f(&mut container_layer.common),
             TextureLayerKind(texture_layer) => f(&mut texture_layer.common),
@@ -99,7 +99,7 @@ impl ContainerLayer {
     /// Adds a child to the beginning of the list.
     /// Only works when the child is disconnected from the layer tree.
     pub fn add_child_start(@mut self, new_child: Layer) {
-        do new_child.with_common |new_child_common| {
+        new_child.with_common(|new_child_common| {
             assert!(new_child_common.parent.is_none());
             assert!(new_child_common.prev_sibling.is_none());
             assert!(new_child_common.next_sibling.is_none());
@@ -109,11 +109,11 @@ impl ContainerLayer {
             match self.first_child {
                 None => {}
                 Some(first_child) => {
-                    do first_child.with_common |first_child_common| {
+                    first_child.with_common(|first_child_common| {
                         assert!(first_child_common.prev_sibling.is_none());
                         first_child_common.prev_sibling = Some(new_child);
                         new_child_common.next_sibling = Some(first_child);
-                    }
+                    })
                 }
             }
 
@@ -123,13 +123,13 @@ impl ContainerLayer {
                 None => self.last_child = Some(new_child),
                 Some(_) => {}
             }
-        }
+        })
     }
 
     /// Adds a child to the end of the list.
     /// Only works when the child is disconnected from the layer tree.
     pub fn add_child_end(@mut self, new_child: Layer) {
-        do new_child.with_common |new_child_common| {
+        new_child.with_common(|new_child_common| {
             assert!(new_child_common.parent.is_none());
             assert!(new_child_common.prev_sibling.is_none());
             assert!(new_child_common.next_sibling.is_none());
@@ -139,11 +139,11 @@ impl ContainerLayer {
             match self.last_child {
                 None => {}
                 Some(last_child) => {
-                    do last_child.with_common |last_child_common| {
+                    last_child.with_common(|last_child_common| {
                         assert!(last_child_common.next_sibling.is_none());
                         last_child_common.next_sibling = Some(new_child);
                         new_child_common.prev_sibling = Some(last_child);
-                    }
+                    })
                 }
             }
 
@@ -153,11 +153,11 @@ impl ContainerLayer {
                 None => self.first_child = Some(new_child),
                 Some(_) => {}
             }
-        }
+        })
     }
     
     pub fn remove_child(@mut self, child: Layer) {
-        do child.with_common |child_common| {
+        child.with_common(|child_common| {
             assert!(child_common.parent.is_some());
             match child_common.parent.unwrap() {
                 ContainerLayerKind(ref container) => {
@@ -171,9 +171,9 @@ impl ContainerLayer {
                     self.last_child = child_common.prev_sibling;
                 },
                 Some(ref sibling) => {
-                    do sibling.with_common |sibling_common| {
+                    sibling.with_common(|sibling_common| {
                         sibling_common.prev_sibling = child_common.prev_sibling;
-                    }
+                    })
                 }
             }
             match child_common.prev_sibling {
@@ -181,12 +181,12 @@ impl ContainerLayer {
                     self.first_child = child_common.next_sibling;
                 },
                 Some(ref sibling) => {
-                    do sibling.with_common |sibling_common| {
+                    sibling.with_common(|sibling_common| {
                         sibling_common.next_sibling = child_common.next_sibling;
-                    }
+                    })
                 }
             }           
-        }
+        })
     }
 }
 
