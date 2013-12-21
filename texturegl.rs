@@ -19,11 +19,11 @@ use opengles::gl2;
 use std::num::Zero;
 
 /// Image data used when uploading to a texture.
-pub struct TextureImageData<'self> {
+pub struct TextureImageData<'a> {
     size: Size2D<uint>,
     stride: uint,
     format: Format,
-    data: &'self [u8],
+    data: &'a [u8],
 }
 
 /// The texture target.
@@ -38,7 +38,7 @@ impl TextureTarget {
     fn as_gl_target(self) -> GLenum {
         match self {
             TextureTarget2D => TEXTURE_2D,
-            TextureTargetRectangle(*) => TEXTURE_RECTANGLE_ARB,
+            TextureTargetRectangle(_) => TEXTURE_RECTANGLE_ARB,
         }
     }
 }

@@ -24,7 +24,6 @@ use opengles::cgl::{CGLChoosePixelFormat, CGLDescribePixelFormat, CGLPixelFormat
 use opengles::cgl::{CGLPixelFormatObj, CORE_BOOLEAN_ATTRIBUTES, CORE_INTEGER_ATTRIBUTES};
 use opengles::cgl::{kCGLNoError};
 use opengles::gl2::GLint;
-use std::cell::Cell;
 use std::hashmap::HashMap;
 use std::local_data;
 use std::ptr;
@@ -48,7 +47,6 @@ impl NativeGraphicsMetadata {
         }
     }
 
-    #[fixed_stack_segment]
     pub fn from_descriptor(descriptor: &NativeGraphicsMetadataDescriptor)
                            -> NativeGraphicsMetadata {
         unsafe {
@@ -86,7 +84,6 @@ pub struct NativeGraphicsMetadataDescriptor {
 }
 
 impl NativeGraphicsMetadataDescriptor {
-    #[fixed_stack_segment]
     pub fn from_metadata(metadata: NativeGraphicsMetadata) -> NativeGraphicsMetadataDescriptor {
         unsafe {
             let mut descriptor = NativeGraphicsMetadataDescriptor {
@@ -148,18 +145,17 @@ pub struct NativeSurface {
 }
 
 impl NativeSurface {
-    #[fixed_stack_segment]
     pub fn from_io_surface(io_surface: IOSurface) -> NativeSurface {
         // Take the surface by ID (so that we can send it cross-process) and consume its reference.
         let id = io_surface.get_id();
 
-        let io_surface_cell = Cell::new(io_surface);
+        let mut io_surface = Some(io_surface);
         local_data::modify(io_surface_repository, |opt_repository| {
             let mut repository = match opt_repository {
                 None => HashMap::new(),
                 Some(repository) => repository,
             };
-            repository.insert(id, io_surface_cell.take());
+            repository.insert(id, io_surface.take().unwrap());
             Some(repository)
         });
 

@@ -13,15 +13,14 @@ use platform::surface::NativeSurfaceMethods;
 use texturegl::Texture;
 
 use geom::size::Size2D;
-use opengles::gl2::{egl_image_target_texture2d_oes, TEXTURE_2D, GLsizei, GLint, glTexImage2D, BGRA, UNSIGNED_BYTE};
+use opengles::gl2::{egl_image_target_texture2d_oes, TEXTURE_2D, glTexImage2D, BGRA, UNSIGNED_BYTE};
 use egl::egl::EGLDisplay;
-use egl::eglext::{EGLImageKHR, CreateImageKHR, DestroyImageKHR};
+use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use std::cast;
 use std::ptr;
 use std::util;
 use std::vec;
 use std::libc::c_void;
-use std::vec::bytes;
 
 /// FIXME(Aydin Kim) :Currently, native surface is consist of 2 types of hybrid image buffer. EGLImageKHR is used to GPU rendering and vector is used to CPU rendering. EGL extension seems not provide simple way to accessing its bitmap directly. In the future, we need to find out the way to integrate them.
 
@@ -34,18 +33,14 @@ pub struct NativePaintingGraphicsContext{
 }
 
 impl NativePaintingGraphicsContext {
-    #[fixed_stack_segment]
     pub fn from_metadata(metadata: &NativeGraphicsMetadata) -> NativePaintingGraphicsContext {
-       unsafe {
-           NativePaintingGraphicsContext {
-               display : metadata.display,
-           }
-       }
+        NativePaintingGraphicsContext {
+            display : metadata.display,
+        }
     }
 }
 
 impl Drop for NativePaintingGraphicsContext {
-    #[fixed_stack_segment]
     fn drop(&mut self) {}
 }
 
@@ -68,7 +63,6 @@ pub struct NativeSurface {
 }
 
 impl NativeSurface {
-    #[fixed_stack_segment]
     pub fn from_image_khr(image_khr: EGLImageKHR) -> NativeSurface {
         let mut _image: Option<EGLImageKHR> = None;
         if image_khr != ptr::null() {
@@ -84,8 +78,7 @@ impl NativeSurface {
 
 impl NativeSurfaceMethods for NativeSurface {
     /// This may only be called on the case of CPU rendering.
-    #[fixed_stack_segment]
-    fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>, stride: i32) -> NativeSurface {
+    fn new(_native_context: &NativePaintingGraphicsContext, size: Size2D<i32>, _stride: i32) -> NativeSurface {
         unsafe {
             let len = size.width * size.height * 4;
             let bitmap = vec::from_elem::<u8>(len as uint, 0);
@@ -99,9 +92,8 @@ impl NativeSurfaceMethods for NativeSurface {
     }
 
     /// This may only be called on the compositor side.
-    #[fixed_stack_segment]
     fn bind_to_texture(&self,
-                       native_context: &NativeCompositingGraphicsContext,
+                       _native_context: &NativeCompositingGraphicsContext,
                        texture: &Texture,
                        _size: Size2D<int>) {
         let _bound = texture.bind();
@@ -124,12 +116,11 @@ impl NativeSurfaceMethods for NativeSurface {
     }
 
     /// This may only be called on the painting side.
-    #[fixed_stack_segment]
-    fn upload(&self, graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
+    fn upload(&self, _graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
         unsafe {
             if self.bitmap != ptr::null() {
                 let dest:&mut [u8] = cast::transmute((self.bitmap, data.len()));
-                bytes::copy_memory(dest, data, data.len());
+                dest.copy_memory(data);
             }
             else {
                 debug!("Cannot upload the buffer(CPU rendering), there is no bitmap");
@@ -144,7 +135,6 @@ impl NativeSurfaceMethods for NativeSurface {
         }
     }
 
-#[fixed_stack_segment]
     fn destroy(&mut self, graphics_context: &NativePaintingGraphicsContext) {
         match self.image {
             None => {},
