@@ -7,20 +7,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[link(name = "layers", vers = "0.1")];
+
 #[feature(managed_boxes)];
 
 extern mod extra;
-extern mod geom = "rust-geom";
-extern mod opengles = "rust-opengles";
+extern mod geom;
+extern mod opengles;
 extern mod std;
 
 #[cfg(target_os="macos")]
-extern mod core_foundation = "rust-core-foundation";
+extern mod core_foundation;
 #[cfg(target_os="macos")]
-extern mod io_surface = "rust-io-surface";
+extern mod io_surface;
 
 #[cfg(target_os="linux")]
-extern mod xlib = "rust-xlib";
+extern mod xlib;
 
 pub mod layers;
 pub mod color;
