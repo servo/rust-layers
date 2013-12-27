@@ -34,6 +34,14 @@ pub use platform::linux::surface::NativeGraphicsMetadata;
 pub use platform::linux::surface::NativeGraphicsMetadataDescriptor;
 #[cfg(target_os="linux")]
 pub use platform::linux::surface::NativeSurface;
+#[cfg(target_os="android")]
+pub use platform::android::surface::NativePaintingGraphicsContext;
+#[cfg(target_os="android")]
+pub use platform::android::surface::NativeCompositingGraphicsContext;
+#[cfg(target_os="android")]
+pub use platform::android::surface::NativeGraphicsMetadata;
+#[cfg(target_os="android")]
+pub use platform::android::surface::NativeSurface;
 
 pub trait NativeSurfaceMethods {
     /// Creates a new native surface with uninitialized data.

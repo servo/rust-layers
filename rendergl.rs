@@ -138,39 +138,59 @@ struct ProgramRectangle {
 }
 
 pub struct RenderContext {
-    program_2d: Program2D,
-    program_rectangle: ProgramRectangle,
+    program_2d: Option<Program2D>,
+    program_rectangle: Option<ProgramRectangle>,
     buffers: Buffers,
 }
 
 impl RenderContext {
-    fn new(program_2d: GLuint, program_rectangle: GLuint) -> RenderContext {
+    fn new(program_2d: Option<GLuint>, program_rectangle: Option<GLuint>) -> RenderContext {
         let render_context = RenderContext {
-            program_2d: Program2D {
-                id: program_2d,
-                vertex_position_attr: get_attrib_location(program_2d, "aVertexPosition"),
-                texture_coord_attr: get_attrib_location(program_2d, "aTextureCoord"),
-                modelview_uniform: get_uniform_location(program_2d, "uMVMatrix"),
-                projection_uniform: get_uniform_location(program_2d, "uPMatrix"),
-                sampler_uniform: get_uniform_location(program_2d, "uSampler"),
+            program_2d: match program_2d {
+                Some(program) => {
+                    Some(Program2D {
+                        id: program,
+                        vertex_position_attr: get_attrib_location(program, "aVertexPosition"),
+                        texture_coord_attr: get_attrib_location(program, "aTextureCoord"),
+                        modelview_uniform: get_uniform_location(program, "uMVMatrix"),
+                        projection_uniform: get_uniform_location(program, "uPMatrix"),
+                        sampler_uniform: get_uniform_location(program, "uSampler"),
+                    })
+                },
+                None => None,
             },
-            program_rectangle: ProgramRectangle {
-                id: program_rectangle,
-                vertex_position_attr: get_attrib_location(program_rectangle, "aVertexPosition"),
-                texture_coord_attr: get_attrib_location(program_rectangle, "aTextureCoord"),
-                modelview_uniform: get_uniform_location(program_rectangle, "uMVMatrix"),
-                projection_uniform: get_uniform_location(program_rectangle, "uPMatrix"),
-                sampler_uniform: get_uniform_location(program_rectangle, "uSampler"),
-                size_uniform: get_uniform_location(program_rectangle, "uSize"),
+            program_rectangle: match program_rectangle {
+                Some(program) => {
+                    Some(ProgramRectangle {
+                        id: program,
+                        vertex_position_attr: get_attrib_location(program, "aVertexPosition"),
+                        texture_coord_attr: get_attrib_location(program, "aTextureCoord"),
+                        modelview_uniform: get_uniform_location(program, "uMVMatrix"),
+                        projection_uniform: get_uniform_location(program, "uPMatrix"),
+                        sampler_uniform: get_uniform_location(program, "uSampler"),
+                        size_uniform: get_uniform_location(program, "uSize"),
+                    })
+                },
+                None => None,
             },
             buffers: RenderContext::init_buffers(),
         };
 
-        enable_vertex_attrib_array(render_context.program_2d.vertex_position_attr as GLuint);
-        enable_vertex_attrib_array(render_context.program_2d.texture_coord_attr as GLuint);
-        enable_vertex_attrib_array(render_context.program_rectangle.vertex_position_attr as
-            GLuint);
-        enable_vertex_attrib_array(render_context.program_rectangle.texture_coord_attr as GLuint);
+        match render_context.program_2d {
+            Some(program) => {
+                enable_vertex_attrib_array(program.vertex_position_attr as GLuint);
+                enable_vertex_attrib_array(program.texture_coord_attr as GLuint);
+            },
+            None => {}
+        }
+
+        match render_context.program_rectangle {
+            Some(program) => {
+                enable_vertex_attrib_array(program.vertex_position_attr as GLuint);
+                enable_vertex_attrib_array(program.texture_coord_attr as GLuint);
+            },
+            None=> {}
+        }
 
         render_context
     }
@@ -208,6 +228,8 @@ pub fn init_program(vertex_shader: GLuint, fragment_shader: GLuint) -> GLuint {
     program
 }
 
+#[cfg(target_os="linux")]
+#[cfg(target_os="macos")]
 pub fn init_render_context() -> RenderContext {
     let vertex_2d_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
     let fragment_2d_shader = load_shader(FRAGMENT_2D_SHADER_SOURCE, FRAGMENT_SHADER);
@@ -220,7 +242,18 @@ pub fn init_render_context() -> RenderContext {
     enable(TEXTURE_2D);
     enable(TEXTURE_RECTANGLE_ARB);
 
-    RenderContext::new(program_2d, program_rectangle)
+    RenderContext::new(Some(program_2d), Some(program_rectangle))
+}
+
+#[cfg(target_os="android")]
+pub fn init_render_context() -> RenderContext {
+    let vertex_2d_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
+    let fragment_2d_shader = load_shader(FRAGMENT_2D_SHADER_SOURCE, FRAGMENT_SHADER);
+    let program_2d = init_program(vertex_2d_shader, fragment_2d_shader);
+
+    enable(TEXTURE_2D);
+
+    RenderContext::new(Some(program_2d), None)
 }
 
 fn bind_texture_coordinate_buffer(render_context: RenderContext, flip: Flip) {
@@ -238,8 +271,14 @@ pub fn bind_and_render_quad(render_context: RenderContext,
                             transform: &Matrix4<f32>,
                             scene_size: Size2D<f32>) {
     let program_id = match texture.target {
-        TextureTarget2D => render_context.program_2d.id,
-        TextureTargetRectangle(*) => render_context.program_rectangle.id,
+        TextureTarget2D => match render_context.program_2d {
+            Some(program) => {program.id},
+            None => {fail!("There is no shader program for texture 2D");}
+        },
+        TextureTargetRectangle(*) => match render_context.program_rectangle {
+            Some(program) => {program.id},
+            None => {fail!("There is no shader program for texture rectangle");}
+        },
     };
 
     use_program(program_id);
@@ -252,42 +291,42 @@ pub fn bind_and_render_quad(render_context: RenderContext,
     // Set uniforms and vertex attribute pointers.
     match texture.target {
         TextureTarget2D => {
-            uniform_1i(render_context.program_2d.sampler_uniform, 0);
-            uniform_matrix_4fv(render_context.program_2d.modelview_uniform,
+            uniform_1i(render_context.program_2d.unwrap().sampler_uniform, 0);
+            uniform_matrix_4fv(render_context.program_2d.unwrap().modelview_uniform,
                                false,
                                transform.to_array());
-            uniform_matrix_4fv(render_context.program_2d.projection_uniform,
+            uniform_matrix_4fv(render_context.program_2d.unwrap().projection_uniform,
                                false,
                                projection_matrix.to_array());
 
             bind_buffer(ARRAY_BUFFER, render_context.buffers.vertex_buffer);
-            vertex_attrib_pointer_f32(render_context.program_2d.vertex_position_attr as GLuint,
+            vertex_attrib_pointer_f32(render_context.program_2d.unwrap().vertex_position_attr as GLuint,
                                       3,
                                       false,
                                       0,
                                       0);
 
             bind_texture_coordinate_buffer(render_context, flip);
-            vertex_attrib_pointer_f32(render_context.program_2d.texture_coord_attr as GLuint,
+            vertex_attrib_pointer_f32(render_context.program_2d.unwrap().texture_coord_attr as GLuint,
                                       2,
                                       false,
                                       0,
                                       0);
         }
         TextureTargetRectangle(size) => {
-            uniform_1i(render_context.program_rectangle.sampler_uniform, 0);
-            uniform_2f(render_context.program_rectangle.size_uniform,
+            uniform_1i(render_context.program_rectangle.unwrap().sampler_uniform, 0);
+            uniform_2f(render_context.program_rectangle.unwrap().size_uniform,
                        size.width as GLfloat,
                        size.height as GLfloat);
-            uniform_matrix_4fv(render_context.program_rectangle.modelview_uniform,
+            uniform_matrix_4fv(render_context.program_rectangle.unwrap().modelview_uniform,
                                false,
                                transform.to_array());
-            uniform_matrix_4fv(render_context.program_rectangle.projection_uniform,
+            uniform_matrix_4fv(render_context.program_rectangle.unwrap().projection_uniform,
                                false,
                                projection_matrix.to_array());
 
             bind_buffer(ARRAY_BUFFER, render_context.buffers.vertex_buffer);
-            vertex_attrib_pointer_f32(render_context.program_rectangle.vertex_position_attr as
+            vertex_attrib_pointer_f32(render_context.program_rectangle.unwrap().vertex_position_attr as
                                       GLuint,
                                       3,
                                       false,
@@ -295,7 +334,7 @@ pub fn bind_and_render_quad(render_context: RenderContext,
                                       0);
 
             bind_texture_coordinate_buffer(render_context, flip);
-            vertex_attrib_pointer_f32(render_context.program_rectangle.texture_coord_attr as
+            vertex_attrib_pointer_f32(render_context.program_rectangle.unwrap().texture_coord_attr as
                                       GLuint,
                                       2,
                                       false,
