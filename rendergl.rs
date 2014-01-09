@@ -275,7 +275,7 @@ pub fn bind_and_render_quad(render_context: RenderContext,
             Some(program) => {program.id},
             None => {fail!("There is no shader program for texture 2D");}
         },
-        TextureTargetRectangle(*) => match render_context.program_rectangle {
+        TextureTargetRectangle(..) => match render_context.program_rectangle {
             Some(program) => {program.id},
             None => {fail!("There is no shader program for texture rectangle");}
         },

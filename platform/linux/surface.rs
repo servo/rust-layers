@@ -39,12 +39,11 @@ pub struct NativePaintingGraphicsContext {
 }
 
 impl NativePaintingGraphicsContext {
-    #[fixed_stack_segment]
     pub fn from_metadata(metadata: &NativeGraphicsMetadata) -> NativePaintingGraphicsContext {
         unsafe {
-            let display = do metadata.display.with_c_str |c_str| {
+            let display = metadata.display.with_c_str(|c_str| {
                 XOpenDisplay(c_str)
-            };
+            });
 
             if display.is_null() {
                 fail!("XOpenDisplay() failed!");
@@ -64,7 +63,6 @@ impl NativePaintingGraphicsContext {
 }
 
 impl Drop for NativePaintingGraphicsContext {
-    #[fixed_stack_segment]
     fn drop(&mut self) {
         unsafe {
             let _ = XCloseDisplay(self.display);
@@ -91,7 +89,6 @@ impl NativeCompositingGraphicsContext {
     /// Chooses the compositor visual info using the same algorithm that the compositor uses.
     ///
     /// FIXME(pcwalton): It would be more robust to actually have the compositor pass the visual.
-    #[fixed_stack_segment]
     fn compositor_visual_info(display: *Display) -> *XVisualInfo {
         unsafe {
             let glx_display: *glx::Display = cast::transmute(display);
@@ -104,7 +101,6 @@ impl NativeCompositingGraphicsContext {
 
     /// Creates a native graphics context from the given X display connection. This uses GLX. Only
     /// the compositor is allowed to call this.
-    #[fixed_stack_segment]
     pub fn from_display(display: *Display) -> NativeCompositingGraphicsContext {
         unsafe {
             // FIXME(pcwalton): It would be more robust to actually have the compositor pass the
@@ -167,7 +163,6 @@ pub struct NativeGraphicsMetadata {
 
 impl NativeGraphicsMetadata {
     /// Creates graphics metadata from a metadata descriptor.
-    #[fixed_stack_segment]
     pub fn from_descriptor(descriptor: &NativeGraphicsMetadataDescriptor)
                            -> NativeGraphicsMetadata {
         NativeGraphicsMetadata {
@@ -184,7 +179,6 @@ pub struct NativeGraphicsMetadataDescriptor {
 
 impl NativeGraphicsMetadataDescriptor {
     /// Creates a metadata descriptor from metadata.
-    #[fixed_stack_segment]
     pub fn from_metadata(metadata: NativeGraphicsMetadata) -> NativeGraphicsMetadataDescriptor {
         NativeGraphicsMetadataDescriptor {
             display: metadata.display.to_str()
@@ -217,7 +211,6 @@ impl Drop for NativeSurface {
 }
 
 impl NativeSurface {
-    #[fixed_stack_segment]
     pub fn from_pixmap(pixmap: Pixmap) -> NativeSurface {
         NativeSurface {
             pixmap: pixmap,
@@ -227,7 +220,6 @@ impl NativeSurface {
 }
 
 impl NativeSurfaceMethods for NativeSurface {
-    #[fixed_stack_segment]
     fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>, stride: i32)
            -> NativeSurface {
         unsafe {
@@ -246,7 +238,6 @@ impl NativeSurfaceMethods for NativeSurface {
     }
 
     /// This may only be called on the compositor side.
-    #[fixed_stack_segment]
     fn bind_to_texture(&self,
                        native_context: &NativeCompositingGraphicsContext,
                        texture: &Texture,
@@ -282,7 +273,6 @@ impl NativeSurfaceMethods for NativeSurface {
     }
 
     /// This may only be called on the painting side.
-    #[fixed_stack_segment]
     fn upload(&self, graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
         unsafe {
             // Ensure that we're running on the render task. Take the display.
@@ -339,7 +329,6 @@ impl NativeSurfaceMethods for NativeSurface {
         self.pixmap as int
     }
 
-    #[fixed_stack_segment]
     fn destroy(&mut self, graphics_context: &NativePaintingGraphicsContext) {
         unsafe {
             assert!(self.pixmap != 0);

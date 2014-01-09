@@ -25,7 +25,7 @@ pub enum Layer {
 }
 
 impl Layer {
-    pub fn with_common<T>(&self, f: &fn(&mut CommonLayer) -> T) -> T {
+    pub fn with_common<T>(&self, f: |&mut CommonLayer| -> T) -> T {
         match *self {
             ContainerLayerKind(container_layer) => f(&mut container_layer.common),
             TextureLayerKind(texture_layer) => f(&mut texture_layer.common),
@@ -113,7 +113,7 @@ impl ContainerLayer {
                         assert!(first_child_common.prev_sibling.is_none());
                         first_child_common.prev_sibling = Some(new_child);
                         new_child_common.next_sibling = Some(first_child);
-                    })
+                    });
                 }
             }
 
@@ -123,7 +123,7 @@ impl ContainerLayer {
                 None => self.last_child = Some(new_child),
                 Some(_) => {}
             }
-        })
+        });
     }
 
     /// Adds a child to the end of the list.
@@ -143,7 +143,7 @@ impl ContainerLayer {
                         assert!(last_child_common.next_sibling.is_none());
                         last_child_common.next_sibling = Some(new_child);
                         new_child_common.prev_sibling = Some(last_child);
-                    })
+                    });
                 }
             }
 
@@ -153,7 +153,7 @@ impl ContainerLayer {
                 None => self.first_child = Some(new_child),
                 Some(_) => {}
             }
-        })
+        });
     }
     
     pub fn remove_child(@mut self, child: Layer) {
@@ -173,7 +173,7 @@ impl ContainerLayer {
                 Some(ref sibling) => {
                     sibling.with_common(|sibling_common| {
                         sibling_common.prev_sibling = child_common.prev_sibling;
-                    })
+                    });
                 }
             }
             match child_common.prev_sibling {
@@ -183,10 +183,10 @@ impl ContainerLayer {
                 Some(ref sibling) => {
                     sibling.with_common(|sibling_common| {
                         sibling_common.next_sibling = child_common.next_sibling;
-                    })
+                    });
                 }
             }           
-        })
+        });
     }
 }
 

@@ -7,7 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link(name = "layers", vers = "0.1")];
+#[crate_id = "github.com/mozilla-servo/rust-layers#layers:0.1"];
 
 #[feature(managed_boxes)];
 

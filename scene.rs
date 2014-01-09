@@ -35,7 +35,7 @@ pub fn Scene(root: Layer, size: Size2D<f32>, transform: Matrix4<f32>) -> Scene {
 
 impl Scene {
     // FIXME: Workaround for cross-crate bug regarding mutability of class fields
-    fn set_transform(&mut self, new_transform: Matrix4<f32>) {
+    pub fn set_transform(&mut self, new_transform: Matrix4<f32>) {
         self.transform = new_transform;
     }
 }
