@@ -29,6 +29,7 @@ extern mod egl;
 
 pub mod layers;
 pub mod color;
+pub mod temp_rc;
 pub mod rendergl;
 pub mod scene;
 pub mod texturegl;

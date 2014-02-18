@@ -351,14 +351,14 @@ pub fn bind_and_render_quad(render_context: RenderContext,
 // Layer rendering
 
 pub trait Render {
-    fn render(@mut self,
+    fn render(&self,
               render_context: RenderContext,
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>);
 }
 
 impl Render for layers::ContainerLayer {
-    fn render(@mut self,
+    fn render(&self,
               render_context: RenderContext,
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>) {
@@ -370,8 +370,10 @@ impl Render for layers::ContainerLayer {
             None
         };
 
-        match self.scissor {
-            Some(rect) => {
+        // NOTE: work around borrowchk
+        let tmp = self.scissor.borrow();
+        match tmp.get() {
+            &Some(rect) => {
                 let size = Size2D((rect.size.width * transform.m11) as GLint,
                                   (rect.size.height * transform.m22) as GLint);
                 
@@ -426,36 +428,43 @@ impl Render for layers::ContainerLayer {
                     }
                 }
             }
-            None => {} // Nothing to do
+            &None => {} // Nothing to do
         }
 
-        let transform = transform.mul(&self.common.transform);
-        for child in self.children() {
-            render_layer(render_context, transform, scene_size, child);
+        // NOTE: work around borrowchk
+        {
+            let tmp = self.common.borrow();
+            let transform = transform.mul(&tmp.get().transform);
+            for child in self.children() {
+                render_layer(render_context, transform, scene_size, child);
+            }
         }
-        
-        match (self.scissor, old_rect_opt) {
-            (Some(_), Some(old_rect)) => {
+
+        // NOTE: work around borrowchk
+        let tmp = self.scissor.borrow();
+        match (tmp.get(), old_rect_opt) {
+            (&Some(_), Some(old_rect)) => {
                 // Set scissor back to the parent's scissoring rect.
                 scissor(old_rect.origin.x, old_rect.origin.y, 
                         old_rect.size.width as GLsizei,
                         old_rect.size.height as GLsizei);
             }
-            (Some(_), None) => {
+            (&Some(_), None) => {
                 // Our parents are not being scissored, so disable scissoring for now
                 disable(SCISSOR_TEST);
             }
-            (None, _) => {} // Nothing to do
+            (&None, _) => {} // Nothing to do
         }
     }
 }
 
 impl Render for layers::TextureLayer {
-    fn render(@mut self,
+    fn render(&self,
               render_context: RenderContext,
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>) {
-        let transform = transform.mul(&self.common.transform);
+        let tmp = self.common.borrow();
+        let transform = transform.mul(&tmp.get().transform);
         bind_and_render_quad(render_context, &self.texture, self.flip, &transform, scene_size);
     }
 }
@@ -466,10 +475,10 @@ fn render_layer(render_context: RenderContext,
                 layer: layers::Layer) {
     match layer {
         ContainerLayerKind(container_layer) => {
-            container_layer.render(render_context, transform, scene_size)
+            container_layer.borrow().render(render_context, transform, scene_size)
         }
         TextureLayerKind(texture_layer) => {
-            texture_layer.render(render_context, transform, scene_size)
+            texture_layer.borrow().render(render_context, transform, scene_size)
         }
     }
 }
@@ -489,7 +498,7 @@ pub fn render_scene(render_context: RenderContext, scene: &Scene) {
     let transform = scene.transform;
 
     // Render the root layer.
-    render_layer(render_context, transform, scene.size, scene.root);
+    render_layer(render_context, transform, scene.size, scene.root.clone());
 }
 
 #[cfg(debug)]

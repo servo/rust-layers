@@ -12,23 +12,32 @@ use texturegl::Texture;
 use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
 use geom::rect::Rect;
-use std::managed::mut_ptr_eq;
+use std::cell::RefCell;
+use std::ptr::to_unsafe_ptr;
+use temp_rc::Rc;
 
 pub enum Format {
     ARGB32Format,
     RGB24Format
 }
 
+#[deriving(Clone)]
 pub enum Layer {
-    ContainerLayerKind(@mut ContainerLayer),
-    TextureLayerKind(@mut TextureLayer),
+    ContainerLayerKind(Rc<ContainerLayer>),
+    TextureLayerKind(Rc<TextureLayer>),
 }
 
 impl Layer {
     pub fn with_common<T>(&self, f: |&mut CommonLayer| -> T) -> T {
         match *self {
-            ContainerLayerKind(container_layer) => f(&mut container_layer.common),
-            TextureLayerKind(texture_layer) => f(&mut texture_layer.common),
+            ContainerLayerKind(ref container_layer) => {
+                let mut tmp = container_layer.borrow().common.borrow_mut();
+                f(tmp.get())
+            },
+            TextureLayerKind(ref texture_layer) => {
+                let mut tmp = texture_layer.borrow().common.borrow_mut();
+                f(tmp.get())
+            },
         }
     }
 }
@@ -59,19 +68,19 @@ pub fn CommonLayer() -> CommonLayer {
 
 
 pub struct ContainerLayer {
-    common: CommonLayer,
-    first_child: Option<Layer>,
-    last_child: Option<Layer>,
-    scissor: Option<Rect<f32>>,
+    common: RefCell<CommonLayer>,
+    first_child: RefCell<Option<Layer>>,
+    last_child: RefCell<Option<Layer>>,
+    scissor: RefCell<Option<Rect<f32>>>,
 }
 
 
 pub fn ContainerLayer() -> ContainerLayer {
     ContainerLayer {
-        common: CommonLayer(),
-        first_child: None,
-        last_child: None,
-        scissor: None,
+        common: RefCell::new(CommonLayer()),
+        first_child: RefCell::new(None),
+        last_child: RefCell::new(None),
+        scissor: RefCell::new(None),
     }
 }
 
@@ -81,108 +90,125 @@ struct ChildIterator {
 
 impl Iterator<Layer> for ChildIterator {
     fn next(&mut self) -> Option<Layer> {
-        match self.current {
-            None => None,
-            Some(child) => {
-                self.current = child.with_common(|x| x.next_sibling);
-                Some(child)
-            }
-        }
+        let (new_current, result) =
+            match self.current {
+                None => (None, None),
+                Some(ref child) => {
+                    (child.with_common(|x| x.next_sibling.clone()),
+                     Some(child.clone()))
+                }
+            };
+        self.current = new_current;
+        result
     }
 }
 
 impl ContainerLayer {
     pub fn children(&self) -> ChildIterator {
-        ChildIterator { current: self.first_child }
+        ChildIterator { current: {
+                // NOTE: work around borrowchk
+                let tmp = self.first_child.borrow();
+                tmp.get().clone()
+            }
+        }
     }
 
     /// Adds a child to the beginning of the list.
     /// Only works when the child is disconnected from the layer tree.
-    pub fn add_child_start(@mut self, new_child: Layer) {
+    pub fn add_child_start(pseudo_self: Rc<ContainerLayer>, new_child: Layer) {
         new_child.with_common(|new_child_common| {
             assert!(new_child_common.parent.is_none());
             assert!(new_child_common.prev_sibling.is_none());
             assert!(new_child_common.next_sibling.is_none());
 
-            new_child_common.parent = Some(ContainerLayerKind(self));
+            new_child_common.parent = Some(ContainerLayerKind(pseudo_self.clone()));
 
-            match self.first_child {
-                None => {}
-                Some(first_child) => {
-                    first_child.with_common(|first_child_common| {
-                        assert!(first_child_common.prev_sibling.is_none());
-                        first_child_common.prev_sibling = Some(new_child);
-                        new_child_common.next_sibling = Some(first_child);
-                    });
+            // NOTE: work around borrowchk
+            {
+                let tmp = pseudo_self.borrow().first_child.borrow();
+                match *tmp.get() {
+                    None => {}
+                    Some(ref first_child) => {
+                        first_child.with_common(|first_child_common| {
+                            assert!(first_child_common.prev_sibling.is_none());
+                            first_child_common.prev_sibling = Some(new_child.clone());
+                            new_child_common.next_sibling = Some(first_child.clone());
+                        });
+                    }
                 }
             }
 
-            self.first_child = Some(new_child);
+            pseudo_self.borrow().first_child.set(Some(new_child.clone()));
 
-            match self.last_child {
-                None => self.last_child = Some(new_child),
-                Some(_) => {}
+            match pseudo_self.borrow().last_child.borrow().get() {
+                &None => pseudo_self.borrow().last_child.set(Some(new_child.clone())),
+                &Some(_) => {}
             }
         });
     }
 
     /// Adds a child to the end of the list.
     /// Only works when the child is disconnected from the layer tree.
-    pub fn add_child_end(@mut self, new_child: Layer) {
+    pub fn add_child_end(pseudo_self: Rc<ContainerLayer>, new_child: Layer) {
         new_child.with_common(|new_child_common| {
             assert!(new_child_common.parent.is_none());
             assert!(new_child_common.prev_sibling.is_none());
             assert!(new_child_common.next_sibling.is_none());
 
-            new_child_common.parent = Some(ContainerLayerKind(self));
+            new_child_common.parent = Some(ContainerLayerKind(pseudo_self.clone()));
 
-            match self.last_child {
-                None => {}
-                Some(last_child) => {
-                    last_child.with_common(|last_child_common| {
-                        assert!(last_child_common.next_sibling.is_none());
-                        last_child_common.next_sibling = Some(new_child);
-                        new_child_common.prev_sibling = Some(last_child);
-                    });
+            // NOTE: work around borrowchk
+            {
+                let tmp = pseudo_self.borrow().last_child.borrow();
+                match *tmp.get() {
+                    None => {}
+                    Some(ref last_child) => {
+                        last_child.with_common(|last_child_common| {
+                            assert!(last_child_common.next_sibling.is_none());
+                            last_child_common.next_sibling = Some(new_child.clone());
+                            new_child_common.prev_sibling = Some(last_child.clone());
+                        });
+                    }
                 }
             }
 
-            self.last_child = Some(new_child);
+            pseudo_self.borrow().last_child.set(Some(new_child.clone()));
 
-            match self.first_child {
-                None => self.first_child = Some(new_child),
-                Some(_) => {}
-            }
+            pseudo_self.borrow().first_child.with_mut(|child|
+                                                      match *child {
+                                                          Some(_) => {},
+                                                          None => *child = Some(new_child.clone()),
+                                                      });
         });
     }
     
-    pub fn remove_child(@mut self, child: Layer) {
+    pub fn remove_child(pseudo_self: Rc<ContainerLayer>, child: Layer) {
         child.with_common(|child_common| {
             assert!(child_common.parent.is_some());
-            match child_common.parent.unwrap() {
-                ContainerLayerKind(ref container) => {
-                    assert!(mut_ptr_eq(*container, self));
+            match child_common.parent {
+                Some(ContainerLayerKind(ref container)) => {
+                    assert!(to_unsafe_ptr(container.borrow()) == to_unsafe_ptr(pseudo_self.borrow()));
                 },
                 _ => fail!(~"Invalid parent of child in layer tree"),
             }
 
             match child_common.next_sibling {
                 None => { // this is the last child
-                    self.last_child = child_common.prev_sibling;
+                    pseudo_self.borrow().last_child.set(child_common.prev_sibling.clone());
                 },
                 Some(ref sibling) => {
                     sibling.with_common(|sibling_common| {
-                        sibling_common.prev_sibling = child_common.prev_sibling;
+                        sibling_common.prev_sibling = child_common.prev_sibling.clone();
                     });
                 }
             }
             match child_common.prev_sibling {
                 None => { // this is the first child
-                    self.first_child = child_common.next_sibling;
+                    pseudo_self.borrow().first_child.set(child_common.next_sibling.clone());
                 },
                 Some(ref sibling) => {
                     sibling.with_common(|sibling_common| {
-                        sibling_common.next_sibling = child_common.next_sibling;
+                        sibling_common.next_sibling = child_common.next_sibling.clone();
                     });
                 }
             }           
@@ -200,7 +226,7 @@ pub enum Flip {
 }
 
 pub struct TextureLayer {
-    common: CommonLayer,
+    common: RefCell<CommonLayer>,
     /// A handle to the GPU texture.
     texture: Texture,
     /// The size of the texture in pixels.
@@ -212,7 +238,7 @@ pub struct TextureLayer {
 impl TextureLayer {
     pub fn new(texture: Texture, size: Size2D<uint>, flip: Flip) -> TextureLayer {
         TextureLayer {
-            common: CommonLayer(),
+            common: RefCell::new(CommonLayer()),
             texture: texture,
             size: size,
             flip: flip,
