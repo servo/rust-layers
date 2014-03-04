@@ -13,8 +13,7 @@ use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
 use geom::rect::Rect;
 use std::cell::RefCell;
-use std::ptr::to_unsafe_ptr;
-use temp_rc::Rc;
+use std::rc::Rc;
 
 pub enum Format {
     ARGB32Format,
@@ -85,7 +84,7 @@ pub fn ContainerLayer() -> ContainerLayer {
 }
 
 struct ChildIterator {
-    priv current: Option<Layer>,
+    current: Option<Layer>,
 }
 
 impl Iterator<Layer> for ChildIterator {
@@ -187,7 +186,8 @@ impl ContainerLayer {
             assert!(child_common.parent.is_some());
             match child_common.parent {
                 Some(ContainerLayerKind(ref container)) => {
-                    assert!(to_unsafe_ptr(container.borrow()) == to_unsafe_ptr(pseudo_self.borrow()));
+                    assert!(container.borrow() as *ContainerLayer ==
+                            pseudo_self.borrow() as *ContainerLayer);
                 },
                 _ => fail!(~"Invalid parent of child in layer tree"),
             }

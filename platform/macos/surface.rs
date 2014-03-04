@@ -15,7 +15,7 @@ use core_foundation::boolean::CFBoolean;
 use core_foundation::dictionary::CFDictionary;
 use core_foundation::number::CFNumber;
 use core_foundation::string::CFString;
-use extra::serialize::{Decoder, Encodable, Encoder};
+use serialize::{Decoder, Encodable, Encoder};
 use geom::size::Size2D;
 use io_surface::{kIOSurfaceBytesPerElement, kIOSurfaceBytesPerRow, kIOSurfaceHeight};
 use io_surface::{kIOSurfaceIsGlobal, kIOSurfaceWidth, IOSurface, IOSurfaceID};
@@ -24,7 +24,7 @@ use opengles::cgl::{CGLChoosePixelFormat, CGLDescribePixelFormat, CGLPixelFormat
 use opengles::cgl::{CGLPixelFormatObj, CORE_BOOLEAN_ATTRIBUTES, CORE_INTEGER_ATTRIBUTES};
 use opengles::cgl::{kCGLNoError};
 use opengles::gl2::GLint;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::local_data;
 use std::ptr;
 

@@ -97,7 +97,7 @@ impl NativeCompositingGraphicsContext {
                 fail!("Unable to locate a GLX FB configuration that supports RGBA.");
             }
             
-            let fbconfig = *ptr::offset(fbconfigs, 0);
+            let fbconfig = *fbconfigs.offset(0);
             let vi = glXGetVisualFromFBConfig(glx_display, fbconfig);
             (cast::transmute(vi), Some(fbconfig))
         }

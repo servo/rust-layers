@@ -9,7 +9,7 @@ RUST_SRC=$(shell find $(VPATH)/. -type f -name '*.rs')
 all:    librust-layers.dummy
 
 librust-layers.dummy: lib.rs $(RUST_SRC)
-	$(RUSTC) $(RUSTFLAGS) $< --lib --out-dir .
+	$(RUSTC) $(RUSTFLAGS) $< --crate-type=lib --out-dir .
 	touch $@
 
 rust-layers-test: lib.rs $(RUST_SRC)
