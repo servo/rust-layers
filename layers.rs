@@ -139,9 +139,9 @@ impl ContainerLayer {
 
             pseudo_self.borrow().first_child.set(Some(new_child.clone()));
 
-            match pseudo_self.borrow().last_child.borrow().get() {
-                &None => pseudo_self.borrow().last_child.set(Some(new_child.clone())),
-                &Some(_) => {}
+            let should_set = pseudo_self.borrow().last_child.borrow().get().is_none();
+            if should_set {
+                pseudo_self.borrow().last_child.set(Some(new_child.clone()));
             }
         });
     }
