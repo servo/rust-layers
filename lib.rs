@@ -11,25 +11,27 @@
 
 #[feature(managed_boxes)];
 
-extern mod extra;
-extern mod geom;
-extern mod opengles;
-extern mod std;
+extern crate extra;
+extern crate geom;
+extern crate opengles;
+extern crate std;
+extern crate serialize;
 
 #[cfg(target_os="macos")]
-extern mod core_foundation;
+extern crate core_foundation;
 #[cfg(target_os="macos")]
-extern mod io_surface;
+extern crate io_surface;
+#[cfg(target_os="macos")]
+extern crate collections;
 
 #[cfg(target_os="linux")]
-extern mod xlib;
+extern crate xlib;
 
 #[cfg(target_os="android")]
-extern mod egl;
+extern crate egl;
 
 pub mod layers;
 pub mod color;
-pub mod temp_rc;
 pub mod rendergl;
 pub mod scene;
 pub mod texturegl;

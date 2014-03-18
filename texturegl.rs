@@ -64,6 +64,14 @@ impl Drop for Texture {
     }
 }
 
+// This Trait is implemented because it is required
+// for Zero, but we should never call it on textures.
+impl Add<Texture, Texture> for Texture {
+    fn add(&self, _: &Texture) -> Texture {
+        fail!("Textures cannot be added.");
+    }
+}
+
 impl Zero for Texture {
     fn zero() -> Texture {
         Texture {

@@ -17,8 +17,8 @@ use opengles::gl2::{egl_image_target_texture2d_oes, TEXTURE_2D, glTexImage2D, BG
 use egl::egl::EGLDisplay;
 use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use std::cast;
+use std::mem;
 use std::ptr;
-use std::util;
 use std::vec;
 use std::libc::c_void;
 
@@ -140,7 +140,7 @@ impl NativeSurfaceMethods for NativeSurface {
             None => {},
             Some(image_khr) => {
                 DestroyImageKHR(graphics_context.display, image_khr);
-                util::replace(&mut self.image, None);
+                mem::replace(&mut self.image, None);
             }
         }
         self.mark_wont_leak()

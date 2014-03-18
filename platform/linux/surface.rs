@@ -93,11 +93,11 @@ impl NativeCompositingGraphicsContext {
             let mut configs = 0;
             let fbconfigs = glXChooseFBConfig(glx_display, screen,
                                               &fbconfig_attributes[0], &mut configs);
-            if (configs == 0) {
+            if configs == 0 {
                 fail!("Unable to locate a GLX FB configuration that supports RGBA.");
             }
             
-            let fbconfig = *ptr::offset(fbconfigs, 0);
+            let fbconfig = *fbconfigs.offset(0);
             let vi = glXGetVisualFromFBConfig(glx_display, fbconfig);
             (cast::transmute(vi), Some(fbconfig))
         }
