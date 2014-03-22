@@ -11,7 +11,6 @@
 
 #[feature(managed_boxes)];
 
-extern crate extra;
 extern crate geom;
 extern crate opengles;
 extern crate std;
