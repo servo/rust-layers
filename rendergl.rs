@@ -475,10 +475,10 @@ fn render_layer(render_context: RenderContext,
                 layer: layers::Layer) {
     match layer {
         ContainerLayerKind(container_layer) => {
-            container_layer.borrow().render(render_context, transform, scene_size)
+            container_layer.render(render_context, transform, scene_size)
         }
         TextureLayerKind(texture_layer) => {
-            texture_layer.borrow().render(render_context, transform, scene_size)
+            texture_layer.render(render_context, transform, scene_size)
         }
     }
 }

@@ -30,11 +30,11 @@ impl Layer {
     pub fn with_common<T>(&self, f: |&mut CommonLayer| -> T) -> T {
         match *self {
             ContainerLayerKind(ref container_layer) => {
-                let mut tmp = container_layer.borrow().common.borrow_mut();
+                let mut tmp = container_layer.common.borrow_mut();
                 f(tmp.get())
             },
             TextureLayerKind(ref texture_layer) => {
-                let mut tmp = texture_layer.borrow().common.borrow_mut();
+                let mut tmp = texture_layer.common.borrow_mut();
                 f(tmp.get())
             },
         }
@@ -104,11 +104,8 @@ impl Iterator<Layer> for ChildIterator {
 
 impl ContainerLayer {
     pub fn children(&self) -> ChildIterator {
-        ChildIterator { current: {
-                // NOTE: work around borrowchk
-                let tmp = self.first_child.borrow();
-                tmp.get().clone()
-            }
+        ChildIterator {
+            current: self.first_child.get().clone(),
         }
     }
 
@@ -122,26 +119,22 @@ impl ContainerLayer {
 
             new_child_common.parent = Some(ContainerLayerKind(pseudo_self.clone()));
 
-            // NOTE: work around borrowchk
-            {
-                let tmp = pseudo_self.borrow().first_child.borrow();
-                match *tmp.get() {
-                    None => {}
-                    Some(ref first_child) => {
-                        first_child.with_common(|first_child_common| {
-                            assert!(first_child_common.prev_sibling.is_none());
-                            first_child_common.prev_sibling = Some(new_child.clone());
-                            new_child_common.next_sibling = Some(first_child.clone());
-                        });
-                    }
+            match pseudo_self.first_child.get() {
+                None => {}
+                Some(ref first_child) => {
+                    first_child.with_common(|first_child_common| {
+                        assert!(first_child_common.prev_sibling.is_none());
+                        first_child_common.prev_sibling = Some(new_child.clone());
+                        new_child_common.next_sibling = Some(first_child.clone());
+                    });
                 }
             }
 
-            pseudo_self.borrow().first_child.set(Some(new_child.clone()));
+            pseudo_self.first_child.set(Some(new_child.clone()));
 
-            let should_set = pseudo_self.borrow().last_child.borrow().get().is_none();
+            let should_set = pseudo_self.last_child.get().is_none();
             if should_set {
-                pseudo_self.borrow().last_child.set(Some(new_child.clone()));
+                pseudo_self.last_child.set(Some(new_child.clone()));
             }
         });
     }
@@ -156,28 +149,26 @@ impl ContainerLayer {
 
             new_child_common.parent = Some(ContainerLayerKind(pseudo_self.clone()));
 
-            // NOTE: work around borrowchk
-            {
-                let tmp = pseudo_self.borrow().last_child.borrow();
-                match *tmp.get() {
-                    None => {}
-                    Some(ref last_child) => {
-                        last_child.with_common(|last_child_common| {
-                            assert!(last_child_common.next_sibling.is_none());
-                            last_child_common.next_sibling = Some(new_child.clone());
-                            new_child_common.prev_sibling = Some(last_child.clone());
-                        });
-                    }
+
+            match pseudo_self.last_child.get() {
+                None => {}
+                Some(ref last_child) => {
+                    last_child.with_common(|last_child_common| {
+                        assert!(last_child_common.next_sibling.is_none());
+                        last_child_common.next_sibling = Some(new_child.clone());
+                        new_child_common.prev_sibling = Some(last_child.clone());
+                    });
                 }
             }
 
-            pseudo_self.borrow().last_child.set(Some(new_child.clone()));
+            pseudo_self.last_child.set(Some(new_child.clone()));
 
-            pseudo_self.borrow().first_child.with_mut(|child|
-                                                      match *child {
-                                                          Some(_) => {},
-                                                          None => *child = Some(new_child.clone()),
-                                                      });
+            pseudo_self.first_child.with_mut(|child| {
+                match *child {
+                    Some(_) => {},
+                    None => *child = Some(new_child.clone()),
+                }
+            });
         });
     }
     
@@ -186,15 +177,15 @@ impl ContainerLayer {
             assert!(child_common.parent.is_some());
             match child_common.parent {
                 Some(ContainerLayerKind(ref container)) => {
-                    assert!(container.borrow() as *ContainerLayer ==
-                            pseudo_self.borrow() as *ContainerLayer);
+                    assert!(container.deref() as *ContainerLayer ==
+                            pseudo_self.deref() as *ContainerLayer);
                 },
                 _ => fail!(~"Invalid parent of child in layer tree"),
             }
 
             match child_common.next_sibling {
                 None => { // this is the last child
-                    pseudo_self.borrow().last_child.set(child_common.prev_sibling.clone());
+                    pseudo_self.last_child.set(child_common.prev_sibling.clone());
                 },
                 Some(ref sibling) => {
                     sibling.with_common(|sibling_common| {
@@ -204,7 +195,7 @@ impl ContainerLayer {
             }
             match child_common.prev_sibling {
                 None => { // this is the first child
-                    pseudo_self.borrow().first_child.set(child_common.next_sibling.clone());
+                    pseudo_self.first_child.set(child_common.next_sibling.clone());
                 },
                 Some(ref sibling) => {
                     sibling.with_common(|sibling_common| {
