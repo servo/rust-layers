@@ -161,12 +161,11 @@ impl ContainerLayer {
 
             pseudo_self.last_child.set(Some(new_child.clone()));
 
-            pseudo_self.first_child.with_mut(|child| {
-                match *child {
-                    Some(_) => {},
-                    None => *child = Some(new_child.clone()),
-                }
-            });
+            let mut child = pseudo_self.first_child.borrow_mut();
+            match *child {
+                Some(_) => {},
+                None => *child = Some(new_child.clone()),
+            }
         });
     }
     
