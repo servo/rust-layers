@@ -30,12 +30,10 @@ impl Layer {
     pub fn with_common<T>(&self, f: |&mut CommonLayer| -> T) -> T {
         match *self {
             ContainerLayerKind(ref container_layer) => {
-                let mut tmp = container_layer.common.borrow_mut();
-                f(tmp.get())
+                f(&mut *container_layer.common.borrow_mut())
             },
             TextureLayerKind(ref texture_layer) => {
-                let mut tmp = texture_layer.common.borrow_mut();
-                f(tmp.get())
+                f(&mut *texture_layer.common.borrow_mut())
             },
         }
     }
