@@ -16,12 +16,12 @@ use geom::matrix::{Matrix4, ortho};
 use geom::point::Point2D;
 use geom::size::Size2D;
 use geom::rect::Rect;
-use opengles::gl2::{ARRAY_BUFFER, COLOR_BUFFER_BIT, COMPILE_STATUS, FRAGMENT_SHADER, LINK_STATUS};
-use opengles::gl2::{NO_ERROR, SCISSOR_BOX, SCISSOR_TEST, STATIC_DRAW, TEXTURE_2D};
-use opengles::gl2::{TEXTURE_RECTANGLE_ARB, TEXTURE0, TRIANGLE_STRIP, VERTEX_SHADER, VIEWPORT};
-use opengles::gl2::{GLenum, GLfloat, GLint, GLsizei, GLuint, active_texture, attach_shader};
-use opengles::gl2::{bind_buffer, bind_texture, buffer_data, create_program, clear, clear_color};
-use opengles::gl2::{compile_shader};
+use opengles::gl2::{ARRAY_BUFFER, BLEND, COLOR_BUFFER_BIT, COMPILE_STATUS, FRAGMENT_SHADER};
+use opengles::gl2::{LINK_STATUS, NO_ERROR, ONE_MINUS_SRC_ALPHA, SCISSOR_BOX, SCISSOR_TEST};
+use opengles::gl2::{SRC_ALPHA, STATIC_DRAW, TEXTURE_2D, TEXTURE_RECTANGLE_ARB, TEXTURE0};
+use opengles::gl2::{TRIANGLE_STRIP, VERTEX_SHADER, VIEWPORT, GLenum, GLfloat, GLint, GLsizei};
+use opengles::gl2::{GLuint, active_texture, attach_shader, bind_buffer, bind_texture, blend_func};
+use opengles::gl2::{buffer_data, create_program, clear, clear_color, compile_shader};
 use opengles::gl2::{create_shader, draw_arrays, disable, enable, enable_vertex_attrib_array};
 use opengles::gl2::{gen_buffers, get_attrib_location, get_error, get_integer_v, get_program_iv};
 use opengles::gl2::{get_shader_info_log, get_shader_iv, get_uniform_location, is_enabled};
@@ -241,6 +241,8 @@ pub fn init_render_context() -> RenderContext {
 
     enable(TEXTURE_2D);
     enable(TEXTURE_RECTANGLE_ARB);
+    enable(BLEND);
+    blend_func(SRC_ALPHA, ONE_MINUS_SRC_ALPHA);
 
     RenderContext::new(Some(program_2d), Some(program_rectangle))
 }
@@ -252,6 +254,8 @@ pub fn init_render_context() -> RenderContext {
     let program_2d = init_program(vertex_2d_shader, fragment_2d_shader);
 
     enable(TEXTURE_2D);
+    enable(BLEND);
+    blend_func(SRC_ALPHA, ONE_MINUS_SRC_ALPHA);
 
     RenderContext::new(Some(program_2d), None)
 }
