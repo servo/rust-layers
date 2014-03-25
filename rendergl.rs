@@ -239,6 +239,8 @@ pub fn init_render_context() -> RenderContext {
 
     enable(TEXTURE_2D);
     enable(TEXTURE_RECTANGLE_ARB);
+    enable(BLEND);
+    blend_func(SRC_ALPHA, ONE_MINUS_SRC_ALPHA);
 
     RenderContext::new(Some(program_2d), Some(program_rectangle))
 }
@@ -250,6 +252,8 @@ pub fn init_render_context() -> RenderContext {
     let program_2d = init_program(vertex_2d_shader, fragment_2d_shader);
 
     enable(TEXTURE_2D);
+    enable(BLEND);
+    blend_func(SRC_ALPHA, ONE_MINUS_SRC_ALPHA);
 
     RenderContext::new(Some(program_2d), None)
 }
