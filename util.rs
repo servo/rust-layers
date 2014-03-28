@@ -9,11 +9,11 @@
 
 // Miscellaneous utilities.
 
-use std::vec;
+use std::slice;
 
 pub fn convert_rgb32_to_rgb24(buffer: ~[u8]) -> ~[u8] {
     let mut i = 0;
-    vec::from_fn(buffer.len() * 3 / 4, |j| {
+    slice::from_fn(buffer.len() * 3 / 4, |j| {
         match j % 3 {
             0 => {
                 buffer[i + 2]

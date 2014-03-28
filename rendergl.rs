@@ -374,9 +374,7 @@ impl Render for layers::ContainerLayer {
             None
         };
 
-        // NOTE: work around borrowchk
-        let tmp = self.scissor.borrow();
-        match tmp.get() {
+        match &*self.scissor.borrow() {
             &Some(rect) => {
                 let size = Size2D((rect.size.width * transform.m11) as GLint,
                                   (rect.size.height * transform.m22) as GLint);
@@ -438,7 +436,7 @@ impl Render for layers::ContainerLayer {
         // NOTE: work around borrowchk
         {
             let tmp = self.common.borrow();
-            let transform = transform.mul(&tmp.get().transform);
+            let transform = transform.mul(&tmp.transform);
             for child in self.children() {
                 render_layer(render_context, transform, scene_size, child);
             }
@@ -446,7 +444,7 @@ impl Render for layers::ContainerLayer {
 
         // NOTE: work around borrowchk
         let tmp = self.scissor.borrow();
-        match (tmp.get(), old_rect_opt) {
+        match (&*tmp, old_rect_opt) {
             (&Some(_), Some(old_rect)) => {
                 // Set scissor back to the parent's scissoring rect.
                 scissor(old_rect.origin.x, old_rect.origin.y, 
@@ -468,7 +466,7 @@ impl Render for layers::TextureLayer {
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>) {
         let tmp = self.common.borrow();
-        let transform = transform.mul(&tmp.get().transform);
+        let transform = transform.mul(&tmp.transform);
         bind_and_render_quad(render_context, &self.texture, self.flip, &transform, scene_size);
     }
 }
@@ -479,10 +477,10 @@ fn render_layer(render_context: RenderContext,
                 layer: layers::Layer) {
     match layer {
         ContainerLayerKind(container_layer) => {
-            container_layer.borrow().render(render_context, transform, scene_size)
+            container_layer.render(render_context, transform, scene_size)
         }
         TextureLayerKind(texture_layer) => {
-            texture_layer.borrow().render(render_context, transform, scene_size)
+            texture_layer.render(render_context, transform, scene_size)
         }
     }
 }
