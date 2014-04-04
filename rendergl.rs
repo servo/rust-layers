@@ -96,7 +96,7 @@ static FLIPPED_TEXTURE_COORDINATES: [f32, ..8] = [
 
 pub fn load_shader(source_string: &str, shader_type: GLenum) -> GLuint {
     let shader_id = create_shader(shader_type);
-    shader_source(shader_id, [ source_string.as_bytes().to_owned() ]);
+    shader_source(shader_id, [ source_string.as_bytes() ]);
     compile_shader(shader_id);
 
     if get_error() != NO_ERROR {
