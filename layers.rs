@@ -44,7 +44,7 @@ pub struct CommonLayer {
     prev_sibling: Option<Layer>,
     next_sibling: Option<Layer>,
 
-    transform: Matrix4<f32>,
+    pub transform: Matrix4<f32>,
 }
 
 impl CommonLayer {
@@ -65,10 +65,10 @@ pub fn CommonLayer() -> CommonLayer {
 
 
 pub struct ContainerLayer {
-    common: RefCell<CommonLayer>,
+    pub common: RefCell<CommonLayer>,
     first_child: RefCell<Option<Layer>>,
     last_child: RefCell<Option<Layer>>,
-    scissor: RefCell<Option<Rect<f32>>>,
+    pub scissor: RefCell<Option<Rect<f32>>>,
 }
 
 
@@ -103,7 +103,7 @@ impl Iterator<Layer> for ChildIterator {
 impl ContainerLayer {
     pub fn children(&self) -> ChildIterator {
         ChildIterator {
-            current: self.first_child.get().clone(),
+            current: self.first_child.borrow().clone(),
         }
     }
 
@@ -117,7 +117,7 @@ impl ContainerLayer {
 
             new_child_common.parent = Some(ContainerLayerKind(pseudo_self.clone()));
 
-            match pseudo_self.first_child.get() {
+            match *pseudo_self.first_child.borrow() {
                 None => {}
                 Some(ref first_child) => {
                     first_child.with_common(|first_child_common| {
@@ -128,11 +128,11 @@ impl ContainerLayer {
                 }
             }
 
-            pseudo_self.first_child.set(Some(new_child.clone()));
+            *pseudo_self.first_child.borrow_mut() = Some(new_child.clone());
 
-            let should_set = pseudo_self.last_child.get().is_none();
+            let should_set = pseudo_self.last_child.borrow().is_none();
             if should_set {
-                pseudo_self.last_child.set(Some(new_child.clone()));
+                *pseudo_self.last_child.borrow_mut() = Some(new_child.clone());
             }
         });
     }
@@ -148,7 +148,7 @@ impl ContainerLayer {
             new_child_common.parent = Some(ContainerLayerKind(pseudo_self.clone()));
 
 
-            match pseudo_self.last_child.get() {
+            match *pseudo_self.last_child.borrow() {
                 None => {}
                 Some(ref last_child) => {
                     last_child.with_common(|last_child_common| {
@@ -159,7 +159,7 @@ impl ContainerLayer {
                 }
             }
 
-            pseudo_self.last_child.set(Some(new_child.clone()));
+            *pseudo_self.last_child.borrow_mut() = Some(new_child.clone());
 
             let mut child = pseudo_self.first_child.borrow_mut();
             match *child {
@@ -182,7 +182,7 @@ impl ContainerLayer {
 
             match child_common.next_sibling {
                 None => { // this is the last child
-                    pseudo_self.last_child.set(child_common.prev_sibling.clone());
+                    *pseudo_self.last_child.borrow_mut() = child_common.prev_sibling.clone();
                 },
                 Some(ref sibling) => {
                     sibling.with_common(|sibling_common| {
@@ -192,7 +192,7 @@ impl ContainerLayer {
             }
             match child_common.prev_sibling {
                 None => { // this is the first child
-                    pseudo_self.first_child.set(child_common.next_sibling.clone());
+                    *pseudo_self.first_child.borrow_mut() = child_common.next_sibling.clone();
                 },
                 Some(ref sibling) => {
                     sibling.with_common(|sibling_common| {
@@ -214,13 +214,13 @@ pub enum Flip {
 }
 
 pub struct TextureLayer {
-    common: RefCell<CommonLayer>,
+    pub common: RefCell<CommonLayer>,
     /// A handle to the GPU texture.
-    texture: Texture,
+    pub texture: Texture,
     /// The size of the texture in pixels.
     size: Size2D<uint>,
     /// Whether this texture is flipped vertically.
-    flip: Flip,
+    pub flip: Flip,
 }
 
 impl TextureLayer {

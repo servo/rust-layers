@@ -48,12 +48,12 @@ impl TextureTarget {
 /// TODO: Include client storage here for `GL_CLIENT_STORAGE_APPLE`.
 pub struct Texture {
     /// The OpenGL texture ID.
-    priv id: GLuint,
+    id: GLuint,
     /// The texture target.
-    target: TextureTarget,
+    pub target: TextureTarget,
     /// Whether this texture is weak. Weak textures will not be cleaned up by
     /// the destructor.
-    priv weak: bool,
+    weak: bool,
 }
 
 impl Drop for Texture {
@@ -88,7 +88,7 @@ impl Zero for Texture {
 /// Encapsulates a bound texture. This ensures that the texture is unbound
 /// properly.
 struct BoundTexture {
-    target: TextureTarget
+    pub target: TextureTarget
 }
 
 impl Drop for BoundTexture {

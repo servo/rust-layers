@@ -13,10 +13,10 @@ use geom::size::Size2D;
 use geom::matrix::Matrix4;
 
 pub struct Scene {
-    root: Layer,
-    size: Size2D<f32>,
-    transform: Matrix4<f32>,
-    background_color: Color
+    pub root: Layer,
+    pub size: Size2D<f32>,
+    pub transform: Matrix4<f32>,
+    pub background_color: Color
 }
 
 pub fn Scene(root: Layer, size: Size2D<f32>, transform: Matrix4<f32>) -> Scene {
