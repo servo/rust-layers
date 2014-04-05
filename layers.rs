@@ -44,7 +44,7 @@ pub struct CommonLayer {
     prev_sibling: Option<Layer>,
     next_sibling: Option<Layer>,
 
-    transform: Matrix4<f32>,
+    pub transform: Matrix4<f32>,
 }
 
 impl CommonLayer {
@@ -65,10 +65,10 @@ pub fn CommonLayer() -> CommonLayer {
 
 
 pub struct ContainerLayer {
-    common: RefCell<CommonLayer>,
+    pub common: RefCell<CommonLayer>,
     first_child: RefCell<Option<Layer>>,
     last_child: RefCell<Option<Layer>>,
-    scissor: RefCell<Option<Rect<f32>>>,
+    pub scissor: RefCell<Option<Rect<f32>>>,
 }
 
 
@@ -214,13 +214,13 @@ pub enum Flip {
 }
 
 pub struct TextureLayer {
-    common: RefCell<CommonLayer>,
+    pub common: RefCell<CommonLayer>,
     /// A handle to the GPU texture.
-    texture: Texture,
+    pub texture: Texture,
     /// The size of the texture in pixels.
     size: Size2D<uint>,
     /// Whether this texture is flipped vertically.
-    flip: Flip,
+    pub flip: Flip,
 }
 
 impl TextureLayer {

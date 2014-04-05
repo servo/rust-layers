@@ -119,7 +119,7 @@ impl NativeCompositingGraphicsContext {
 /// The X display.
 #[deriving(Clone)]
 pub struct NativeGraphicsMetadata {
-    display: *Display,
+    pub display: *Display,
 }
 
 impl NativeGraphicsMetadata {
