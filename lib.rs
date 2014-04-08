@@ -14,6 +14,9 @@
 
 #[feature(managed_boxes)];
 
+#[feature(phase)];
+#[phase(syntax, link)] extern crate log;
+
 extern crate geom;
 extern crate opengles;
 extern crate std;
