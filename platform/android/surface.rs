@@ -19,7 +19,7 @@ use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use std::cast;
 use std::mem;
 use std::ptr;
-use std::vec;
+use std::slice;
 use std::libc::c_void;
 
 /// FIXME(Aydin Kim) :Currently, native surface is consist of 2 types of hybrid image buffer. EGLImageKHR is used to GPU rendering and vector is used to CPU rendering. EGL extension seems not provide simple way to accessing its bitmap directly. In the future, we need to find out the way to integrate them.
@@ -81,7 +81,7 @@ impl NativeSurfaceMethods for NativeSurface {
     fn new(_native_context: &NativePaintingGraphicsContext, size: Size2D<i32>, _stride: i32) -> NativeSurface {
         unsafe {
             let len = size.width * size.height * 4;
-            let bitmap = vec::from_elem::<u8>(len as uint, 0);
+            let bitmap = slice::from_elem::<u8>(len as uint, 0);
 
             NativeSurface {
                 image: None,

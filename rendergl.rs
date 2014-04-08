@@ -18,7 +18,7 @@ use geom::size::Size2D;
 use geom::rect::Rect;
 use opengles::gl2::{ARRAY_BUFFER, BLEND, COLOR_BUFFER_BIT, COMPILE_STATUS, FRAGMENT_SHADER};
 use opengles::gl2::{LINK_STATUS, NO_ERROR, ONE_MINUS_SRC_ALPHA, SCISSOR_BOX, SCISSOR_TEST};
-use opengles::gl2::{SRC_ALPHA, STATIC_DRAW, TEXTURE_2D, TEXTURE_RECTANGLE_ARB, TEXTURE0};
+use opengles::gl2::{SRC_ALPHA, STATIC_DRAW, TEXTURE_2D, TEXTURE0};
 use opengles::gl2::{TRIANGLE_STRIP, VERTEX_SHADER, VIEWPORT, GLenum, GLfloat, GLint, GLsizei};
 use opengles::gl2::{GLuint, active_texture, attach_shader, bind_buffer, bind_texture, blend_func};
 use opengles::gl2::{buffer_data, create_program, clear, clear_color, compile_shader};
@@ -231,6 +231,8 @@ pub fn init_program(vertex_shader: GLuint, fragment_shader: GLuint) -> GLuint {
 #[cfg(target_os="linux")]
 #[cfg(target_os="macos")]
 pub fn init_render_context() -> RenderContext {
+    use opengles::gl2::TEXTURE_RECTANGLE_ARB;
+
     let vertex_2d_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
     let fragment_2d_shader = load_shader(FRAGMENT_2D_SHADER_SOURCE, FRAGMENT_SHADER);
     let program_2d = init_program(vertex_2d_shader, fragment_2d_shader);
