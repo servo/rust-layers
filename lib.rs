@@ -7,17 +7,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id = "github.com/mozilla-servo/rust-layers#layers:0.1"];
-#[crate_type = "lib"];
-#[crate_type = "dylib"];
-#[crate_type = "rlib"];
+#![crate_id = "github.com/mozilla-servo/rust-layers#layers:0.1"]
+#![crate_type = "lib"]
+#![crate_type = "dylib"]
+#![crate_type = "rlib"]
 
-#[feature(managed_boxes)];
-
-#[feature(phase)];
-#[phase(syntax, link)] extern crate log;
+#![feature(managed_boxes, phase)]
 
 extern crate geom;
+#[phase(syntax, link)]
+extern crate log;
 extern crate opengles;
 extern crate std;
 extern crate serialize;
