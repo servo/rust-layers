@@ -16,11 +16,11 @@ use geom::size::Size2D;
 use opengles::gl2::{egl_image_target_texture2d_oes, TEXTURE_2D, glTexImage2D, BGRA, UNSIGNED_BYTE};
 use egl::egl::EGLDisplay;
 use egl::eglext::{EGLImageKHR, DestroyImageKHR};
+use libc::c_void;
 use std::cast;
 use std::mem;
 use std::ptr;
 use std::slice;
-use std::libc::c_void;
 
 /// FIXME(Aydin Kim) :Currently, native surface is consist of 2 types of hybrid image buffer. EGLImageKHR is used to GPU rendering and vector is used to CPU rendering. EGL extension seems not provide simple way to accessing its bitmap directly. In the future, we need to find out the way to integrate them.
 

@@ -15,6 +15,7 @@
 #![feature(managed_boxes, phase)]
 
 extern crate geom;
+extern crate libc;
 #[phase(syntax, link)]
 extern crate log;
 extern crate opengles;

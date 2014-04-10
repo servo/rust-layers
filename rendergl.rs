@@ -16,6 +16,7 @@ use geom::matrix::{Matrix4, ortho};
 use geom::point::Point2D;
 use geom::size::Size2D;
 use geom::rect::Rect;
+use libc::c_int;
 use opengles::gl2::{ARRAY_BUFFER, BLEND, COLOR_BUFFER_BIT, COMPILE_STATUS, FRAGMENT_SHADER};
 use opengles::gl2::{LINK_STATUS, NO_ERROR, ONE_MINUS_SRC_ALPHA, SCISSOR_BOX, SCISSOR_TEST};
 use opengles::gl2::{SRC_ALPHA, STATIC_DRAW, TEXTURE_2D, TEXTURE0};
@@ -27,7 +28,6 @@ use opengles::gl2::{gen_buffers, get_attrib_location, get_error, get_integer_v, 
 use opengles::gl2::{get_shader_info_log, get_shader_iv, get_uniform_location, is_enabled};
 use opengles::gl2::{link_program, scissor, shader_source, uniform_1i, uniform_2f};
 use opengles::gl2::{uniform_matrix_4fv, use_program, vertex_attrib_pointer_f32, viewport};
-use std::libc::c_int;
 
 static FRAGMENT_2D_SHADER_SOURCE: &'static str = "
     #ifdef GL_ES
