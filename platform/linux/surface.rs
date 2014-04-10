@@ -13,6 +13,7 @@ use platform::surface::NativeSurfaceMethods;
 use texturegl::Texture;
 
 use geom::size::Size2D;
+use libc::{c_int, c_uint, c_void};
 use opengles::glx::{GLXFBConfig, GLXDrawable};
 use opengles::glx::{GLX_BIND_TO_TEXTURE_RGBA_EXT};
 use opengles::glx::{GLX_DRAWABLE_TYPE, GLX_FRONT_EXT, GLX_PIXMAP_BIT};
@@ -25,7 +26,6 @@ use opengles::gl2::NO_ERROR;
 use opengles::gl2;
 use std::cast;
 use std::c_str::CString;
-use std::libc::{c_int, c_uint, c_void};
 use std::ptr;
 use xlib::xlib::{Display, Pixmap, XCreateGC, XCreateImage, XCreatePixmap, XDefaultScreen};
 use xlib::xlib::{XDisplayString, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage, XRootWindow};
