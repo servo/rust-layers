@@ -36,7 +36,7 @@ local_data_key!(io_surface_repository: HashMap<IOSurfaceID,IOSurface>)
 /// The Mac native graphics metadata.
 #[deriving(Clone)]
 pub struct NativeGraphicsMetadata {
-    pixel_format: CGLPixelFormatObj,
+    pub pixel_format: CGLPixelFormatObj,
 }
 
 impl NativeGraphicsMetadata {
