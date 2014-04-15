@@ -13,20 +13,18 @@ use scene::Scene;
 use texturegl::{Texture, TextureTarget2D, TextureTargetRectangle};
 
 use geom::matrix::{Matrix4, ortho};
-use geom::point::Point2D;
 use geom::size::Size2D;
-use geom::rect::Rect;
 use libc::c_int;
 use opengles::gl2::{ARRAY_BUFFER, BLEND, COLOR_BUFFER_BIT, COMPILE_STATUS, FRAGMENT_SHADER};
-use opengles::gl2::{LINK_STATUS, NO_ERROR, ONE_MINUS_SRC_ALPHA, SCISSOR_BOX, SCISSOR_TEST};
+use opengles::gl2::{LINK_STATUS, NO_ERROR, ONE_MINUS_SRC_ALPHA};
 use opengles::gl2::{SRC_ALPHA, STATIC_DRAW, TEXTURE_2D, TEXTURE0};
-use opengles::gl2::{TRIANGLE_STRIP, VERTEX_SHADER, VIEWPORT, GLenum, GLfloat, GLint, GLsizei};
+use opengles::gl2::{TRIANGLE_STRIP, VERTEX_SHADER, GLenum, GLfloat, GLint, GLsizei};
 use opengles::gl2::{GLuint, active_texture, attach_shader, bind_buffer, bind_texture, blend_func};
 use opengles::gl2::{buffer_data, create_program, clear, clear_color, compile_shader};
-use opengles::gl2::{create_shader, draw_arrays, disable, enable, enable_vertex_attrib_array};
-use opengles::gl2::{gen_buffers, get_attrib_location, get_error, get_integer_v, get_program_iv};
-use opengles::gl2::{get_shader_info_log, get_shader_iv, get_uniform_location, is_enabled};
-use opengles::gl2::{link_program, scissor, shader_source, uniform_1i, uniform_2f};
+use opengles::gl2::{create_shader, draw_arrays, enable, enable_vertex_attrib_array};
+use opengles::gl2::{gen_buffers, get_attrib_location, get_error, get_program_iv};
+use opengles::gl2::{get_shader_info_log, get_shader_iv, get_uniform_location};
+use opengles::gl2::{link_program, shader_source, uniform_1i, uniform_2f};
 use opengles::gl2::{uniform_matrix_4fv, use_program, vertex_attrib_pointer_f32, viewport};
 
 static FRAGMENT_2D_SHADER_SOURCE: &'static str = "
@@ -368,73 +366,6 @@ impl Render for layers::ContainerLayer {
               render_context: RenderContext,
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>) {
-        let old_rect_opt = if is_enabled(SCISSOR_TEST) {
-            let mut old_rect = [0 as GLint, ..4];
-            get_integer_v(SCISSOR_BOX, old_rect);
-            Some(Rect(Point2D(old_rect[0], old_rect[1]), Size2D(old_rect[2], old_rect[3])))
-        } else {
-            None
-        };
-
-        match &*self.scissor.borrow() {
-            &Some(rect) => {
-                let size = Size2D((rect.size.width * transform.m11) as GLint,
-                                  (rect.size.height * transform.m22) as GLint);
-                
-                // Get the viewport height so we can flip the origin horizontally
-                // since glScissor measures from the bottom left of the viewport
-                let mut viewport = [0 as GLint, ..4];
-                get_integer_v(VIEWPORT, viewport);
-                let w_height = viewport[3];
-                let origin = Point2D((rect.origin.x * transform.m11 + transform.m41) as GLint,
-                                     w_height
-                                     -((rect.origin.y * transform.m22 + transform.m42) as GLint)
-                                     -size.height);                
-                let rect = Rect(origin, size);
-                
-                match old_rect_opt {
-                    Some(old_rect) => {
-                        // A parent ContainerLayer is already being scissored, so set the
-                        // new scissor to the intersection of the two rects.
-                        let intersection = rect.intersection(&old_rect);
-                        match intersection {
-                            Some(new_rect) => {
-                                scissor(new_rect.origin.x,
-                                        new_rect.origin.y,
-                                        new_rect.size.width as GLsizei,
-                                        new_rect.size.height as GLsizei);
-                                maybe_get_error();
-                            }
-                            None => {
-                                return; // Layer is occluded/offscreen
-                            }
-                        }
-                    }
-                    None => {
-                        // We are the first ContainerLayer to be scissored.
-                        // Check against the viewport to prevent invalid values
-                        let w_rect = Rect(Point2D(0 as GLint, 0 as GLint),
-                                          Size2D(viewport[2], viewport[3]));
-                        let intersection = rect.intersection(&w_rect);
-                        match intersection {
-                            Some(new_rect) => {
-                                enable(SCISSOR_TEST);
-                                scissor(new_rect.origin.x,
-                                        new_rect.origin.y,
-                                        new_rect.size.width as GLsizei,
-                                        new_rect.size.height as GLsizei);
-                                maybe_get_error();
-                            }
-                            None => {
-                                return; // Layer is offscreen
-                            }
-                        }
-                    }
-                }
-            }
-            &None => {} // Nothing to do
-        }
-
         // NOTE: work around borrowchk
         {
             let tmp = self.common.borrow();
@@ -442,22 +373,6 @@ impl Render for layers::ContainerLayer {
             for child in self.children() {
                 render_layer(render_context, transform, scene_size, child);
             }
-        }
-
-        // NOTE: work around borrowchk
-        let tmp = self.scissor.borrow();
-        match (&*tmp, old_rect_opt) {
-            (&Some(_), Some(old_rect)) => {
-                // Set scissor back to the parent's scissoring rect.
-                scissor(old_rect.origin.x, old_rect.origin.y, 
-                        old_rect.size.width as GLsizei,
-                        old_rect.size.height as GLsizei);
-            }
-            (&Some(_), None) => {
-                // Our parents are not being scissored, so disable scissoring for now
-                disable(SCISSOR_TEST);
-            }
-            (&None, _) => {} // Nothing to do
         }
     }
 }
