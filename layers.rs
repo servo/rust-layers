@@ -103,7 +103,7 @@ impl Iterator<Layer> for ChildIterator {
 impl ContainerLayer {
     pub fn children(&self) -> ChildIterator {
         ChildIterator {
-            current: self.first_child.get().clone(),
+            current: self.first_child.borrow().clone(),
         }
     }
 
@@ -117,7 +117,7 @@ impl ContainerLayer {
 
             new_child_common.parent = Some(ContainerLayerKind(pseudo_self.clone()));
 
-            match pseudo_self.first_child.get() {
+            match *pseudo_self.first_child.borrow() {
                 None => {}
                 Some(ref first_child) => {
                     first_child.with_common(|first_child_common| {
@@ -130,7 +130,7 @@ impl ContainerLayer {
 
             pseudo_self.first_child.set(Some(new_child.clone()));
 
-            let should_set = pseudo_self.last_child.get().is_none();
+            let should_set = pseudo_self.last_child.borrow().is_none();
             if should_set {
                 pseudo_self.last_child.set(Some(new_child.clone()));
             }
@@ -148,7 +148,7 @@ impl ContainerLayer {
             new_child_common.parent = Some(ContainerLayerKind(pseudo_self.clone()));
 
 
-            match pseudo_self.last_child.get() {
+            match *pseudo_self.last_child.borrow() {
                 None => {}
                 Some(ref last_child) => {
                     last_child.with_common(|last_child_common| {
