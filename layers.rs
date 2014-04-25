@@ -40,9 +40,9 @@ impl Layer {
 }
 
 pub struct CommonLayer {
-    parent: Option<Layer>,
-    prev_sibling: Option<Layer>,
-    next_sibling: Option<Layer>,
+    pub parent: Option<Layer>,
+    pub prev_sibling: Option<Layer>,
+    pub next_sibling: Option<Layer>,
 
     pub transform: Matrix4<f32>,
 }
@@ -66,8 +66,8 @@ pub fn CommonLayer() -> CommonLayer {
 
 pub struct ContainerLayer {
     pub common: RefCell<CommonLayer>,
-    first_child: RefCell<Option<Layer>>,
-    last_child: RefCell<Option<Layer>>,
+    pub first_child: RefCell<Option<Layer>>,
+    pub last_child: RefCell<Option<Layer>>,
     pub scissor: RefCell<Option<Rect<f32>>>,
 }
 
