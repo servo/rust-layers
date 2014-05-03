@@ -101,7 +101,7 @@ impl Texture {
     /// Creates a new blank texture.
     pub fn new(target: TextureTarget) -> Texture {
         let this = Texture {
-            id: gl2::gen_textures(1)[0],
+            id: *gl2::gen_textures(1).get(0),
             target: target,
             weak: false,
         };

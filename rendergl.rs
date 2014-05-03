@@ -196,15 +196,15 @@ impl RenderContext {
     }
 
     fn init_buffers() -> Buffers {
-        let vertex_buffer = gen_buffers(1)[0];
+        let vertex_buffer = *gen_buffers(1).get(0);
         bind_buffer(ARRAY_BUFFER, vertex_buffer);
         buffer_data(ARRAY_BUFFER, VERTICES, STATIC_DRAW);
 
-        let texture_coordinate_buffer = gen_buffers(1)[0];
+        let texture_coordinate_buffer = *gen_buffers(1).get(0);
         bind_buffer(ARRAY_BUFFER, texture_coordinate_buffer);
         buffer_data(ARRAY_BUFFER, TEXTURE_COORDINATES, STATIC_DRAW);
 
-        let flipped_texture_coordinate_buffer = gen_buffers(1)[0];
+        let flipped_texture_coordinate_buffer = *gen_buffers(1).get(0);
         bind_buffer(ARRAY_BUFFER, flipped_texture_coordinate_buffer);
         buffer_data(ARRAY_BUFFER, FLIPPED_TEXTURE_COORDINATES, STATIC_DRAW);
 
