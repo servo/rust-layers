@@ -177,7 +177,7 @@ impl ContainerLayer {
                     assert!(container.deref() as *ContainerLayer ==
                             pseudo_self.deref() as *ContainerLayer);
                 },
-                _ => fail!(~"Invalid parent of child in layer tree"),
+                _ => fail!("Invalid parent of child in layer tree"),
             }
 
             match child_common.next_sibling {
