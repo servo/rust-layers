@@ -87,7 +87,7 @@ impl Zero for Texture {
 
 /// Encapsulates a bound texture. This ensures that the texture is unbound
 /// properly.
-struct BoundTexture {
+pub struct BoundTexture {
     pub target: TextureTarget
 }
 
