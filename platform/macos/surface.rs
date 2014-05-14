@@ -25,8 +25,8 @@ use opengles::cgl::{CGLPixelFormatObj, CORE_BOOLEAN_ATTRIBUTES, CORE_INTEGER_ATT
 use opengles::cgl::{kCGLNoError};
 use opengles::gl2::GLint;
 use collections::HashMap;
-use std::local_data;
 use std::ptr;
+use std::vec::Vec;
 
 use platform::surface::NativeSurfaceMethods;
 use texturegl::Texture;
@@ -50,7 +50,7 @@ impl NativeGraphicsMetadata {
     pub fn from_descriptor(descriptor: &NativeGraphicsMetadataDescriptor)
                            -> NativeGraphicsMetadata {
         unsafe {
-            let mut attributes = ~[];
+            let mut attributes = Vec::new();
             for (i, &set) in descriptor.boolean_attributes.iter().enumerate() {
                 if set {
                     attributes.push(CORE_BOOLEAN_ATTRIBUTES[i]);
@@ -63,7 +63,7 @@ impl NativeGraphicsMetadata {
             attributes.push(0);
             let mut pixel_format = ptr::null();
             let mut count = 0;
-            assert!(CGLChoosePixelFormat(&attributes[0], &mut pixel_format, &mut count) ==
+            assert!(CGLChoosePixelFormat(attributes.as_ptr(), &mut pixel_format, &mut count) ==
                     kCGLNoError);
             assert!(pixel_format != ptr::null());
             assert!(count > 0);
@@ -79,16 +79,16 @@ impl NativeGraphicsMetadata {
 /// pixel format object.
 #[deriving(Clone, Decodable, Encodable)]
 pub struct NativeGraphicsMetadataDescriptor {
-    boolean_attributes: ~[bool],
-    integer_attributes: ~[GLint],
+    boolean_attributes: Vec<bool>,
+    integer_attributes: Vec<GLint>,
 }
 
 impl NativeGraphicsMetadataDescriptor {
     pub fn from_metadata(metadata: NativeGraphicsMetadata) -> NativeGraphicsMetadataDescriptor {
         unsafe {
             let mut descriptor = NativeGraphicsMetadataDescriptor {
-                boolean_attributes: ~[],
-                integer_attributes: ~[],
+                boolean_attributes: Vec::new(),
+                integer_attributes: Vec::new(),
             };
             for &attribute in CORE_BOOLEAN_ATTRIBUTES.iter() {
                 let mut value = 0;
@@ -150,14 +150,14 @@ impl NativeSurface {
         let id = io_surface.get_id();
 
         let mut io_surface = Some(io_surface);
-        local_data::modify(io_surface_repository, |opt_repository| {
-            let mut repository = match opt_repository {
-                None => HashMap::new(),
-                Some(repository) => repository,
-            };
-            repository.insert(id, io_surface.take().unwrap());
-            Some(repository)
-        });
+
+        let opt_repository = io_surface_repository.replace(None);
+        let mut repository = match opt_repository {
+            None => HashMap::new(),
+            Some(repository) => repository,
+        };
+        repository.insert(id, io_surface.take().unwrap());
+        io_surface_repository.replace(Some(repository));
 
         NativeSurface {
             io_surface_id: Some(id),
@@ -219,9 +219,11 @@ impl NativeSurfaceMethods for NativeSurface {
     }
 
     fn destroy(&mut self, _: &NativePaintingGraphicsContext) {
-        local_data::get_mut(io_surface_repository, |opt_repository| {
-            opt_repository.unwrap().remove(&self.io_surface_id.unwrap())
-        });
+        // There is no mutable borrow of items in local data.
+        let opt_repository = io_surface_repository.replace(None);
+        let mut repo = opt_repository.unwrap();
+        repo.remove(&self.io_surface_id.unwrap());
+        io_surface_repository.replace(Some(repo));
         self.io_surface_id = None;
         self.mark_wont_leak()
     }
