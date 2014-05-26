@@ -90,16 +90,21 @@ impl NativeCompositingGraphicsContext {
             ];
 
             let screen = XDefaultScreen(display);
-            let mut configs = 0;
-            let fbconfigs = glXChooseFBConfig(glx_display, screen,
-                                              &fbconfig_attributes[0], &mut configs);
-            if configs == 0 {
-                fail!("Unable to locate a GLX FB configuration that supports RGBA.");
+            let mut number_of_configs = 0;
+            let configs = glXChooseFBConfig(glx_display, screen,
+                                            &fbconfig_attributes[0], &mut number_of_configs);
+            // NVidia drives have RGBA configurations that use 24-bit XVisual, not capable of
+            // representing an alpha-channel in Pixmap form, so we look for the configuration
+            // with a full set of 32 bits.
+            for i in range(0, number_of_configs as int) {
+                let config = *configs.offset(i);
+                let visual_info : *XVisualInfo = cast::transmute(glXGetVisualFromFBConfig(glx_display, config));
+                if (*visual_info).depth == 32 {
+                    return (visual_info, Some(config))
+                }
             }
-            
-            let fbconfig = *fbconfigs.offset(0);
-            let vi = glXGetVisualFromFBConfig(glx_display, fbconfig);
-            (cast::transmute(vi), Some(fbconfig))
+
+            fail!("Unable to locate a GLX FB configuration that supports RGBA.");
         }
     }
 
