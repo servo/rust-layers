@@ -213,7 +213,7 @@ impl NativeSurfaceMethods for NativeSurface {
                                        window,
                                        size.width as c_uint,
                                        size.height as c_uint,
-                                       ((stride / size.width) * 8) as c_uint);
+                                       (*native_context.visual_info).depth as c_uint);
             NativeSurface::from_pixmap(pixmap)
         }
     }
