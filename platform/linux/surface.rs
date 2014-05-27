@@ -27,7 +27,6 @@ use opengles::gl2;
 use std::cast;
 use std::c_str::CString;
 use std::ptr;
-use std::str::raw::from_c_str;
 use xlib::xlib::{Display, Pixmap, XCreateGC, XCreateImage, XCreatePixmap, XDefaultScreen};
 use xlib::xlib::{XDisplayString, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage, XRootWindow};
 use xlib::xlib::{XVisualInfo, ZPixmap};
@@ -97,8 +96,10 @@ impl NativeCompositingGraphicsContext {
             let glXGetClientString: extern "C" fn(*Display, c_int) -> *c_char =
                 cast::transmute(glXGetProcAddress(cast::transmute(&"glXGetClientString\x00"[0])));
             assert!(glXGetClientString as *c_void != ptr::null());
-            let glx_client_vendor = glXGetClientString(display, 1);
-            if from_c_str(glx_client_vendor).to_ascii().eq_ignore_case("NVIDIA".to_ascii()) {
+            let glx_cli_vendor_c_str = CString::new(glXGetClientString(display, 1), false);
+            let glx_cli_vendor = match glx_cli_vendor_c_str.as_str() { Some(s) => s,
+                                                                       None => fail!("Can't get glx client vendor.") };
+            if glx_cli_vendor.to_ascii().eq_ignore_case("NVIDIA".to_ascii()) {
                 // NVidia drives have RGBA configurations that use 24-bit XVisual, not capable of
                 // representing an alpha-channel in Pixmap form, so we look for the configuration
                 // with a full set of 32 bits.
@@ -109,11 +110,10 @@ impl NativeCompositingGraphicsContext {
                         return (visual_info, Some(config))
                     }
                 }
-            }else if number_of_configs != 0 {
+            } else if number_of_configs != 0 {
                 let fbconfig = *configs.offset(0);
                 let vi = glXGetVisualFromFBConfig(glx_display, fbconfig);
                 return (cast::transmute(vi), Some(fbconfig));
-
             }
             fail!("Unable to locate a GLX FB configuration that supports RGBA.");
         }
