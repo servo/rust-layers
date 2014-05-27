@@ -13,7 +13,7 @@ use platform::surface::NativeSurfaceMethods;
 use texturegl::Texture;
 
 use geom::size::Size2D;
-use libc::{c_int, c_uint, c_void};
+use libc::{c_char, c_int, c_uint, c_void};
 use opengles::glx::{GLXFBConfig, GLXDrawable};
 use opengles::glx::{GLX_BIND_TO_TEXTURE_RGBA_EXT};
 use opengles::glx::{GLX_DRAWABLE_TYPE, GLX_FRONT_EXT, GLX_PIXMAP_BIT};
@@ -27,6 +27,7 @@ use opengles::gl2;
 use std::cast;
 use std::c_str::CString;
 use std::ptr;
+use std::str::raw::from_c_str;
 use xlib::xlib::{Display, Pixmap, XCreateGC, XCreateImage, XCreatePixmap, XDefaultScreen};
 use xlib::xlib::{XDisplayString, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage, XRootWindow};
 use xlib::xlib::{XVisualInfo, ZPixmap};
@@ -93,17 +94,27 @@ impl NativeCompositingGraphicsContext {
             let mut number_of_configs = 0;
             let configs = glXChooseFBConfig(glx_display, screen,
                                             &fbconfig_attributes[0], &mut number_of_configs);
-            // NVidia drives have RGBA configurations that use 24-bit XVisual, not capable of
-            // representing an alpha-channel in Pixmap form, so we look for the configuration
-            // with a full set of 32 bits.
-            for i in range(0, number_of_configs as int) {
-                let config = *configs.offset(i);
-                let visual_info : *XVisualInfo = cast::transmute(glXGetVisualFromFBConfig(glx_display, config));
-                if (*visual_info).depth == 32 {
-                    return (visual_info, Some(config))
+            let glXGetClientString: extern "C" fn(*Display, c_int) -> *c_char =
+                cast::transmute(glXGetProcAddress(cast::transmute(&"glXGetClientString\x00"[0])));
+            assert!(glXGetClientString as *c_void != ptr::null());
+            let glx_client_vendor = glXGetClientString(display, 1);
+            if from_c_str(glx_client_vendor).to_ascii().eq_ignore_case("NVIDIA".to_ascii()) {
+                // NVidia drives have RGBA configurations that use 24-bit XVisual, not capable of
+                // representing an alpha-channel in Pixmap form, so we look for the configuration
+                // with a full set of 32 bits.
+                for i in range(0, number_of_configs as int) {
+                    let config = *configs.offset(i);
+                    let visual_info : *XVisualInfo = cast::transmute(glXGetVisualFromFBConfig(glx_display, config));
+                    if (*visual_info).depth == 32 {
+                        return (visual_info, Some(config))
+                    }
                 }
-            }
+            }else if number_of_configs != 0 {
+                let fbconfig = *configs.offset(0);
+                let vi = glXGetVisualFromFBConfig(glx_display, fbconfig);
+                return (cast::transmute(vi), Some(fbconfig));
 
+            }
             fail!("Unable to locate a GLX FB configuration that supports RGBA.");
         }
     }
