@@ -22,6 +22,7 @@ use opengles::glx::{GLX_TEXTURE_TARGET_EXT, glXCreatePixmap, glXDestroyPixmap};
 use opengles::glx::{glXGetProcAddress, glXChooseFBConfig};
 use opengles::glx::{glXGetVisualFromFBConfig};
 use opengles::glx::{GLX_RGBA_BIT, GLX_WINDOW_BIT, GLX_RENDER_TYPE, GLX_DOUBLEBUFFER};
+use opengles::glx::{GLX_VENDOR};
 use opengles::gl2::NO_ERROR;
 use opengles::gl2;
 use std::cast;
@@ -96,7 +97,7 @@ impl NativeCompositingGraphicsContext {
             let glXGetClientString: extern "C" fn(*Display, c_int) -> *c_char =
                 cast::transmute(glXGetProcAddress(cast::transmute(&"glXGetClientString\x00"[0])));
             assert!(glXGetClientString as *c_void != ptr::null());
-            let glx_cli_vendor_c_str = CString::new(glXGetClientString(display, 1), false);
+            let glx_cli_vendor_c_str = CString::new(glXGetClientString(display, GLX_VENDOR), false);
             let glx_cli_vendor = match glx_cli_vendor_c_str.as_str() { Some(s) => s,
                                                                        None => fail!("Can't get glx client vendor.") };
             if glx_cli_vendor.to_ascii().eq_ignore_case("NVIDIA".to_ascii()) {
