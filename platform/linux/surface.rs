@@ -25,8 +25,8 @@ use opengles::glx::{GLX_RGBA_BIT, GLX_WINDOW_BIT, GLX_RENDER_TYPE, GLX_DOUBLEBUF
 use opengles::glx::{GLX_VENDOR};
 use opengles::gl2::NO_ERROR;
 use opengles::gl2;
-use std::cast;
 use std::c_str::CString;
+use std::mem;
 use std::ptr;
 use xlib::xlib::{Display, Pixmap, XCreateGC, XCreateImage, XCreatePixmap, XDefaultScreen};
 use xlib::xlib::{XDisplayString, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage, XRootWindow};
@@ -76,7 +76,7 @@ impl NativeCompositingGraphicsContext {
     /// FIXME(pcwalton): It would be more robust to actually have the compositor pass the visual.
     fn compositor_visual_info(display: *Display) -> (*XVisualInfo, Option<GLXFBConfig>) {
         unsafe {
-            let glx_display = cast::transmute(display);
+            let glx_display = mem::transmute(display);
 
             // CONSIDER:
             // In skia, they compute the GLX_ALPHA_SIZE minimum and request
@@ -95,7 +95,7 @@ impl NativeCompositingGraphicsContext {
             let configs = glXChooseFBConfig(glx_display, screen,
                                             &fbconfig_attributes[0], &mut number_of_configs);
             let glXGetClientString: extern "C" fn(*Display, c_int) -> *c_char =
-                cast::transmute(glXGetProcAddress(cast::transmute(&"glXGetClientString\x00"[0])));
+                mem::transmute(glXGetProcAddress(mem::transmute(&"glXGetClientString\x00"[0])));
             assert!(glXGetClientString as *c_void != ptr::null());
             let glx_cli_vendor_c_str = CString::new(glXGetClientString(display, GLX_VENDOR), false);
             let glx_cli_vendor = match glx_cli_vendor_c_str.as_str() { Some(s) => s,
@@ -106,7 +106,7 @@ impl NativeCompositingGraphicsContext {
                 // with a full set of 32 bits.
                 for i in range(0, number_of_configs as int) {
                     let config = *configs.offset(i);
-                    let visual_info : *XVisualInfo = cast::transmute(glXGetVisualFromFBConfig(glx_display, config));
+                    let visual_info : *XVisualInfo = mem::transmute(glXGetVisualFromFBConfig(glx_display, config));
                     if (*visual_info).depth == 32 {
                         return (visual_info, Some(config))
                     }
@@ -114,7 +114,7 @@ impl NativeCompositingGraphicsContext {
             } else if number_of_configs != 0 {
                 let fbconfig = *configs.offset(0);
                 let vi = glXGetVisualFromFBConfig(glx_display, fbconfig);
-                return (cast::transmute(vi), Some(fbconfig));
+                return (mem::transmute(vi), Some(fbconfig));
             }
             fail!("Unable to locate a GLX FB configuration that supports RGBA.");
         }
@@ -151,11 +151,9 @@ impl NativeGraphicsMetadata {
             let display = descriptor.display.with_c_str(|c_str| {
                     XOpenDisplay(c_str)
                 });
-            
             if display.is_null() {
                 fail!("XOpenDisplay() failed!");
             }
-            
             NativeGraphicsMetadata {
                 display: display,
             }
@@ -166,7 +164,7 @@ impl NativeGraphicsMetadata {
 /// A sendable form of the X display string.
 #[deriving(Clone, Decodable, Encodable)]
 pub struct NativeGraphicsMetadataDescriptor {
-    display: ~str,
+    display: String,
 }
 
 impl NativeGraphicsMetadataDescriptor {
@@ -245,7 +243,7 @@ impl NativeSurfaceMethods for NativeSurface {
                 0
             ];
 
-            let glx_display = cast::transmute(native_context.display);
+            let glx_display = mem::transmute(native_context.display);
         
             let glx_pixmap = glXCreatePixmap(glx_display,
                                              native_context.framebuffer_configuration.expect(
@@ -254,11 +252,11 @@ impl NativeSurfaceMethods for NativeSurface {
                                              &pixmap_attributes[0]);
 
             let glXBindTexImageEXT: extern "C" fn(*Display, GLXDrawable, c_int, *c_int) =
-                cast::transmute(glXGetProcAddress(cast::transmute(&"glXBindTexImageEXT\x00"[0])));
+                mem::transmute(glXGetProcAddress(mem::transmute(&"glXBindTexImageEXT\x00"[0])));
             assert!(glXBindTexImageEXT as *c_void != ptr::null());
             let _bound = texture.bind();
             glXBindTexImageEXT(native_context.display,
-                               cast::transmute(glx_pixmap),
+                               mem::transmute(glx_pixmap),
                                GLX_FRONT_EXT,
                                ptr::null());
             assert_eq!(gl2::get_error(), NO_ERROR);
@@ -283,7 +281,7 @@ impl NativeSurfaceMethods for NativeSurface {
             let mut border_width = 0;
             let mut depth = 0;
             let _ = XGetGeometry(graphics_context.display,
-                                 cast::transmute(pixmap),
+                                 mem::transmute(pixmap),
                                  &mut root_window,
                                  &mut x,
                                  &mut y,
@@ -298,7 +296,7 @@ impl NativeSurfaceMethods for NativeSurface {
                                      depth,
                                      ZPixmap,
                                      0,
-                                     cast::transmute(&data[0]),
+                                     mem::transmute(&data[0]),
                                      width as c_uint,
                                      height as c_uint,
                                      32,
