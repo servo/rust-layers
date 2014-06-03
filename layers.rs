@@ -81,7 +81,7 @@ pub fn ContainerLayer() -> ContainerLayer {
     }
 }
 
-struct ChildIterator {
+pub struct ChildIterator {
     current: Option<Layer>,
 }
 
