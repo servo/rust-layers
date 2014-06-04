@@ -202,6 +202,11 @@ impl ContainerLayer {
             }           
         });
     }
+
+    pub fn remove_all_children(&self) {
+        *self.first_child.borrow_mut() = None;
+        *self.last_child.borrow_mut() = None;
+    }
 }
 
 /// Whether a texture should be flipped.
