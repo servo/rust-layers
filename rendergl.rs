@@ -419,15 +419,3 @@ pub fn render_scene(render_context: RenderContext, scene: &Scene) {
     // Render the root layer.
     render_layer(render_context, transform, scene.size, scene.root.clone());
 }
-
-#[cfg(debug)]
-fn maybe_get_error() {
-    if get_error() != NO_ERROR {
-        fail!("GL error: {:d}", get_error() as int);
-    }
-}
-
-#[cfg(not(debug))]
-fn maybe_get_error() {
-    // do nothing
-}
