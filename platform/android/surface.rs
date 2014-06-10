@@ -17,7 +17,6 @@ use opengles::gl2::{egl_image_target_texture2d_oes, TEXTURE_2D, glTexImage2D, BG
 use egl::egl::EGLDisplay;
 use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use libc::c_void;
-use std::cast;
 use std::mem;
 use std::ptr;
 use std::vec::Vec;
@@ -85,7 +84,7 @@ impl NativeSurfaceMethods for NativeSurface {
 
             NativeSurface {
                 image: None,
-                bitmap: cast::transmute(bitmap.as_ptr()),
+                bitmap: mem::transmute(bitmap.as_ptr()),
                 will_leak : true,
             }
         }
@@ -119,7 +118,7 @@ impl NativeSurfaceMethods for NativeSurface {
     fn upload(&self, _graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
         unsafe {
             if self.bitmap != ptr::null() {
-                let dest:&mut [u8] = cast::transmute((self.bitmap, data.len()));
+                let dest:&mut [u8] = mem::transmute((self.bitmap, data.len()));
                 dest.copy_memory(data);
             }
             else {
