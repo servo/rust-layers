@@ -100,8 +100,9 @@ impl NativeCompositingGraphicsContext {
             let glx_cli_vendor_c_str = CString::new(glXGetClientString(display, GLX_VENDOR), false);
             let glx_cli_vendor = match glx_cli_vendor_c_str.as_str() { Some(s) => s,
                                                                        None => fail!("Can't get glx client vendor.") };
-            if glx_cli_vendor.to_ascii().eq_ignore_case("NVIDIA".to_ascii()) {
-                // NVidia drives have RGBA configurations that use 24-bit XVisual, not capable of
+            if glx_cli_vendor.to_ascii().eq_ignore_case("NVIDIA".to_ascii()) ||
+               glx_cli_vendor.to_ascii().eq_ignore_case("ATI".to_ascii()) {
+                // NVidia (and AMD/ATI) drivers have RGBA configurations that use 24-bit XVisual, not capable of
                 // representing an alpha-channel in Pixmap form, so we look for the configuration
                 // with a full set of 32 bits.
                 for i in range(0, number_of_configs as int) {
