@@ -16,7 +16,7 @@
 
 extern crate geom;
 extern crate libc;
-#[phase(syntax, link)]
+#[phase(plugin, link)]
 extern crate log;
 extern crate opengles;
 extern crate std;

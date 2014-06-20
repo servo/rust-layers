@@ -180,7 +180,7 @@ impl NativeGraphicsMetadataDescriptor {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum NativeSurfaceTransientData {
     NoTransientData,
     RenderTaskTransientData(*Display, *XVisualInfo),

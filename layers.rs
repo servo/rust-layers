@@ -210,7 +210,7 @@ impl ContainerLayer {
 }
 
 /// Whether a texture should be flipped.
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum Flip {
     /// The texture should not be flipped.
     NoFlip,
