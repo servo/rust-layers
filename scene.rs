@@ -7,21 +7,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use layers::Layer;
 use color::Color;
 use geom::size::Size2D;
 use geom::matrix::Matrix4;
+use layers::ContainerLayer;
+use std::rc::Rc;
 
-pub struct Scene {
-    pub root: Layer,
+pub struct Scene<T> {
+    pub root: Option<Rc<ContainerLayer<T>>>,
     pub size: Size2D<f32>,
     pub transform: Matrix4<f32>,
     pub background_color: Color
 }
 
-pub fn Scene(root: Layer, size: Size2D<f32>, transform: Matrix4<f32>) -> Scene {
+pub fn Scene<T>(size: Size2D<f32>, transform: Matrix4<f32>) -> Scene<T> {
     Scene {
-        root: root,
+        root: None,
         size: size,
         transform: transform,
         background_color: Color {
@@ -33,7 +34,7 @@ pub fn Scene(root: Layer, size: Size2D<f32>, transform: Matrix4<f32>) -> Scene {
     }
 }
 
-impl Scene {
+impl<T> Scene<T> {
     // FIXME: Workaround for cross-crate bug regarding mutability of class fields
     pub fn set_transform(&mut self, new_transform: Matrix4<f32>) {
         self.transform = new_transform;
