@@ -24,7 +24,7 @@ use opengles::cgl::{CGLChoosePixelFormat, CGLDescribePixelFormat, CGLPixelFormat
 use opengles::cgl::{CGLPixelFormatObj, CORE_BOOLEAN_ATTRIBUTES, CORE_INTEGER_ATTRIBUTES};
 use opengles::cgl::{kCGLNoError};
 use opengles::gl2::GLint;
-use collections::HashMap;
+use std::collections::hashmap::HashMap;
 use std::ptr;
 use std::vec::Vec;
 
