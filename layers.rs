@@ -38,22 +38,12 @@ pub struct Layer<T> {
 }
 
 impl<T> Layer<T> {
-    pub fn new(page_size: Option<Size2D<f32>>, tile_size: uint, data: T) -> Layer<T> {
+    pub fn new(page_size: Size2D<f32>, tile_size: uint, data: T) -> Layer<T> {
         Layer {
             children: RefCell::new(vec!()),
             tiles: RefCell::new(vec!()),
-            quadtree: match page_size {
-                None => {
-                    RefCell::new(Quadtree::new(Size2D(tile_size, tile_size),
-                                                   tile_size,
-                                                   Some(MAX_TILE_MEMORY_PER_LAYER)))
-                }
-                Some(page_size) => {
-                    RefCell::new(Quadtree::new(Size2D(page_size.width as uint, page_size.height as uint),
-                                                   tile_size,
-                                                   Some(MAX_TILE_MEMORY_PER_LAYER)))
-                }
-            },
+            quadtree: RefCell::new(Quadtree::new(Size2D(page_size.width as uint, page_size.height as uint),
+                                                 tile_size, Some(MAX_TILE_MEMORY_PER_LAYER))),
             transform: RefCell::new(identity()),
             origin: RefCell::new(Zero::zero()),
             tile_size: tile_size,
