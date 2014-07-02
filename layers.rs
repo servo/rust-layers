@@ -27,67 +27,21 @@ pub enum Format {
     RGB24Format
 }
 
-pub struct CommonLayer<T> {
-    pub parent: Option<Rc<ContainerLayer<T>>>,
-    pub prev_sibling: Option<Rc<ContainerLayer<T>>>,
-    pub next_sibling: Option<Rc<ContainerLayer<T>>>,
-
-    pub transform: Matrix4<f32>,
-    pub origin: Point2D<f32>,
-}
-
-impl<T> CommonLayer<T> {
-    // FIXME: Workaround for cross-crate bug regarding mutability of class fields
-    pub fn set_transform(&mut self, new_transform: Matrix4<f32>) {
-        self.transform = new_transform;
-    }
-
-    pub fn new() -> CommonLayer<T> {
-        CommonLayer {
-            parent: None,
-            prev_sibling: None,
-            next_sibling: None,
-            transform: identity(),
-            origin: Zero::zero(),
-        }
-    }
-}
-
 pub struct ContainerLayer<T> {
-    pub common: RefCell<CommonLayer<T>>,
-    pub first_child: RefCell<Option<Rc<ContainerLayer<T>>>>,
-    pub last_child: RefCell<Option<Rc<ContainerLayer<T>>>>,
+    pub children: RefCell<Vec<Rc<ContainerLayer<T>>>>,
     pub tiles: RefCell<Vec<Rc<TextureLayer>>>,
     pub quadtree: RefCell<Quadtree>,
-
+    pub transform: RefCell<Matrix4<f32>>,
+    pub origin: RefCell<Point2D<f32>>,
     tile_size: uint,
     pub extra_data: RefCell<T>,
-}
-
-pub struct ChildIterator<T> {
-    current: Option<Rc<ContainerLayer<T>>>,
-}
-
-impl<T> Iterator<Rc<ContainerLayer<T>>> for ChildIterator<T> {
-    fn next(&mut self) -> Option<Rc<ContainerLayer<T>>> {
-        let (new_current, result) =
-            match self.current {
-                None => (None, None),
-                Some(ref child) => {
-                    (child.common().next_sibling.clone(), Some(child.clone()))
-                }
-            };
-        self.current = new_current;
-        result
-    }
 }
 
 impl<T> ContainerLayer<T> {
     pub fn new(page_size: Option<Size2D<f32>>, tile_size: uint, data: T) -> ContainerLayer<T> {
         ContainerLayer {
-            common: RefCell::new(CommonLayer::new()),
-            first_child: RefCell::new(None),
-            last_child: RefCell::new(None),
+            children: RefCell::new(vec!()),
+            tiles: RefCell::new(vec!()),
             quadtree: match page_size {
                 None => {
                     RefCell::new(Quadtree::new(Size2D(tile_size, tile_size),
@@ -100,115 +54,19 @@ impl<T> ContainerLayer<T> {
                                                    Some(MAX_TILE_MEMORY_PER_LAYER)))
                 }
             },
-            tiles: RefCell::new(vec!()),
+            transform: RefCell::new(identity()),
+            origin: RefCell::new(Zero::zero()),
             tile_size: tile_size,
             extra_data: RefCell::new(data),
         }
     }
 
-    pub fn children(&self) -> ChildIterator<T> {
-        ChildIterator {
-            current: self.first_child.borrow().clone(),
-        }
+    pub fn children<'a>(&'a self) -> RefMut<'a,Vec<Rc<ContainerLayer<T>>>> {
+        self.children.borrow_mut()
     }
 
-    pub fn common<'a>(&'a self) -> RefMut<'a,CommonLayer<T>> {
-        self.common.borrow_mut()
-    }
-
-    /// Adds a child to the beginning of the list.
-    /// Only works when the child is disconnected from the layer tree.
-    pub fn add_child_start(this: Rc<ContainerLayer<T>>, new_child: Rc<ContainerLayer<T>>) {
-        let mut new_child_common = new_child.common();
-        assert!(new_child_common.parent.is_none());
-        assert!(new_child_common.prev_sibling.is_none());
-        assert!(new_child_common.next_sibling.is_none());
-
-        new_child_common.parent = Some(this.clone());
-
-        match *this.first_child.borrow() {
-            None => {}
-            Some(ref first_child) => {
-                let mut first_child_common = first_child.common();
-                assert!(first_child_common.prev_sibling.is_none());
-                first_child_common.prev_sibling = Some(new_child.clone());
-                new_child_common.next_sibling = Some(first_child.clone());
-            }
-        }
-
-        *this.first_child.borrow_mut() = Some(new_child.clone());
-
-        let should_set = this.last_child.borrow().is_none();
-        if should_set {
-            *this.last_child.borrow_mut() = Some(new_child.clone());
-        }
-    }
-
-    /// Adds a child to the end of the list.
-    /// Only works when the child is disconnected from the layer tree.
-    pub fn add_child_end(this: Rc<ContainerLayer<T>>, new_child: Rc<ContainerLayer<T>>) {
-        let mut new_child_common = new_child.common();
-        assert!(new_child_common.parent.is_none());
-        assert!(new_child_common.prev_sibling.is_none());
-        assert!(new_child_common.next_sibling.is_none());
-
-        new_child_common.parent = Some(this.clone());
-
-
-        match *this.last_child.borrow() {
-            None => {}
-            Some(ref last_child) => {
-                let mut last_child_common = last_child.common();
-                assert!(last_child_common.next_sibling.is_none());
-                last_child_common.next_sibling = Some(new_child.clone());
-                new_child_common.prev_sibling = Some(last_child.clone());
-            }
-        }
-
-        *this.last_child.borrow_mut() = Some(new_child.clone());
-
-        let mut child = this.first_child.borrow_mut();
-        match *child {
-            Some(_) => {},
-            None => *child = Some(new_child.clone()),
-        }
-    }
-
-    pub fn remove_child(this: Rc<ContainerLayer<T>>, child: Rc<ContainerLayer<T>>) {
-        let mut child_common = child.common();
-        assert!(child_common.parent.is_some());
-        match child_common.parent {
-            Some(ref container) => {
-                assert!(container.deref() as *ContainerLayer<T> ==
-                        this.deref() as *ContainerLayer<T>);
-            },
-            _ => fail!("Invalid parent of child in layer tree"),
-        }
-
-        let previous_sibling = child_common.prev_sibling.clone();
-        match child_common.next_sibling {
-            None => { // this is the last child
-                *this.last_child.borrow_mut() = previous_sibling;
-            },
-            Some(ref sibling) => {
-                sibling.common().prev_sibling = previous_sibling;
-            }
-        }
-
-        let next_sibling = child_common.next_sibling.clone();
-        match child_common.prev_sibling {
-            None => { // this is the first child
-                *this.first_child.borrow_mut() = next_sibling;
-            },
-            Some(ref sibling) => {
-                sibling.common().next_sibling = next_sibling;
-            }
-        }
-    }
-
-    pub fn remove_all_children(&self) {
-        *self.first_child.borrow_mut() = None;
-        *self.last_child.borrow_mut() = None;
+    pub fn add_child(this: Rc<ContainerLayer<T>>, new_child: Rc<ContainerLayer<T>>) {
+        this.children().push(new_child);
     }
 
     pub fn tile_size(this: Rc<ContainerLayer<T>>) -> uint {
