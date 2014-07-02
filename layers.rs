@@ -27,8 +27,8 @@ pub enum Format {
     RGB24Format
 }
 
-pub struct ContainerLayer<T> {
-    pub children: RefCell<Vec<Rc<ContainerLayer<T>>>>,
+pub struct Layer<T> {
+    pub children: RefCell<Vec<Rc<Layer<T>>>>,
     pub tiles: RefCell<Vec<Rc<TextureLayer>>>,
     pub quadtree: RefCell<Quadtree>,
     pub transform: RefCell<Matrix4<f32>>,
@@ -37,9 +37,9 @@ pub struct ContainerLayer<T> {
     pub extra_data: RefCell<T>,
 }
 
-impl<T> ContainerLayer<T> {
-    pub fn new(page_size: Option<Size2D<f32>>, tile_size: uint, data: T) -> ContainerLayer<T> {
-        ContainerLayer {
+impl<T> Layer<T> {
+    pub fn new(page_size: Option<Size2D<f32>>, tile_size: uint, data: T) -> Layer<T> {
+        Layer {
             children: RefCell::new(vec!()),
             tiles: RefCell::new(vec!()),
             quadtree: match page_size {
@@ -61,41 +61,41 @@ impl<T> ContainerLayer<T> {
         }
     }
 
-    pub fn children<'a>(&'a self) -> RefMut<'a,Vec<Rc<ContainerLayer<T>>>> {
+    pub fn children<'a>(&'a self) -> RefMut<'a,Vec<Rc<Layer<T>>>> {
         self.children.borrow_mut()
     }
 
-    pub fn add_child(this: Rc<ContainerLayer<T>>, new_child: Rc<ContainerLayer<T>>) {
+    pub fn add_child(this: Rc<Layer<T>>, new_child: Rc<Layer<T>>) {
         this.children().push(new_child);
     }
 
-    pub fn tile_size(this: Rc<ContainerLayer<T>>) -> uint {
+    pub fn tile_size(this: Rc<Layer<T>>) -> uint {
         this.tile_size
     }
 
-    pub fn get_tile_rects_page(this: Rc<ContainerLayer<T>>, window: Rect<f32>, scale: f32) -> (Vec<BufferRequest>, Vec<Box<LayerBuffer>>) {
+    pub fn get_tile_rects_page(this: Rc<Layer<T>>, window: Rect<f32>, scale: f32) -> (Vec<BufferRequest>, Vec<Box<LayerBuffer>>) {
         this.quadtree.borrow_mut().get_tile_rects_page(window, scale)
     }
 
-    pub fn set_status_page(this: Rc<ContainerLayer<T>>, rect: Rect<f32>, status: NodeStatus, include_border: bool) {
+    pub fn set_status_page(this: Rc<Layer<T>>, rect: Rect<f32>, status: NodeStatus, include_border: bool) {
         this.quadtree.borrow_mut().set_status_page(rect, Normal, false); // Rect is unhidden
     }
 
-    pub fn resize(this: Rc<ContainerLayer<T>>, new_size: Size2D<f32>) -> Vec<Box<LayerBuffer>> {
+    pub fn resize(this: Rc<Layer<T>>, new_size: Size2D<f32>) -> Vec<Box<LayerBuffer>> {
         this.quadtree.borrow_mut().resize(new_size.width as uint, new_size.height as uint)
     }
 
-    pub fn do_for_all_tiles(this: Rc<ContainerLayer<T>>, f: |&Box<LayerBuffer>|) {
+    pub fn do_for_all_tiles(this: Rc<Layer<T>>, f: |&Box<LayerBuffer>|) {
         this.quadtree.borrow_mut().do_for_all_tiles(f);
     }
 
-    pub fn add_tile_pixel(this: Rc<ContainerLayer<T>>, tile: Box<LayerBuffer>) -> Vec<Box<LayerBuffer>> {
+    pub fn add_tile_pixel(this: Rc<Layer<T>>, tile: Box<LayerBuffer>) -> Vec<Box<LayerBuffer>> {
         this.quadtree.borrow_mut().add_tile_pixel(tile.screen_pos.origin.x,
                                                           tile.screen_pos.origin.y,
                                                           tile.resolution, tile)
     }
 
-    pub fn collect_tiles(this: Rc<ContainerLayer<T>>) -> Vec<Box<LayerBuffer>> {
+    pub fn collect_tiles(this: Rc<Layer<T>>) -> Vec<Box<LayerBuffer>> {
         this.quadtree.borrow_mut().collect_tiles()
     }
 }

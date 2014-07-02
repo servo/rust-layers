@@ -7,7 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use layers::{ContainerLayer, TextureLayer, Flip, NoFlip, VerticalFlip};
+use layers::{Layer, TextureLayer, Flip, NoFlip, VerticalFlip};
 use layers;
 use scene::Scene;
 use texturegl::{Texture, TextureTarget2D, TextureTargetRectangle};
@@ -362,7 +362,7 @@ pub trait Render {
               scene_size: Size2D<f32>);
 }
 
-impl<T> Render for layers::ContainerLayer<T> {
+impl<T> Render for layers::Layer<T> {
     fn render(&self,
               render_context: RenderContext,
               transform: Matrix4<f32>,
@@ -388,7 +388,7 @@ impl Render for layers::TextureLayer {
     }
 }
 
-pub fn render_scene<T>(root_layer: Rc<ContainerLayer<T>>, render_context: RenderContext, scene: &Scene<T>) {
+pub fn render_scene<T>(root_layer: Rc<Layer<T>>, render_context: RenderContext, scene: &Scene<T>) {
     // Set the viewport.
     viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
 
