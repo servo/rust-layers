@@ -7,7 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use layers::{ContainerLayerKind, Flip, NoFlip, TextureLayerKind, VerticalFlip};
+use layers::{ContainerLayer, TextureLayer, Flip, NoFlip, VerticalFlip};
 use layers;
 use scene::Scene;
 use texturegl::{Texture, TextureTarget2D, TextureTargetRectangle};
@@ -26,6 +26,7 @@ use opengles::gl2::{gen_buffers, get_attrib_location, get_error, get_program_iv}
 use opengles::gl2::{get_shader_info_log, get_shader_iv, get_uniform_location};
 use opengles::gl2::{link_program, shader_source, uniform_1i, uniform_2f};
 use opengles::gl2::{uniform_matrix_4fv, use_program, vertex_attrib_pointer_f32, viewport};
+use std::rc::Rc;
 
 static FRAGMENT_2D_SHADER_SOURCE: &'static str = "
     #ifdef GL_ES
@@ -361,18 +362,18 @@ pub trait Render {
               scene_size: Size2D<f32>);
 }
 
-impl Render for layers::ContainerLayer {
+impl<T> Render for layers::ContainerLayer<T> {
     fn render(&self,
               render_context: RenderContext,
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>) {
-        // NOTE: work around borrowchk
-        {
-            let tmp = self.common.borrow();
-            let transform = transform.mul(&tmp.transform);
-            for child in self.children() {
-                render_layer(render_context, transform, scene_size, child);
-            }
+        let tmp = self.common.borrow();
+        let transform = transform.translate(tmp.origin.x, tmp.origin.y, 0.0).mul(&tmp.transform);
+        for tile in self.tiles.borrow().iter() {
+            tile.render(render_context, transform, scene_size)
+        }
+        for child in self.children() {
+            child.render(render_context, transform, scene_size)
         }
     }
 }
@@ -382,27 +383,12 @@ impl Render for layers::TextureLayer {
               render_context: RenderContext,
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>) {
-        let tmp = self.common.borrow();
-        let transform = transform.mul(&tmp.transform);
+        let transform = transform.mul(&self.transform);
         bind_and_render_quad(render_context, &self.texture, self.flip, &transform, scene_size);
     }
 }
 
-fn render_layer(render_context: RenderContext,
-                transform: Matrix4<f32>,
-                scene_size: Size2D<f32>,
-                layer: layers::Layer) {
-    match layer {
-        ContainerLayerKind(container_layer) => {
-            container_layer.render(render_context, transform, scene_size)
-        }
-        TextureLayerKind(texture_layer) => {
-            texture_layer.render(render_context, transform, scene_size)
-        }
-    }
-}
-
-pub fn render_scene(render_context: RenderContext, scene: &Scene) {
+pub fn render_scene<T>(root_layer: Rc<ContainerLayer<T>>, render_context: RenderContext, scene: &Scene<T>) {
     // Set the viewport.
     viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
 
@@ -417,5 +403,5 @@ pub fn render_scene(render_context: RenderContext, scene: &Scene) {
     let transform = scene.transform;
 
     // Render the root layer.
-    render_layer(render_context, transform, scene.size, scene.root.clone());
+    root_layer.render(render_context, transform, scene.size);
 }
