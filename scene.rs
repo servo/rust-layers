@@ -10,11 +10,11 @@
 use color::Color;
 use geom::size::Size2D;
 use geom::matrix::Matrix4;
-use layers::ContainerLayer;
+use layers::Layer;
 use std::rc::Rc;
 
 pub struct Scene<T> {
-    pub root: Option<Rc<ContainerLayer<T>>>,
+    pub root: Option<Rc<Layer<T>>>,
     pub size: Size2D<f32>,
     pub transform: Matrix4<f32>,
     pub background_color: Color

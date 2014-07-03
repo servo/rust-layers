@@ -7,7 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use layers::{ContainerLayer, TextureLayer, Flip, NoFlip, VerticalFlip};
+use layers::{Layer, TextureLayer, Flip, NoFlip, VerticalFlip};
 use layers;
 use scene::Scene;
 use texturegl::{Texture, TextureTarget2D, TextureTargetRectangle};
@@ -362,17 +362,17 @@ pub trait Render {
               scene_size: Size2D<f32>);
 }
 
-impl<T> Render for layers::ContainerLayer<T> {
+impl<T> Render for layers::Layer<T> {
     fn render(&self,
               render_context: RenderContext,
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>) {
-        let tmp = self.common.borrow();
-        let transform = transform.translate(tmp.origin.x, tmp.origin.y, 0.0).mul(&tmp.transform);
+        let origin = self.origin.borrow();
+        let transform = transform.translate(origin.x, origin.y, 0.0).mul(&*self.transform.borrow());
         for tile in self.tiles.borrow().iter() {
             tile.render(render_context, transform, scene_size)
         }
-        for child in self.children() {
+        for child in self.children().iter() {
             child.render(render_context, transform, scene_size)
         }
     }
@@ -388,7 +388,7 @@ impl Render for layers::TextureLayer {
     }
 }
 
-pub fn render_scene<T>(root_layer: Rc<ContainerLayer<T>>, render_context: RenderContext, scene: &Scene<T>) {
+pub fn render_scene<T>(root_layer: Rc<Layer<T>>, render_context: RenderContext, scene: &Scene<T>) {
     // Set the viewport.
     viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
 
