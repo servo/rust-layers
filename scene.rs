@@ -34,10 +34,3 @@ pub fn Scene<T>(size: Size2D<f32>, transform: Matrix4<f32>) -> Scene<T> {
     }
 }
 
-impl<T> Scene<T> {
-    // FIXME: Workaround for cross-crate bug regarding mutability of class fields
-    pub fn set_transform(&mut self, new_transform: Matrix4<f32>) {
-        self.transform = new_transform;
-    }
-}
-
