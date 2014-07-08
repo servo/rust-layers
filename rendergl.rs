@@ -367,7 +367,7 @@ impl<T> Render for layers::Layer<T> {
               render_context: RenderContext,
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>) {
-        let origin = self.origin.borrow();
+        let origin = self.bounds.borrow().origin;
         let transform = transform.translate(origin.x, origin.y, 0.0).mul(&*self.transform.borrow());
         for tile in self.tiles.borrow().iter() {
             tile.render(render_context, transform, scene_size)
