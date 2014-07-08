@@ -36,12 +36,14 @@ pub struct Layer<T> {
 }
 
 impl<T> Layer<T> {
-    pub fn new(bounds: Rect<f32>, page_size: Size2D<f32>, tile_size: uint, data: T) -> Layer<T> {
+    pub fn new(bounds: Rect<f32>, tile_size: uint, data: T) -> Layer<T> {
         Layer {
             children: RefCell::new(vec!()),
             tiles: RefCell::new(vec!()),
-            quadtree: RefCell::new(Quadtree::new(Size2D(page_size.width as uint, page_size.height as uint),
-                                                 tile_size, Some(MAX_TILE_MEMORY_PER_LAYER))),
+            quadtree: RefCell::new(Quadtree::new(Size2D(bounds.size.width as uint,
+                                                        bounds.size.height as uint),
+                                                 tile_size,
+                                                 Some(MAX_TILE_MEMORY_PER_LAYER))),
             transform: RefCell::new(identity()),
             bounds: RefCell::new(bounds),
             tile_size: tile_size,
@@ -70,6 +72,7 @@ impl<T> Layer<T> {
     }
 
     pub fn resize(this: Rc<Layer<T>>, new_size: Size2D<f32>) -> Vec<Box<LayerBuffer>> {
+        this.bounds.borrow_mut().size = new_size;
         this.quadtree.borrow_mut().resize(new_size.width as uint, new_size.height as uint)
     }
 
