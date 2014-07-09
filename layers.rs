@@ -13,11 +13,11 @@ use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
 use geom::rect::Rect;
 use geom::point::Point2D;
-use platform::surface::{NativeSurfaceMethods, NativeSurface};
+use platform::surface::{NativePaintingGraphicsContext, NativeSurfaceMethods, NativeSurface};
 use std::cell::{RefCell, RefMut};
 use std::num::Zero;
 use std::rc::Rc;
-use quadtree::{Quadtree, NodeStatus, Normal};
+use quadtree::{Quadtree, NodeStatus, Normal, Tile};
 
 /// The amount of memory usage allowed per layer.
 static MAX_TILE_MEMORY_PER_LAYER: uint = 10000000;
@@ -30,7 +30,7 @@ pub enum Format {
 pub struct Layer<T> {
     pub children: RefCell<Vec<Rc<Layer<T>>>>,
     pub tiles: RefCell<Vec<Rc<TextureLayer>>>,
-    pub quadtree: RefCell<Quadtree>,
+    pub quadtree: RefCell<Quadtree<Box<LayerBuffer>>>,
     pub transform: RefCell<Matrix4<f32>>,
     pub origin: RefCell<Point2D<f32>>,
     tile_size: uint,
@@ -172,3 +172,25 @@ impl LayerBufferSet {
         }
     }
 }
+
+impl Tile for Box<LayerBuffer> {
+    fn get_mem(&self) -> uint {
+        // This works for now, but in the future we may want a better heuristic
+        self.screen_pos.size.width * self.screen_pos.size.height
+    }
+    fn is_valid(&self, scale: f32) -> bool {
+        (self.resolution - scale).abs() < 1.0e-6
+    }
+    fn get_size_2d(&self) -> Size2D<uint> {
+        self.screen_pos.size
+    }
+    fn mark_wont_leak(&mut self) {
+        self.native_surface.mark_wont_leak()
+    }
+    fn destroy(self, graphics_context: &NativePaintingGraphicsContext) {
+        let mut this = self;
+        this.native_surface.destroy(graphics_context)
+    }
+}
+
+
