@@ -12,10 +12,8 @@ use texturegl::Texture;
 use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
 use geom::rect::Rect;
-use geom::point::Point2D;
 use platform::surface::{NativePaintingGraphicsContext, NativeSurfaceMethods, NativeSurface};
 use std::cell::{RefCell, RefMut};
-use std::num::Zero;
 use std::rc::Rc;
 use quadtree::{Quadtree, NodeStatus, Normal, Tile};
 
@@ -32,20 +30,22 @@ pub struct Layer<T> {
     pub tiles: RefCell<Vec<Rc<TextureLayer>>>,
     pub quadtree: RefCell<Quadtree<Box<LayerBuffer>>>,
     pub transform: RefCell<Matrix4<f32>>,
-    pub origin: RefCell<Point2D<f32>>,
+    pub bounds: RefCell<Rect<f32>>,
     tile_size: uint,
     pub extra_data: RefCell<T>,
 }
 
 impl<T> Layer<T> {
-    pub fn new(page_size: Size2D<f32>, tile_size: uint, data: T) -> Layer<T> {
+    pub fn new(bounds: Rect<f32>, tile_size: uint, data: T) -> Layer<T> {
         Layer {
             children: RefCell::new(vec!()),
             tiles: RefCell::new(vec!()),
-            quadtree: RefCell::new(Quadtree::new(Size2D(page_size.width as uint, page_size.height as uint),
-                                                 tile_size, Some(MAX_TILE_MEMORY_PER_LAYER))),
+            quadtree: RefCell::new(Quadtree::new(Size2D(bounds.size.width as uint,
+                                                        bounds.size.height as uint),
+                                                 tile_size,
+                                                 Some(MAX_TILE_MEMORY_PER_LAYER))),
             transform: RefCell::new(identity()),
-            origin: RefCell::new(Zero::zero()),
+            bounds: RefCell::new(bounds),
             tile_size: tile_size,
             extra_data: RefCell::new(data),
         }
@@ -72,6 +72,7 @@ impl<T> Layer<T> {
     }
 
     pub fn resize(this: Rc<Layer<T>>, new_size: Size2D<f32>) -> Vec<Box<LayerBuffer>> {
+        this.bounds.borrow_mut().size = new_size;
         this.quadtree.borrow_mut().resize(new_size.width as uint, new_size.height as uint)
     }
 
