@@ -10,11 +10,11 @@
 use geom::point::Point2D;
 use geom::size::Size2D;
 use geom::rect::Rect;
-use platform::surface::{NativePaintingGraphicsContext, NativeSurfaceMethods};
+use platform::surface::{NativePaintingGraphicsContext};
 use std::cmp;
 use std::mem::replace;
 use std::num::next_power_of_two;
-use layers::{BufferRequest, LayerBuffer};
+use layers::BufferRequest;
 
 /// The interface used by the quadtree and buffer map to get info about layer buffers.
 pub trait Tile {
@@ -35,32 +35,11 @@ pub trait Tile {
     fn destroy(self, graphics_context: &NativePaintingGraphicsContext);
 }
 
-impl Tile for Box<LayerBuffer> {
-    fn get_mem(&self) -> uint {
-        // This works for now, but in the future we may want a better heuristic
-        self.screen_pos.size.width * self.screen_pos.size.height
-    }
-    fn is_valid(&self, scale: f32) -> bool {
-        (self.resolution - scale).abs() < 1.0e-6
-    }
-    fn get_size_2d(&self) -> Size2D<uint> {
-        self.screen_pos.size
-    }
-    fn mark_wont_leak(&mut self) {
-        self.native_surface.mark_wont_leak()
-    }
-    fn destroy(self, graphics_context: &NativePaintingGraphicsContext) {
-        let mut this = self;
-        this.native_surface.destroy(graphics_context)
-    }
-}
-
-
 /// Parent to all quadtree nodes. Stores variables needed at all levels. All method calls
 /// at this level are in pixel coordinates.
-pub struct Quadtree {
+pub struct Quadtree<T> {
     // The root node of the quadtree
-    pub root: Box<QuadtreeNode>,
+    pub root: Box<QuadtreeNode<T>>,
     // The size of the layer in pixels. Tiles will be clipped to this size.
     // Note that the underlying quadtree has a potentailly larger size, since it is rounded
     // to the next highest power of two.
@@ -74,15 +53,15 @@ pub struct Quadtree {
 }
 
 /// A node in the tree. All method calls at this level are in page coordinates.
-pub struct QuadtreeNode {
+pub struct QuadtreeNode<T> {
     /// The tile belonging to this node. Note that parent nodes can have tiles.
-    pub tile: Option<Box<LayerBuffer>>,
+    pub tile: Option<T>,
     /// The position of the node in page coordinates.
     pub origin: Point2D<f32>,
     /// The width and height of the node in page coordinates.
     pub size: f32,
     /// The node's children.
-    pub quadrants: [Option<Box<QuadtreeNode>>, ..4],
+    pub quadrants: [Option<Box<QuadtreeNode<T>>>, ..4],
     /// Combined size of self.tile and tiles of all descendants
     pub tile_mem: uint,
     /// The current status of this node. See below for details.
@@ -116,12 +95,12 @@ fn div_ceil(x: uint, y: uint) -> uint {
     else { div + 1u }
 }
 
-impl Quadtree {
+impl<T: Tile> Quadtree<T> {
     /// Public method to create a new Quadtree
     /// Takes in the initial width and height of the space, a maximum tile size, and
     /// a maximum amount of memory. Tiles will be deleted if this memory is exceeded.
     /// Set max_mem to None to turn off automatic tile removal.
-    pub fn new(clip_size: Size2D<uint>, tile_size: uint, max_mem: Option<uint>) -> Quadtree {
+    pub fn new(clip_size: Size2D<uint>, tile_size: uint, max_mem: Option<uint>) -> Quadtree<T> {
         // Spaces must be squares and powers of 2, so expand the space until it is
         let longer = cmp::max(clip_size.width, clip_size.height);
         let num_tiles = div_ceil(longer, tile_size);
@@ -146,7 +125,7 @@ impl Quadtree {
     /// Add a tile associated with a given pixel position and scale.
     /// If the tile pushes the total memory over its maximum, tiles will be removed
     /// until total memory is below the maximum again. These tiles are returned.
-    pub fn add_tile_pixel(&mut self, x: uint, y: uint, scale: f32, tile: Box<LayerBuffer>) -> Vec<Box<LayerBuffer>> {
+    pub fn add_tile_pixel(&mut self, x: uint, y: uint, scale: f32, tile: T) -> Vec<T> {
         let (_, tiles) = self.root.add_tile(x as f32 / scale, y as f32 / scale, tile,
                                             self.max_tile_size as f32 / scale);
         let mut tiles = tiles;
@@ -166,7 +145,7 @@ impl Quadtree {
     }
 
     /// Get all the tiles in the tree.
-    pub fn do_for_all_tiles(&mut self, f: |&Box<LayerBuffer>|) {
+    pub fn do_for_all_tiles(&mut self, f: |&T|) {
         for tile in self.root.get_all_tiles().iter() {
             f(*tile);
         }
@@ -178,7 +157,7 @@ impl Quadtree {
     /// user zooms out and cached tiles need to be displayed on top of higher resolution tiles.
     /// When this happens, higher resolution tiles will be removed from the quadtree.
     #[cfg(test)]
-    pub fn get_tile_rects_pixel(&mut self, window: Rect<int>, scale: f32) -> (Vec<BufferRequest>, Vec<Box<LayerBuffer>>) {
+    pub fn get_tile_rects_pixel(&mut self, window: Rect<int>, scale: f32) -> (Vec<BufferRequest>, Vec<T>) {
         let (ret, unused, _) = self.root.get_tile_rects(
             Rect(Point2D(window.origin.x as f32 / scale, window.origin.y as f32 / scale),
                  Size2D(window.size.width as f32 / scale, window.size.height as f32 / scale)),
@@ -188,7 +167,7 @@ impl Quadtree {
     }
 
     /// Same function as above, using page coordinates for the window.
-    pub fn get_tile_rects_page(&mut self, window: Rect<f32>, scale: f32) -> (Vec<BufferRequest>, Vec<Box<LayerBuffer>>) {
+    pub fn get_tile_rects_page(&mut self, window: Rect<f32>, scale: f32) -> (Vec<BufferRequest>, Vec<T>) {
         let (ret, unused, _) = self.root.get_tile_rects(
             window,
             Size2D(self.clip_size.width as f32, self.clip_size.height as f32),
@@ -197,7 +176,7 @@ impl Quadtree {
     }
 
     /// Creates a new quadtree at the specified size. This should be called when the window changes size.
-    pub fn resize(&mut self, width: uint, height: uint) -> Vec<Box<LayerBuffer>> {
+    pub fn resize(&mut self, width: uint, height: uint) -> Vec<T> {
         // Spaces must be squares and powers of 2, so expand the space until it is
         let longer = cmp::max(width, height);
         let num_tiles = div_ceil(longer, self.max_tile_size);
@@ -273,14 +252,14 @@ impl Quadtree {
 
     /// Remove and return all tiles in the tree. Use this before deleting the quadtree to prevent
     /// a GC pause.
-    pub fn collect_tiles(&mut self) -> Vec<Box<LayerBuffer>> {
+    pub fn collect_tiles(&mut self) -> Vec<T> {
         self.root.collect_tiles()
     }
 }
 
-impl QuadtreeNode {
+impl<T: Tile> QuadtreeNode<T> {
     /// Private method to create new children
-    fn new_child(x: f32, y: f32, size: f32) -> QuadtreeNode {
+    fn new_child(x: f32, y: f32, size: f32) -> QuadtreeNode<T> {
         QuadtreeNode {
             tile: None,
             origin: Point2D(x, y),
@@ -307,7 +286,7 @@ impl QuadtreeNode {
     }
 
     /// Get all tiles in the tree, parents first.
-    fn get_all_tiles<'r>(&'r self) -> Vec<&'r Box<LayerBuffer>> {
+    fn get_all_tiles<'r>(&'r self) -> Vec<&'r T> {
         let mut ret = vec!();
 
         match self.tile {
@@ -329,7 +308,7 @@ impl QuadtreeNode {
     /// the node will be split and the method will recurse until the tile size is within limits.
     /// Returns an the difference in tile memory between the new quadtree node and the old quadtree node,
     /// along with any deleted tiles.
-    fn add_tile(&mut self, x: f32, y: f32, tile: Box<LayerBuffer>, tile_size: f32) -> (int, Vec<Box<LayerBuffer>>) {
+    fn add_tile(&mut self, x: f32, y: f32, tile: T, tile_size: f32) -> (int, Vec<T>) {
         debug!("Quadtree: Adding: ({}, {}) size:{}px", self.origin.x, self.origin.y, self.size);
 
         if x >= self.origin.x + self.size || x < self.origin.x
@@ -429,7 +408,7 @@ impl QuadtreeNode {
     /// amount of memory changed by the operation. Unfortunately, the tile has to be an option, because
     /// there are occasionally leaves without tiles. However, the option will always be Some as long as
     /// this quadtree node or at least one of its descendants is not empty.
-    fn remove_tile(&mut self, x: f32, y: f32) -> (Option<Box<LayerBuffer>>, bool, int) {
+    fn remove_tile(&mut self, x: f32, y: f32) -> (Option<T>, bool, int) {
         if self.tile.is_some() {
             let ret = replace(&mut(self.tile), None);
             return match (ret, &self.quadrants)  {
@@ -505,7 +484,7 @@ impl QuadtreeNode {
                       scale: f32,
                       tile_size: f32,
                       override: bool)
-                      -> (Vec<BufferRequest>, Vec<Box<LayerBuffer>>, int) {
+                      -> (Vec<BufferRequest>, Vec<T>, int) {
         let w_x = window.origin.x;
         let w_y = window.origin.y;
         let w_width = window.size.width;
@@ -640,7 +619,7 @@ impl QuadtreeNode {
     }
 
     /// Remove all tiles from the tree. Use this to collect all tiles before deleting a branch.
-    fn collect_tiles(&mut self) -> Vec<Box<LayerBuffer>> {
+    fn collect_tiles(&mut self) -> Vec<T> {
         let mut ret = match replace(&mut self.tile, None) {
             Some(tile) => vec!(tile),
             None => vec!(),
