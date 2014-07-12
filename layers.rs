@@ -67,7 +67,7 @@ impl<T> Layer<T> {
         this.quadtree.borrow_mut().get_tile_rects_page(window, scale)
     }
 
-    pub fn set_status_page(this: Rc<Layer<T>>, rect: Rect<f32>, status: NodeStatus, include_border: bool) {
+    pub fn set_status_page(this: Rc<Layer<T>>, rect: Rect<f32>, _status: NodeStatus, _include_border: bool) {
         this.quadtree.borrow_mut().set_status_page(rect, Normal, false); // Rect is unhidden
     }
 
