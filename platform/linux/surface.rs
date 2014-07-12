@@ -214,7 +214,7 @@ impl NativeSurface {
 }
 
 impl NativeSurfaceMethods for NativeSurface {
-    fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>, stride: i32)
+    fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>, _stride: i32)
            -> NativeSurface {
         unsafe {
             // Create the pixmap.
