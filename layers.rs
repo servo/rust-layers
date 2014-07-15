@@ -8,6 +8,7 @@
 // except according to those terms.
 
 use texturegl::Texture;
+use tiling::TileGrid;
 
 use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
@@ -15,10 +16,6 @@ use geom::rect::Rect;
 use platform::surface::{NativePaintingGraphicsContext, NativeSurfaceMethods, NativeSurface};
 use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
-use quadtree::{Quadtree, NodeStatus, Normal, Tile};
-
-/// The amount of memory usage allowed per layer.
-static MAX_TILE_MEMORY_PER_LAYER: uint = 10000000;
 
 pub enum Format {
     ARGB32Format,
@@ -28,11 +25,11 @@ pub enum Format {
 pub struct Layer<T> {
     pub children: RefCell<Vec<Rc<Layer<T>>>>,
     pub tiles: RefCell<Vec<Rc<TextureLayer>>>,
-    pub quadtree: RefCell<Quadtree<Box<LayerBuffer>>>,
     pub transform: RefCell<Matrix4<f32>>,
     pub bounds: RefCell<Rect<f32>>,
     tile_size: uint,
     pub extra_data: RefCell<T>,
+    tile_grid: RefCell<TileGrid>,
 }
 
 impl<T> Layer<T> {
@@ -40,14 +37,11 @@ impl<T> Layer<T> {
         Layer {
             children: RefCell::new(vec!()),
             tiles: RefCell::new(vec!()),
-            quadtree: RefCell::new(Quadtree::new(Size2D(bounds.size.width as uint,
-                                                        bounds.size.height as uint),
-                                                 tile_size,
-                                                 Some(MAX_TILE_MEMORY_PER_LAYER))),
             transform: RefCell::new(identity()),
             bounds: RefCell::new(bounds),
             tile_size: tile_size,
             extra_data: RefCell::new(data),
+            tile_grid: RefCell::new(TileGrid::new(tile_size)),
         }
     }
 
@@ -64,30 +58,36 @@ impl<T> Layer<T> {
     }
 
     pub fn get_tile_rects_page(this: Rc<Layer<T>>, window: Rect<f32>, scale: f32) -> (Vec<BufferRequest>, Vec<Box<LayerBuffer>>) {
-        this.quadtree.borrow_mut().get_tile_rects_page(window, scale)
+        let mut tile_grid = this.tile_grid.borrow_mut();
+        (tile_grid.get_buffer_requests_in_rect(window, scale), tile_grid.take_unused_tiles())
     }
 
-    pub fn set_status_page(this: Rc<Layer<T>>, rect: Rect<f32>, _status: NodeStatus, _include_border: bool) {
-        this.quadtree.borrow_mut().set_status_page(rect, Normal, false); // Rect is unhidden
-    }
-
-    pub fn resize(this: Rc<Layer<T>>, new_size: Size2D<f32>) -> Vec<Box<LayerBuffer>> {
+    pub fn resize(this: Rc<Layer<T>>, new_size: Size2D<f32>) {
         this.bounds.borrow_mut().size = new_size;
-        this.quadtree.borrow_mut().resize(new_size.width as uint, new_size.height as uint)
     }
 
     pub fn do_for_all_tiles(this: Rc<Layer<T>>, f: |&Box<LayerBuffer>|) {
-        this.quadtree.borrow_mut().do_for_all_tiles(f);
+        this.tile_grid.borrow().do_for_all_tiles(f);
     }
 
-    pub fn add_tile_pixel(this: Rc<Layer<T>>, tile: Box<LayerBuffer>) -> Vec<Box<LayerBuffer>> {
-        this.quadtree.borrow_mut().add_tile_pixel(tile.screen_pos.origin.x,
-                                                          tile.screen_pos.origin.y,
-                                                          tile.resolution, tile)
+    pub fn add_tile_pixel(this: Rc<Layer<T>>, tile: Box<LayerBuffer>) {
+        this.tile_grid.borrow_mut().add_tile(tile);
+    }
+
+    pub fn collect_unused_tiles(this: Rc<Layer<T>>) -> Vec<Box<LayerBuffer>> {
+        this.tile_grid.borrow_mut().take_unused_tiles()
     }
 
     pub fn collect_tiles(this: Rc<Layer<T>>) -> Vec<Box<LayerBuffer>> {
-        this.quadtree.borrow_mut().collect_tiles()
+        this.tile_grid.borrow_mut().collect_tiles()
+    }
+
+    pub fn flush_pending_buffer_requests(&self) -> (Vec<BufferRequest>, f32) {
+        self.tile_grid.borrow_mut().flush_pending_buffer_requests()
+    }
+
+    pub fn contents_changed(&self) {
+        self.tile_grid.borrow_mut().contents_changed()
     }
 }
 
@@ -172,6 +172,25 @@ impl LayerBufferSet {
             buffer.native_surface.mark_will_leak()
         }
     }
+}
+
+/// The interface used by the BufferMap to get info about layer buffers.
+pub trait Tile {
+    /// Returns the amount of memory used by the tile
+    fn get_mem(&self) -> uint;
+
+    /// Returns true if the tile is displayable at the given scale
+    fn is_valid(&self, f32) -> bool;
+
+    /// Returns the Size2D of the tile
+    fn get_size_2d(&self) -> Size2D<uint>;
+
+    /// Marks the layer buffer as not leaking. See comments on
+    /// `NativeSurfaceMethods::mark_wont_leak` for how this is used.
+    fn mark_wont_leak(&mut self);
+
+    /// Destroys the layer buffer. Painting task only.
+    fn destroy(self, graphics_context: &NativePaintingGraphicsContext);
 }
 
 impl Tile for Box<LayerBuffer> {

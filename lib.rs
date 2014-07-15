@@ -41,7 +41,7 @@ pub mod rendergl;
 pub mod scene;
 pub mod texturegl;
 pub mod util;
-pub mod quadtree;
+pub mod tiling;
 
 pub mod platform {
     #[cfg(target_os="linux")]
