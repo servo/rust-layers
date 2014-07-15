@@ -55,27 +55,27 @@ impl<T> Layer<T> {
 
     pub fn get_tile_rects_page(&self, window: Rect<f32>, scale: f32) -> (Vec<BufferRequest>, Vec<Box<LayerBuffer>>) {
         let mut tile_grid = self.tile_grid.borrow_mut();
-        (tile_grid.get_buffer_requests_in_rect(window, scale), tile_grid.take_unused_tiles())
+        (tile_grid.get_buffer_requests_in_rect(window, scale), tile_grid.take_unused_buffers())
     }
 
     pub fn resize(&self, new_size: Size2D<f32>) {
         self.bounds.borrow_mut().size = new_size;
     }
 
-    pub fn do_for_all_tiles(&self, f: |&Box<LayerBuffer>|) {
-        self.tile_grid.borrow().do_for_all_tiles(f);
+    pub fn do_for_all_buffers(&self, f: |&Box<LayerBuffer>|) {
+        self.tile_grid.borrow().do_for_all_buffers(f);
     }
 
-    pub fn add_tile_pixel(&self, tile: Box<LayerBuffer>) {
-        self.tile_grid.borrow_mut().add_tile(tile);
+    pub fn add_buffer(&self, tile: Box<LayerBuffer>) {
+        self.tile_grid.borrow_mut().add_buffer(tile);
     }
 
-    pub fn collect_unused_tiles(&self) -> Vec<Box<LayerBuffer>> {
-        self.tile_grid.borrow_mut().take_unused_tiles()
+    pub fn collect_unused_buffers(&self) -> Vec<Box<LayerBuffer>> {
+        self.tile_grid.borrow_mut().take_unused_buffers()
     }
 
-    pub fn collect_tiles(&self) -> Vec<Box<LayerBuffer>> {
-        self.tile_grid.borrow_mut().collect_tiles()
+    pub fn collect_buffers(&self) -> Vec<Box<LayerBuffer>> {
+        self.tile_grid.borrow_mut().collect_buffers()
     }
 
     pub fn flush_pending_buffer_requests(&self) -> (Vec<BufferRequest>, f32) {
