@@ -7,24 +7,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use texturegl::Texture;
-use tiling::TileGrid;
+use tiling::{Tile, TileGrid};
 
 use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
 use geom::rect::Rect;
-use platform::surface::{NativePaintingGraphicsContext, NativeSurfaceMethods, NativeSurface};
+use platform::surface::{NativeSurfaceMethods, NativeSurface};
+use platform::surface::{NativeCompositingGraphicsContext, NativePaintingGraphicsContext};
 use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
 
-pub enum Format {
-    ARGB32Format,
-    RGB24Format
-}
-
 pub struct Layer<T> {
     pub children: RefCell<Vec<Rc<Layer<T>>>>,
-    pub tiles: RefCell<Vec<Rc<TextureLayer>>>,
     pub transform: RefCell<Matrix4<f32>>,
     pub bounds: RefCell<Rect<f32>>,
     pub tile_size: uint,
@@ -36,7 +30,6 @@ impl<T> Layer<T> {
     pub fn new(bounds: Rect<f32>, tile_size: uint, data: T) -> Layer<T> {
         Layer {
             children: RefCell::new(vec!()),
-            tiles: RefCell::new(vec!()),
             transform: RefCell::new(identity()),
             bounds: RefCell::new(bounds),
             tile_size: tile_size,
@@ -55,27 +48,23 @@ impl<T> Layer<T> {
 
     pub fn get_tile_rects_page(&self, window: Rect<f32>, scale: f32) -> (Vec<BufferRequest>, Vec<Box<LayerBuffer>>) {
         let mut tile_grid = self.tile_grid.borrow_mut();
-        (tile_grid.get_buffer_requests_in_rect(window, scale), tile_grid.take_unused_tiles())
+        (tile_grid.get_buffer_requests_in_rect(window, scale), tile_grid.take_unused_buffers())
     }
 
     pub fn resize(&self, new_size: Size2D<f32>) {
         self.bounds.borrow_mut().size = new_size;
     }
 
-    pub fn do_for_all_tiles(&self, f: |&Box<LayerBuffer>|) {
-        self.tile_grid.borrow().do_for_all_tiles(f);
+    pub fn add_buffer(&self, tile: Box<LayerBuffer>) {
+        self.tile_grid.borrow_mut().add_buffer(tile);
     }
 
-    pub fn add_tile_pixel(&self, tile: Box<LayerBuffer>) {
-        self.tile_grid.borrow_mut().add_tile(tile);
+    pub fn collect_unused_buffers(&self) -> Vec<Box<LayerBuffer>> {
+        self.tile_grid.borrow_mut().take_unused_buffers()
     }
 
-    pub fn collect_unused_tiles(&self) -> Vec<Box<LayerBuffer>> {
-        self.tile_grid.borrow_mut().take_unused_tiles()
-    }
-
-    pub fn collect_tiles(&self) -> Vec<Box<LayerBuffer>> {
-        self.tile_grid.borrow_mut().collect_tiles()
+    pub fn collect_buffers(&self) -> Vec<Box<LayerBuffer>> {
+        self.tile_grid.borrow_mut().collect_buffers()
     }
 
     pub fn flush_pending_buffer_requests(&self) -> (Vec<BufferRequest>, f32) {
@@ -85,36 +74,13 @@ impl<T> Layer<T> {
     pub fn contents_changed(&self) {
         self.tile_grid.borrow_mut().contents_changed()
     }
-}
 
-/// Whether a texture should be flipped.
-#[deriving(PartialEq)]
-pub enum Flip {
-    /// The texture should not be flipped.
-    NoFlip,
-    /// The texture should be flipped vertically.
-    VerticalFlip,
-}
+    pub fn create_textures(&self, graphics_context: &NativeCompositingGraphicsContext) {
+        self.tile_grid.borrow_mut().create_textures(graphics_context);
+    }
 
-pub struct TextureLayer {
-    /// A handle to the GPU texture.
-    pub texture: Texture,
-    /// The size of the texture in pixels.
-    size: Size2D<uint>,
-    /// Whether this texture is flipped vertically.
-    pub flip: Flip,
-
-    pub transform: Matrix4<f32>,
-}
-
-impl TextureLayer {
-    pub fn new(texture: Texture, size: Size2D<uint>, flip: Flip, transform: Matrix4<f32>) -> TextureLayer {
-        TextureLayer {
-            texture: texture,
-            size: size,
-            flip: flip,
-            transform: transform,
-        }
+    pub fn do_for_all_tiles(&self, f: |&Tile|) {
+        self.tile_grid.borrow().do_for_all_tiles(f);
     }
 }
 
@@ -153,6 +119,39 @@ pub struct LayerBuffer {
 
     /// NB: stride is in pixels, like OpenGL GL_UNPACK_ROW_LENGTH.
     pub stride: uint,
+
+    /// Whether or not this buffer was painted with the CPU rasterization.
+    pub painted_with_cpu: bool,
+}
+
+impl LayerBuffer {
+    /// Returns the amount of memory used by the tile
+    pub fn get_mem(&self) -> uint {
+        // This works for now, but in the future we may want a better heuristic
+        self.screen_pos.size.width * self.screen_pos.size.height
+    }
+
+    /// Returns true if the tile is displayable at the given scale
+    pub fn is_valid(&self, scale: f32) -> bool {
+        (self.resolution - scale).abs() < 1.0e-6
+    }
+
+    /// Returns the Size2D of the tile
+    pub fn get_size_2d(&self) -> Size2D<uint> {
+        self.screen_pos.size
+    }
+
+    /// Marks the layer buffer as not leaking. See comments on
+    /// `NativeSurfaceMethods::mark_wont_leak` for how this is used.
+    pub fn mark_wont_leak(&mut self) {
+        self.native_surface.mark_wont_leak()
+    }
+
+    /// Destroys the layer buffer. Painting task only.
+    pub fn destroy(self, graphics_context: &NativePaintingGraphicsContext) {
+        let mut this = self;
+        this.native_surface.destroy(graphics_context)
+    }
 }
 
 /// A set of layer buffers. This is an atomic unit used to switch between the front and back
@@ -169,44 +168,3 @@ impl LayerBufferSet {
         }
     }
 }
-
-/// The interface used by the BufferMap to get info about layer buffers.
-pub trait Tile {
-    /// Returns the amount of memory used by the tile
-    fn get_mem(&self) -> uint;
-
-    /// Returns true if the tile is displayable at the given scale
-    fn is_valid(&self, f32) -> bool;
-
-    /// Returns the Size2D of the tile
-    fn get_size_2d(&self) -> Size2D<uint>;
-
-    /// Marks the layer buffer as not leaking. See comments on
-    /// `NativeSurfaceMethods::mark_wont_leak` for how this is used.
-    fn mark_wont_leak(&mut self);
-
-    /// Destroys the layer buffer. Painting task only.
-    fn destroy(self, graphics_context: &NativePaintingGraphicsContext);
-}
-
-impl Tile for Box<LayerBuffer> {
-    fn get_mem(&self) -> uint {
-        // This works for now, but in the future we may want a better heuristic
-        self.screen_pos.size.width * self.screen_pos.size.height
-    }
-    fn is_valid(&self, scale: f32) -> bool {
-        (self.resolution - scale).abs() < 1.0e-6
-    }
-    fn get_size_2d(&self) -> Size2D<uint> {
-        self.screen_pos.size
-    }
-    fn mark_wont_leak(&mut self) {
-        self.native_surface.mark_wont_leak()
-    }
-    fn destroy(self, graphics_context: &NativePaintingGraphicsContext) {
-        let mut this = self;
-        this.native_surface.destroy(graphics_context)
-    }
-}
-
-

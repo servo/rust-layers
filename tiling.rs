@@ -7,28 +7,81 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use layers::BufferRequest;
+use layers::LayerBuffer;
+use platform::surface::{NativeCompositingGraphicsContext, NativeSurfaceMethods};
+use texturegl::Texture;
+
+use geom::matrix::{Matrix4, identity};
 use geom::point::Point2D;
 use geom::size::Size2D;
 use geom::rect::Rect;
-use layers::BufferRequest;
-use layers::LayerBuffer;
 use std::collections::hashmap::HashMap;
 use std::iter::range_inclusive;
 use std::mem;
+use std::num::Zero;
+
+pub struct Tile {
+    /// The buffer displayed by this tile.
+    buffer: Option<Box<LayerBuffer>>,
+
+    /// A handle to the GPU texture.
+    pub texture: Texture,
+
+    /// The transformation applied to this tiles texture.
+    pub transform: Matrix4<f32>,
+}
+
+impl Tile {
+    fn new() -> Tile {
+        Tile {
+            buffer: None,
+            texture: Zero::zero(),
+            transform: identity(),
+        }
+    }
+
+    fn replace_buffer(&mut self, buffer: Box<LayerBuffer>) -> Option<Box<LayerBuffer>> {
+        let old_buffer = self.buffer.take();
+        self.buffer = Some(buffer);
+        return old_buffer;
+    }
+
+    fn create_texture(&mut self, graphics_context: &NativeCompositingGraphicsContext) {
+        match self.buffer {
+            Some(ref buffer) => {
+                let size = Size2D(buffer.screen_pos.size.width as int,
+                                  buffer.screen_pos.size.height as int);
+
+                // Make a new texture and bind the LayerBuffer's surface to it.
+                self.texture = Texture::new_with_buffer(buffer);
+                debug!("Tile: binding to native surface {:d}",
+                       buffer.native_surface.get_id() as int);
+                buffer.native_surface.bind_to_texture(graphics_context, &self.texture, size);
+
+                // Set the layer's transform.
+                let rect = buffer.rect;
+                let transform = identity().translate(rect.origin.x, rect.origin.y, 0.0);
+                self.transform = transform.scale(rect.size.width, rect.size.height, 1.0);
+            },
+            None => {},
+        }
+    }
+}
 
 pub struct TileGrid {
-    pub tiles: HashMap<Point2D<uint>, Box<LayerBuffer>>,
+    pub tiles: HashMap<Point2D<uint>, Tile>,
 
     // The size of tiles in this grid in device pixels.
     tile_size: uint,
 
-    // Tiles that are currently unused or outside the last-known visible rectangle.
-    unused_tiles: Vec<Box<LayerBuffer>>,
+    // Buffers that are currently unused.
+    unused_buffers: Vec<Box<LayerBuffer>>,
 
     // Whether or not there are pending buffer requests.
-    waiting_on_tiles : bool,
+    waiting_on_buffers : bool,
 
-    // Once we know that we are waiting for tiles, track any later buffer requests.
+    // Once we know that we are waiting for buffers, track any later buffer requests.
     // FIXME: Replace with a per-tile state which better tracks epoch transitions.
     pending_buffer_request: Option<(Rect<f32>, f32)>,
 }
@@ -43,8 +96,8 @@ impl TileGrid {
         TileGrid {
             tiles: HashMap::new(),
             tile_size: tile_size,
-            unused_tiles: Vec::new(),
-            waiting_on_tiles: false,
+            unused_buffers: Vec::new(),
+            waiting_on_buffers: false,
             pending_buffer_request: None,
         }
     }
@@ -61,10 +114,17 @@ impl TileGrid {
              Size2D(self.tile_size, self.tile_size))
     }
 
-    pub fn take_unused_tiles(&mut self) -> Vec<Box<LayerBuffer>> {
-        let mut unused_tiles = Vec::new();
-        mem::swap(&mut unused_tiles, &mut self.unused_tiles);
-        return unused_tiles;
+    pub fn take_unused_buffers(&mut self) -> Vec<Box<LayerBuffer>> {
+        let mut unused_buffers = Vec::new();
+        mem::swap(&mut unused_buffers, &mut self.unused_buffers);
+        return unused_buffers;
+    }
+
+    pub fn add_unused_buffer(&mut self, buffer: Option<Box<LayerBuffer>>) {
+        match buffer {
+            Some(buffer) => self.unused_buffers.push(buffer),
+            None => {},
+        }
     }
 
     pub fn mark_tiles_outside_of_rect_as_unused(&mut self, rect: Rect<f32>) {
@@ -77,14 +137,14 @@ impl TileGrid {
 
         for tile_index in tile_indexes_to_take.iter() {
             match self.tiles.pop(tile_index) {
-                Some(tile) => self.unused_tiles.push(tile),
+                Some(ref mut tile) => self.add_unused_buffer(tile.buffer.take()),
                 None => {},
             }
         }
     }
 
     pub fn get_buffer_requests_in_rect(&mut self, screen_rect: Rect<f32>, scale: f32) -> Vec<BufferRequest> {
-        if self.waiting_on_tiles {
+        if self.waiting_on_buffers {
             self.pending_buffer_request = Some((screen_rect, scale));
             return Vec::new();
         }
@@ -103,7 +163,7 @@ impl TileGrid {
         }
 
         self.mark_tiles_outside_of_rect_as_unused(rect_in_layer_pixels);
-        self.waiting_on_tiles = !buffer_requests.is_empty();
+        self.waiting_on_buffers = !buffer_requests.is_empty();
         return buffer_requests;
     }
 
@@ -114,35 +174,37 @@ impl TileGrid {
                 (point.y / self.tile_size) as uint)
     }
 
-    pub fn add_tile(&mut self, tile: Box<LayerBuffer>) {
-        self.waiting_on_tiles = false;
-        let index = self.get_tile_index_for_point(tile.screen_pos.origin.clone());
-        match self.tiles.swap(index, tile) {
-            Some(tile) => self.unused_tiles.push(tile),
-            None => {},
-        }
+    pub fn add_buffer(&mut self, buffer: Box<LayerBuffer>) {
+        self.waiting_on_buffers = false;
+        let index = self.get_tile_index_for_point(buffer.screen_pos.origin.clone());
+        let replaced_buffer =
+            self.tiles.find_or_insert_with(index, |_| Tile::new()).replace_buffer(buffer);
+        self.add_unused_buffer(replaced_buffer);
     }
 
-    pub fn do_for_all_tiles(&self, f: |&Box<LayerBuffer>|) {
+    pub fn do_for_all_tiles(&self, f: |&Tile|) {
         for tile in self.tiles.values() {
             f(tile);
         }
     }
 
-    pub fn collect_tiles(&mut self) -> Vec<Box<LayerBuffer>> {
-        let mut collected_tiles = Vec::new();
+    pub fn collect_buffers(&mut self) -> Vec<Box<LayerBuffer>> {
+        let mut collected_buffers = Vec::new();
 
-        collected_tiles.push_all_move(self.take_unused_tiles());
+        collected_buffers.push_all_move(self.take_unused_buffers());
 
         // We need to replace the HashMap since it cannot be used again after move_iter().
         let mut tile_map = HashMap::new();
         mem::swap(&mut tile_map, &mut self.tiles);
 
-        for (_, tile) in tile_map.move_iter() {
-            collected_tiles.push(tile);
+        for (_, mut tile) in tile_map.move_iter() {
+            match tile.buffer.take() {
+                Some(buffer) => collected_buffers.push(buffer),
+                None => {},
+            }
         }
 
-        return collected_tiles;
+        return collected_buffers;
     }
 
     pub fn flush_pending_buffer_requests(&mut self) -> (Vec<BufferRequest>, f32) {
@@ -154,6 +216,12 @@ impl TileGrid {
 
     pub fn contents_changed(&mut self) {
         self.pending_buffer_request = None;
-        self.waiting_on_tiles = false;
+        self.waiting_on_buffers = false;
+    }
+
+    pub fn create_textures(&mut self, graphics_context: &NativeCompositingGraphicsContext) {
+        for (_, ref mut tile) in self.tiles.mut_iter() {
+            tile.create_texture(graphics_context);
+        }
     }
 }

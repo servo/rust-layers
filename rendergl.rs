@@ -7,10 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use layers::{Layer, TextureLayer, Flip, NoFlip, VerticalFlip};
+use layers::Layer;
 use layers;
 use scene::Scene;
+use texturegl::{Flip, NoFlip, VerticalFlip};
 use texturegl::{Texture, TextureTarget2D, TextureTargetRectangle};
+use tiling::Tile;
 
 use geom::matrix::{Matrix4, ortho};
 use geom::size::Size2D;
@@ -272,7 +274,6 @@ fn bind_texture_coordinate_buffer(render_context: RenderContext, flip: Flip) {
 
 pub fn bind_and_render_quad(render_context: RenderContext,
                             texture: &Texture,
-                            flip: Flip,
                             transform: &Matrix4<f32>,
                             scene_size: Size2D<f32>) {
     let program_id = match texture.target {
@@ -311,7 +312,7 @@ pub fn bind_and_render_quad(render_context: RenderContext,
                                       0,
                                       0);
 
-            bind_texture_coordinate_buffer(render_context, flip);
+            bind_texture_coordinate_buffer(render_context, texture.flip);
             vertex_attrib_pointer_f32(render_context.program_2d.unwrap().texture_coord_attr as GLuint,
                                       2,
                                       false,
@@ -338,7 +339,7 @@ pub fn bind_and_render_quad(render_context: RenderContext,
                                       0,
                                       0);
 
-            bind_texture_coordinate_buffer(render_context, flip);
+            bind_texture_coordinate_buffer(render_context, texture.flip);
             vertex_attrib_pointer_f32(render_context.program_rectangle.unwrap().texture_coord_attr as
                                       GLuint,
                                       2,
@@ -369,22 +370,24 @@ impl<T> Render for layers::Layer<T> {
               scene_size: Size2D<f32>) {
         let origin = self.bounds.borrow().origin;
         let transform = transform.translate(origin.x, origin.y, 0.0).mul(&*self.transform.borrow());
-        for tile in self.tiles.borrow().iter() {
+
+        self.do_for_all_tiles(|tile: &Tile| {
             tile.render(render_context, transform, scene_size)
-        }
+        });
+
         for child in self.children().iter() {
             child.render(render_context, transform, scene_size)
         }
     }
 }
 
-impl Render for layers::TextureLayer {
+impl Render for Tile {
     fn render(&self,
               render_context: RenderContext,
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>) {
         let transform = transform.mul(&self.transform);
-        bind_and_render_quad(render_context, &self.texture, self.flip, &transform, scene_size);
+        bind_and_render_quad(render_context, &self.texture, &transform, scene_size);
     }
 }
 
