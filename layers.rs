@@ -17,6 +17,22 @@ use platform::surface::{NativeCompositingGraphicsContext, NativePaintingGraphics
 use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
 
+#[deriving(PartialEq)]
+pub struct ContentAge {
+    age: uint,
+}
+
+impl ContentAge {
+    pub fn new() -> ContentAge {
+        ContentAge {
+            age: 0,
+        }
+    }
+    pub fn next(&mut self) {
+        self.age += 1;
+    }
+}
+
 pub struct Layer<T> {
     pub children: RefCell<Vec<Rc<Layer<T>>>>,
     pub transform: RefCell<Matrix4<f32>>,
@@ -24,6 +40,9 @@ pub struct Layer<T> {
     pub tile_size: uint,
     pub extra_data: RefCell<T>,
     tile_grid: RefCell<TileGrid>,
+
+    /// A monotonically increasing counter that keeps track of the current content age.
+    pub content_age: RefCell<ContentAge>,
 }
 
 impl<T> Layer<T> {
@@ -35,6 +54,7 @@ impl<T> Layer<T> {
             tile_size: tile_size,
             extra_data: RefCell::new(data),
             tile_grid: RefCell::new(TileGrid::new(tile_size)),
+            content_age: RefCell::new(ContentAge::new()),
         }
     }
 
@@ -48,7 +68,8 @@ impl<T> Layer<T> {
 
     pub fn get_tile_rects_page(&self, window: Rect<f32>, scale: f32) -> (Vec<BufferRequest>, Vec<Box<LayerBuffer>>) {
         let mut tile_grid = self.tile_grid.borrow_mut();
-        (tile_grid.get_buffer_requests_in_rect(window, scale), tile_grid.take_unused_buffers())
+        (tile_grid.get_buffer_requests_in_rect(window, scale, *self.content_age.borrow()),
+         tile_grid.take_unused_buffers())
     }
 
     pub fn resize(&self, new_size: Size2D<f32>) {
@@ -67,12 +88,8 @@ impl<T> Layer<T> {
         self.tile_grid.borrow_mut().collect_buffers()
     }
 
-    pub fn flush_pending_buffer_requests(&self) -> (Vec<BufferRequest>, f32) {
-        self.tile_grid.borrow_mut().flush_pending_buffer_requests()
-    }
-
     pub fn contents_changed(&self) {
-        self.tile_grid.borrow_mut().contents_changed()
+        self.content_age.borrow_mut().next();
     }
 
     pub fn create_textures(&self, graphics_context: &NativeCompositingGraphicsContext) {
