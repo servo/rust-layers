@@ -9,7 +9,7 @@
 
 //! OpenGL-specific implementation of texturing.
 
-use layers::{ARGB32Format, Format, RGB24Format};
+use layers::{ARGB32Format, Format, RGB24Format, LayerBuffer};
 
 use geom::size::Size2D;
 use opengles::gl2::{BGRA, CLAMP_TO_EDGE, GLenum, GLint, GLsizei, GLuint, LINEAR, RGB, RGBA};
@@ -49,11 +49,16 @@ impl TextureTarget {
 pub struct Texture {
     /// The OpenGL texture ID.
     id: GLuint,
+
     /// The texture target.
     pub target: TextureTarget,
+
     /// Whether this texture is weak. Weak textures will not be cleaned up by
     /// the destructor.
     weak: bool,
+
+    // Whether or not this texture needs to be flipped upon display.
+    pub flip: Flip,
 }
 
 impl Drop for Texture {
@@ -78,6 +83,7 @@ impl Zero for Texture {
             id: 0,
             target: TextureTarget2D,
             weak: true,
+            flip: NoFlip,
         }
     }
     fn is_zero(&self) -> bool {
@@ -104,9 +110,46 @@ impl Texture {
             id: *gl2::gen_textures(1).get(0),
             target: target,
             weak: false,
+            flip: NoFlip,
         };
         this.set_default_params();
         this
+    }
+
+    pub fn new_with_buffer(buffer: &Box<LayerBuffer>) -> Texture {
+        let (flip, target) =
+            Texture::texture_flip_and_target(buffer.painted_with_cpu, buffer.screen_pos.size);
+        let mut texture = Texture::new(target);
+        texture.flip = flip;
+        return texture;
+    }
+
+    // Returns whether the layer should be vertically flipped.
+    #[cfg(target_os="macos")]
+    fn texture_flip_and_target(cpu_painting: bool, size: Size2D<uint>) -> (Flip, TextureTarget) {
+        let flip = if cpu_painting {
+            NoFlip
+        } else {
+            VerticalFlip
+        };
+
+        (flip, TextureTargetRectangle(size))
+    }
+
+    #[cfg(target_os="android")]
+    fn texture_flip_and_target(cpu_painting: bool, _: Size2D<uint>) -> (Flip, TextureTarget) {
+        let flip = if cpu_painting {
+            NoFlip
+        } else {
+            VerticalFlip
+        };
+
+        (flip, TextureTarget2D)
+    }
+
+    #[cfg(target_os="linux")]
+    fn texture_flip_and_target(_: bool, _: Size2D<uint>) -> (Flip, TextureTarget) {
+        (NoFlip, TextureTarget2D)
     }
 
     /// Creates a texture from an existing OpenGL texture. The texture will be deleted when this
@@ -116,6 +159,7 @@ impl Texture {
             id: native_texture_id,
             target: target,
             weak: false,
+            flip: NoFlip,
         };
         this
     }
@@ -127,6 +171,7 @@ impl Texture {
             id: native_texture_id,
             target: target,
             weak: true,
+            flip: NoFlip,
         };
         this.set_default_params();
         this
@@ -186,3 +231,11 @@ impl Texture {
     }
 }
 
+/// Whether a texture should be flipped.
+#[deriving(PartialEq)]
+pub enum Flip {
+    /// The texture should not be flipped.
+    NoFlip,
+    /// The texture should be flipped vertically.
+    VerticalFlip,
+}

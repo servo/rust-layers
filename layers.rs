@@ -13,7 +13,8 @@ use tiling::TileGrid;
 use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
 use geom::rect::Rect;
-use platform::surface::{NativePaintingGraphicsContext, NativeSurfaceMethods, NativeSurface};
+use platform::surface::{NativeSurfaceMethods, NativeSurface};
+use platform::surface::{NativeCompositingGraphicsContext, NativePaintingGraphicsContext};
 use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
 
@@ -85,34 +86,54 @@ impl<T> Layer<T> {
     pub fn contents_changed(&self) {
         self.tile_grid.borrow_mut().contents_changed()
     }
-}
 
-/// Whether a texture should be flipped.
-#[deriving(PartialEq)]
-pub enum Flip {
-    /// The texture should not be flipped.
-    NoFlip,
-    /// The texture should be flipped vertically.
-    VerticalFlip,
+    pub fn create_textures(&self, graphics_context: &NativeCompositingGraphicsContext) {
+        // Clear all old textures.
+        self.tiles.borrow_mut().clear();
+
+        self.do_for_all_buffers(|buffer: &Box<LayerBuffer>| {
+            debug!("osmain: compositing buffer rect {}", buffer.rect);
+
+            let size = Size2D(buffer.screen_pos.size.width as int,
+                              buffer.screen_pos.size.height as int);
+
+            debug!("osmain: adding new texture layer");
+
+            // Make a new texture and bind the layer buffer's surface to it.
+            let texture = Texture::new_with_buffer(buffer);
+            debug!("COMPOSITOR binding to native surface {:d}",
+                   buffer.native_surface.get_id() as int);
+            buffer.native_surface.bind_to_texture(graphics_context, &texture, size);
+
+            // Set the layer's transform.
+            let rect = buffer.rect;
+            let transform = identity().translate(rect.origin.x, rect.origin.y, 0.0);
+            let transform = transform.scale(rect.size.width, rect.size.height, 1.0);
+
+            // Make a texture layer and add it.
+            let texture_layer = Rc::new(TextureLayer::new(texture,
+                                                          buffer.screen_pos.size,
+                                                          transform));
+            self.tiles.borrow_mut().push(texture_layer);
+        });
+    }
 }
 
 pub struct TextureLayer {
     /// A handle to the GPU texture.
     pub texture: Texture,
+
     /// The size of the texture in pixels.
     size: Size2D<uint>,
-    /// Whether this texture is flipped vertically.
-    pub flip: Flip,
 
     pub transform: Matrix4<f32>,
 }
 
 impl TextureLayer {
-    pub fn new(texture: Texture, size: Size2D<uint>, flip: Flip, transform: Matrix4<f32>) -> TextureLayer {
+    pub fn new(texture: Texture, size: Size2D<uint>, transform: Matrix4<f32>) -> TextureLayer {
         TextureLayer {
             texture: texture,
             size: size,
-            flip: flip,
             transform: transform,
         }
     }
@@ -153,6 +174,9 @@ pub struct LayerBuffer {
 
     /// NB: stride is in pixels, like OpenGL GL_UNPACK_ROW_LENGTH.
     pub stride: uint,
+
+    /// Whether or not this buffer was painted with the CPU rasterization.
+    pub painted_with_cpu: bool,
 }
 
 impl LayerBuffer {

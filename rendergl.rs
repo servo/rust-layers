@@ -7,9 +7,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use layers::{Layer, TextureLayer, Flip, NoFlip, VerticalFlip};
+use layers::{Layer, TextureLayer};
 use layers;
 use scene::Scene;
+use texturegl::{Flip, NoFlip, VerticalFlip};
 use texturegl::{Texture, TextureTarget2D, TextureTargetRectangle};
 
 use geom::matrix::{Matrix4, ortho};
@@ -272,7 +273,6 @@ fn bind_texture_coordinate_buffer(render_context: RenderContext, flip: Flip) {
 
 pub fn bind_and_render_quad(render_context: RenderContext,
                             texture: &Texture,
-                            flip: Flip,
                             transform: &Matrix4<f32>,
                             scene_size: Size2D<f32>) {
     let program_id = match texture.target {
@@ -311,7 +311,7 @@ pub fn bind_and_render_quad(render_context: RenderContext,
                                       0,
                                       0);
 
-            bind_texture_coordinate_buffer(render_context, flip);
+            bind_texture_coordinate_buffer(render_context, texture.flip);
             vertex_attrib_pointer_f32(render_context.program_2d.unwrap().texture_coord_attr as GLuint,
                                       2,
                                       false,
@@ -338,7 +338,7 @@ pub fn bind_and_render_quad(render_context: RenderContext,
                                       0,
                                       0);
 
-            bind_texture_coordinate_buffer(render_context, flip);
+            bind_texture_coordinate_buffer(render_context, texture.flip);
             vertex_attrib_pointer_f32(render_context.program_rectangle.unwrap().texture_coord_attr as
                                       GLuint,
                                       2,
@@ -384,7 +384,7 @@ impl Render for layers::TextureLayer {
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>) {
         let transform = transform.mul(&self.transform);
-        bind_and_render_quad(render_context, &self.texture, self.flip, &transform, scene_size);
+        bind_and_render_quad(render_context, &self.texture, &transform, scene_size);
     }
 }
 
