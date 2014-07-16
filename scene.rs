@@ -20,17 +20,19 @@ pub struct Scene<T> {
     pub background_color: Color
 }
 
-pub fn Scene<T>(size: Size2D<f32>, transform: Matrix4<f32>) -> Scene<T> {
-    Scene {
-        root: None,
-        size: size,
-        transform: transform,
-        background_color: Color {
-                  r: 0.38f32,
-                  g: 0.36f32,
-                  b: 0.36f32,
-                  a: 1.0f32
-              }
+impl<T> Scene<T> {
+    pub fn new(size: Size2D<f32>, transform: Matrix4<f32>) -> Scene<T> {
+        Scene {
+            root: None,
+            size: size,
+            transform: transform,
+            background_color: Color {
+                r: 0.38f32,
+                g: 0.36f32,
+                b: 0.36f32,
+                a: 1.0f32
+            }
+        }
     }
 }
 
