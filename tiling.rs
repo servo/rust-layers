@@ -7,23 +7,37 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use layers::BufferRequest;
+use layers::LayerBuffer;
+use platform::surface::{NativeCompositingGraphicsContext, NativeSurfaceMethods};
+use texturegl::Texture;
+
+use geom::matrix::{Matrix4, identity};
 use geom::point::Point2D;
 use geom::size::Size2D;
 use geom::rect::Rect;
-use layers::BufferRequest;
-use layers::LayerBuffer;
 use std::collections::hashmap::HashMap;
 use std::iter::range_inclusive;
 use std::mem;
+use std::num::Zero;
 
 pub struct Tile {
+    /// The buffer displayed by this tile.
     buffer: Option<Box<LayerBuffer>>,
+
+    /// A handle to the GPU texture.
+    pub texture: Texture,
+
+    /// The transformation applied to this tiles texture.
+    pub transform: Matrix4<f32>,
 }
 
 impl Tile {
     fn new() -> Tile {
         Tile {
             buffer: None,
+            texture: Zero::zero(),
+            transform: identity(),
         }
     }
 
@@ -31,6 +45,27 @@ impl Tile {
         let old_buffer = self.buffer.take();
         self.buffer = Some(buffer);
         return old_buffer;
+    }
+
+    fn create_texture(&mut self, graphics_context: &NativeCompositingGraphicsContext) {
+        match self.buffer {
+            Some(ref buffer) => {
+                let size = Size2D(buffer.screen_pos.size.width as int,
+                                  buffer.screen_pos.size.height as int);
+
+                // Make a new texture and bind the LayerBuffer's surface to it.
+                self.texture = Texture::new_with_buffer(buffer);
+                debug!("Tile: binding to native surface {:d}",
+                       buffer.native_surface.get_id() as int);
+                buffer.native_surface.bind_to_texture(graphics_context, &self.texture, size);
+
+                // Set the layer's transform.
+                let rect = buffer.rect;
+                let transform = identity().translate(rect.origin.x, rect.origin.y, 0.0);
+                self.transform = transform.scale(rect.size.width, rect.size.height, 1.0);
+            },
+            None => {},
+        }
     }
 }
 
@@ -147,12 +182,9 @@ impl TileGrid {
         self.add_unused_buffer(replaced_buffer);
     }
 
-    pub fn do_for_all_buffers(&self, f: |&Box<LayerBuffer>|) {
+    pub fn do_for_all_tiles(&self, f: |&Tile|) {
         for tile in self.tiles.values() {
-            match tile.buffer {
-                Some(ref buffer) => f(buffer),
-                None => {},
-            }
+            f(tile);
         }
     }
 
@@ -185,5 +217,11 @@ impl TileGrid {
     pub fn contents_changed(&mut self) {
         self.pending_buffer_request = None;
         self.waiting_on_buffers = false;
+    }
+
+    pub fn create_textures(&mut self, graphics_context: &NativeCompositingGraphicsContext) {
+        for (_, ref mut tile) in self.tiles.mut_iter() {
+            tile.create_texture(graphics_context);
+        }
     }
 }

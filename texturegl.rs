@@ -9,7 +9,7 @@
 
 //! OpenGL-specific implementation of texturing.
 
-use layers::{ARGB32Format, Format, RGB24Format, LayerBuffer};
+use layers::LayerBuffer;
 
 use geom::size::Size2D;
 use opengles::gl2::{BGRA, CLAMP_TO_EDGE, GLenum, GLint, GLsizei, GLuint, LINEAR, RGB, RGBA};
@@ -17,6 +17,11 @@ use opengles::gl2::{TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER, TEXTURE_2D, TEXTURE_
 use opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T, UNSIGNED_BYTE, UNSIGNED_INT_8_8_8_8_REV};
 use opengles::gl2;
 use std::num::Zero;
+
+pub enum Format {
+    ARGB32Format,
+    RGB24Format
+}
 
 /// Image data used when uploading to a texture.
 pub struct TextureImageData<'a> {

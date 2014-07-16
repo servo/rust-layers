@@ -7,11 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use layers::{Layer, TextureLayer};
+use layers::Layer;
 use layers;
 use scene::Scene;
 use texturegl::{Flip, NoFlip, VerticalFlip};
 use texturegl::{Texture, TextureTarget2D, TextureTargetRectangle};
+use tiling::Tile;
 
 use geom::matrix::{Matrix4, ortho};
 use geom::size::Size2D;
@@ -369,16 +370,18 @@ impl<T> Render for layers::Layer<T> {
               scene_size: Size2D<f32>) {
         let origin = self.bounds.borrow().origin;
         let transform = transform.translate(origin.x, origin.y, 0.0).mul(&*self.transform.borrow());
-        for tile in self.tiles.borrow().iter() {
+
+        self.do_for_all_tiles(|tile: &Tile| {
             tile.render(render_context, transform, scene_size)
-        }
+        });
+
         for child in self.children().iter() {
             child.render(render_context, transform, scene_size)
         }
     }
 }
 
-impl Render for layers::TextureLayer {
+impl Render for Tile {
     fn render(&self,
               render_context: RenderContext,
               transform: Matrix4<f32>,
