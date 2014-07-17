@@ -7,8 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use layers::BufferRequest;
-use layers::LayerBuffer;
+use layers::{BufferRequest, ContentAge, LayerBuffer};
 use platform::surface::{NativeCompositingGraphicsContext, NativeSurfaceMethods};
 use texturegl::Texture;
 
@@ -25,6 +24,13 @@ pub struct Tile {
     /// The buffer displayed by this tile.
     buffer: Option<Box<LayerBuffer>>,
 
+    /// The content age of the current buffer. Only valid when buffer is not None.
+    content_age_of_current_buffer: ContentAge,
+
+    /// The content age of any pending buffer request to avoid re-requesting
+    /// a buffer while waiting for it to come back from rendering.
+    content_age_of_pending_buffer: Option<ContentAge>,
+
     /// A handle to the GPU texture.
     pub texture: Texture,
 
@@ -38,12 +44,27 @@ impl Tile {
             buffer: None,
             texture: Zero::zero(),
             transform: identity(),
+            content_age_of_current_buffer: ContentAge::new(),
+            content_age_of_pending_buffer: None,
         }
     }
 
     fn replace_buffer(&mut self, buffer: Box<LayerBuffer>) -> Option<Box<LayerBuffer>> {
         let old_buffer = self.buffer.take();
         self.buffer = Some(buffer);
+
+        // TODO: If content_age_of_pending_buffer is None, that means that we were passed
+        // a stale buffer at some point. We could handle this situation more gracefully if
+        // Servo and rust-layers shared Epoch/ContentAge values. That would make using rust-layers
+        // more complicated though.
+        match self.content_age_of_pending_buffer {
+            Some(pending_content_age) => {
+                self.content_age_of_current_buffer = pending_content_age;
+            },
+            None => warn!("Tile content out of sync with ContentAge count!"),
+        }
+        self.content_age_of_pending_buffer = None;
+
         return old_buffer;
     }
 
@@ -67,6 +88,18 @@ impl Tile {
             None => {},
         }
     }
+
+    fn should_request_buffer(&self, content_age: ContentAge) -> bool {
+        if self.buffer.is_some() && self.content_age_of_current_buffer == content_age {
+            return false;
+        }
+
+        // Don't resend a request, if we already have one pending.
+        match self.content_age_of_pending_buffer {
+            Some(pending_content_age) => pending_content_age != content_age,
+            None => true,
+        }
+    }
 }
 
 pub struct TileGrid {
@@ -77,13 +110,6 @@ pub struct TileGrid {
 
     // Buffers that are currently unused.
     unused_buffers: Vec<Box<LayerBuffer>>,
-
-    // Whether or not there are pending buffer requests.
-    waiting_on_buffers : bool,
-
-    // Once we know that we are waiting for buffers, track any later buffer requests.
-    // FIXME: Replace with a per-tile state which better tracks epoch transitions.
-    pending_buffer_request: Option<(Rect<f32>, f32)>,
 }
 
 pub fn rect_uint_as_rect_f32(rect: Rect<uint>) -> Rect<f32> {
@@ -97,8 +123,6 @@ impl TileGrid {
             tiles: HashMap::new(),
             tile_size: tile_size,
             unused_buffers: Vec::new(),
-            waiting_on_buffers: false,
-            pending_buffer_request: None,
         }
     }
 
@@ -143,12 +167,28 @@ impl TileGrid {
         }
     }
 
-    pub fn get_buffer_requests_in_rect(&mut self, screen_rect: Rect<f32>, scale: f32) -> Vec<BufferRequest> {
-        if self.waiting_on_buffers {
-            self.pending_buffer_request = Some((screen_rect, scale));
-            return Vec::new();
+    pub fn get_buffer_request_for_tile(&mut self,
+                                       tile_index: Point2D<uint>,
+                                       scale: f32,
+                                       current_content_age: ContentAge)
+                                       -> Option<BufferRequest> {
+        let tile_rect = self.get_rect_for_tile_index(tile_index);
+        let tile_screen_rect = rect_uint_as_rect_f32(tile_rect) / scale;
+
+        let mut tile = self.tiles.find_or_insert_with(tile_index, |_| Tile::new());
+        if !tile.should_request_buffer(current_content_age) {
+            return None;
         }
 
+        tile.content_age_of_pending_buffer = Some(current_content_age);
+        return Some(BufferRequest::new(tile_rect, tile_screen_rect));
+    }
+
+    pub fn get_buffer_requests_in_rect(&mut self,
+                                       screen_rect: Rect<f32>,
+                                       scale: f32,
+                                       current_content_age: ContentAge)
+                                       -> Vec<BufferRequest> {
         let mut buffer_requests = Vec::new();
         let rect_in_layer_pixels = screen_rect * scale;
         let (top_left_index, bottom_right_index) =
@@ -156,14 +196,14 @@ impl TileGrid {
 
         for x in range_inclusive(top_left_index.x, bottom_right_index.x) {
             for y in range_inclusive(top_left_index.y, bottom_right_index.y) {
-                let tile_rect = self.get_rect_for_tile_index(Point2D(x, y));
-                let tile_screen_rect = rect_uint_as_rect_f32(tile_rect) / scale;
-                buffer_requests.push(BufferRequest::new(tile_rect, tile_screen_rect));
+                match self.get_buffer_request_for_tile(Point2D(x, y), scale, current_content_age) {
+                    Some(buffer) => buffer_requests.push(buffer),
+                    None => {},
+                }
             }
         }
 
         self.mark_tiles_outside_of_rect_as_unused(rect_in_layer_pixels);
-        self.waiting_on_buffers = !buffer_requests.is_empty();
         return buffer_requests;
     }
 
@@ -175,10 +215,14 @@ impl TileGrid {
     }
 
     pub fn add_buffer(&mut self, buffer: Box<LayerBuffer>) {
-        self.waiting_on_buffers = false;
         let index = self.get_tile_index_for_point(buffer.screen_pos.origin.clone());
-        let replaced_buffer =
-            self.tiles.find_or_insert_with(index, |_| Tile::new()).replace_buffer(buffer);
+        if !self.tiles.contains_key(&index) {
+            warn!("Received buffer for non-existent tile!");
+            self.add_unused_buffer(Some(buffer));
+            return;
+        }
+
+        let replaced_buffer = self.tiles.get_mut(&index).replace_buffer(buffer);
         self.add_unused_buffer(replaced_buffer);
     }
 
@@ -205,18 +249,6 @@ impl TileGrid {
         }
 
         return collected_buffers;
-    }
-
-    pub fn flush_pending_buffer_requests(&mut self) -> (Vec<BufferRequest>, f32) {
-        match self.pending_buffer_request.take() {
-            Some((rect, scale)) => (self.get_buffer_requests_in_rect(rect, scale), scale),
-            None => (Vec::new(), 0.0),
-        }
-    }
-
-    pub fn contents_changed(&mut self) {
-        self.pending_buffer_request = None;
-        self.waiting_on_buffers = false;
     }
 
     pub fn create_textures(&mut self, graphics_context: &NativeCompositingGraphicsContext) {
