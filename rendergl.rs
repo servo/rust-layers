@@ -13,6 +13,7 @@ use scene::Scene;
 use texturegl::{Flip, NoFlip, VerticalFlip};
 use texturegl::{Texture, TextureTarget2D, TextureTargetRectangle};
 use tiling::Tile;
+use platform::surface::NativeCompositingGraphicsContext;
 
 use geom::matrix::{Matrix4, ortho};
 use geom::size::Size2D;
@@ -142,10 +143,15 @@ pub struct RenderContext {
     program_2d: Option<Program2D>,
     program_rectangle: Option<ProgramRectangle>,
     buffers: Buffers,
+
+    /// The platform-specific graphics context.
+    compositing_context: NativeCompositingGraphicsContext,
 }
 
 impl RenderContext {
-    fn new(program_2d: Option<GLuint>, program_rectangle: Option<GLuint>) -> RenderContext {
+    fn new(compositing_context: NativeCompositingGraphicsContext,
+           program_2d: Option<GLuint>,
+           program_rectangle: Option<GLuint>) -> RenderContext {
         let render_context = RenderContext {
             program_2d: match program_2d {
                 Some(program) => {
@@ -175,6 +181,7 @@ impl RenderContext {
                 None => None,
             },
             buffers: RenderContext::init_buffers(),
+            compositing_context: compositing_context,
         };
 
         match render_context.program_2d {
@@ -231,7 +238,7 @@ pub fn init_program(vertex_shader: GLuint, fragment_shader: GLuint) -> GLuint {
 
 #[cfg(target_os="linux")]
 #[cfg(target_os="macos")]
-pub fn init_render_context() -> RenderContext {
+pub fn init_render_context(compositing_context: NativeCompositingGraphicsContext) -> RenderContext {
     use opengles::gl2::TEXTURE_RECTANGLE_ARB;
 
     let vertex_2d_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
@@ -247,11 +254,11 @@ pub fn init_render_context() -> RenderContext {
     enable(BLEND);
     blend_func(SRC_ALPHA, ONE_MINUS_SRC_ALPHA);
 
-    RenderContext::new(Some(program_2d), Some(program_rectangle))
+    RenderContext::new(compositing_context, Some(program_2d), Some(program_rectangle))
 }
 
 #[cfg(target_os="android")]
-pub fn init_render_context() -> RenderContext {
+pub fn init_render_context(compositing_context: NativeCompositingGraphicsContext) -> RenderContext {
     let vertex_2d_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
     let fragment_2d_shader = load_shader(FRAGMENT_2D_SHADER_SOURCE, FRAGMENT_SHADER);
     let program_2d = init_program(vertex_2d_shader, fragment_2d_shader);
@@ -260,7 +267,7 @@ pub fn init_render_context() -> RenderContext {
     enable(BLEND);
     blend_func(SRC_ALPHA, ONE_MINUS_SRC_ALPHA);
 
-    RenderContext::new(Some(program_2d), None)
+    RenderContext::new(compositing_context, Some(program_2d), None)
 }
 
 fn bind_texture_coordinate_buffer(render_context: RenderContext, flip: Flip) {
@@ -371,6 +378,7 @@ impl<T> Render for layers::Layer<T> {
         let origin = self.bounds.borrow().origin;
         let transform = transform.translate(origin.x, origin.y, 0.0).mul(&*self.transform.borrow());
 
+        self.create_textures(&render_context.compositing_context);
         self.do_for_all_tiles(|tile: &Tile| {
             tile.render(render_context, transform, scene_size)
         });
