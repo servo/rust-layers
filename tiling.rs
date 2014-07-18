@@ -52,6 +52,7 @@ impl Tile {
     fn replace_buffer(&mut self, buffer: Box<LayerBuffer>) -> Option<Box<LayerBuffer>> {
         let old_buffer = self.buffer.take();
         self.buffer = Some(buffer);
+        self.texture = Zero::zero(); // The old texture is bound to the old buffer.
 
         // TODO: If content_age_of_pending_buffer is None, that means that we were passed
         // a stale buffer at some point. We could handle this situation more gracefully if
@@ -73,6 +74,11 @@ impl Tile {
             Some(ref buffer) => {
                 let size = Size2D(buffer.screen_pos.size.width as int,
                                   buffer.screen_pos.size.height as int);
+
+                // If we already have a texture it should still be valid.
+                if !self.texture.is_zero() {
+                    return;
+                }
 
                 // Make a new texture and bind the LayerBuffer's surface to it.
                 self.texture = Texture::new_with_buffer(buffer);
