@@ -29,6 +29,7 @@ use opengles::gl2::{gen_buffers, get_attrib_location, get_error, get_program_iv}
 use opengles::gl2::{get_shader_info_log, get_shader_iv, get_uniform_location};
 use opengles::gl2::{link_program, shader_source, uniform_1i, uniform_2f};
 use opengles::gl2::{uniform_matrix_4fv, use_program, vertex_attrib_pointer_f32, viewport};
+use std::num::Zero;
 use std::rc::Rc;
 
 static FRAGMENT_2D_SHADER_SOURCE: &'static str = "
@@ -394,6 +395,10 @@ impl Render for Tile {
               render_context: RenderContext,
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>) {
+        if self.texture.is_zero() {
+            return;
+        }
+
         let transform = transform.mul(&self.transform);
         bind_and_render_quad(render_context, &self.texture, &transform, scene_size);
     }
