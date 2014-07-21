@@ -60,7 +60,7 @@ pub struct NativeSurface {
 impl NativeSurface {
     pub fn from_image_khr(image_khr: EGLImageKHR) -> NativeSurface {
         let mut _image: Option<EGLImageKHR> = None;
-        if image_khr != ptr::null() {
+        if image_khr != ptr::mut_null() {
             _image = Some(image_khr);
         }
         NativeSurface {
@@ -93,7 +93,7 @@ impl NativeSurfaceMethods for NativeSurface {
         match self.image {
             None => match self.bitmap {
                 Some(ref bitmap) => {
-                    let data = bitmap.as_ptr() as *c_void;
+                    let data = bitmap.as_ptr() as *const c_void;
                     unsafe {
                         glTexImage2D(TEXTURE_2D, 0, BGRA as i32, _size.width as i32, _size.height as i32,
                                      0, BGRA as u32, UNSIGNED_BYTE, data);
