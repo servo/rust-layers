@@ -121,7 +121,7 @@ struct Buffers {
     flipped_texture_coordinate_buffer: GLuint,
 }
 
-struct Program2D {
+struct Texture2DProgram {
     id: GLuint,
     vertex_position_attr: c_int,
     texture_coord_attr: c_int,
@@ -130,7 +130,45 @@ struct Program2D {
     sampler_uniform: c_int,
 }
 
-struct ProgramRectangle {
+impl Texture2DProgram {
+    fn new() -> Texture2DProgram {
+        let vertex_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
+        let fragment_shader = load_shader(FRAGMENT_2D_SHADER_SOURCE, FRAGMENT_SHADER);
+        let program_id = init_program(vertex_shader, fragment_shader);
+
+        Texture2DProgram {
+            id: program_id,
+            vertex_position_attr: get_attrib_location(program_id, "aVertexPosition"),
+            texture_coord_attr: get_attrib_location(program_id, "aTextureCoord"),
+            modelview_uniform: get_uniform_location(program_id, "uMVMatrix"),
+            projection_uniform: get_uniform_location(program_id, "uPMatrix"),
+            sampler_uniform: get_uniform_location(program_id, "uSampler"),
+        }
+    }
+
+    fn bind_uniforms_and_attributes(&self,
+                                    texture: &Texture,
+                                    transform: &Matrix4<f32>,
+                                    projection_matrix: &Matrix4<f32>,
+                                    buffers: &Buffers) {
+        uniform_1i(self.sampler_uniform, 0);
+        uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array());
+        uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array());
+
+        bind_buffer(ARRAY_BUFFER, buffers.vertex_buffer);
+        vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 3, false, 0, 0);
+
+        bind_texture_coordinate_buffer(buffers, texture.flip);
+        vertex_attrib_pointer_f32(self.texture_coord_attr as GLuint, 2, false, 0, 0);
+    }
+
+    fn enable_attribute_arrays(&self) {
+        enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
+        enable_vertex_attrib_array(self.texture_coord_attr as GLuint);
+    }
+}
+
+struct TextureRectangleProgram {
     id: GLuint,
     vertex_position_attr: c_int,
     texture_coord_attr: c_int,
@@ -140,9 +178,64 @@ struct ProgramRectangle {
     size_uniform: c_int,
 }
 
+impl TextureRectangleProgram {
+    fn new() -> TextureRectangleProgram {
+        let vertex_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
+        let fragment_shader = load_shader(FRAGMENT_RECTANGLE_SHADER_SOURCE, FRAGMENT_SHADER);
+        let program_id = init_program(vertex_shader, fragment_shader);
+
+        TextureRectangleProgram {
+            id: program_id,
+            vertex_position_attr: get_attrib_location(program_id, "aVertexPosition"),
+            texture_coord_attr: get_attrib_location(program_id, "aTextureCoord"),
+            modelview_uniform: get_uniform_location(program_id, "uMVMatrix"),
+            projection_uniform: get_uniform_location(program_id, "uPMatrix"),
+            sampler_uniform: get_uniform_location(program_id, "uSampler"),
+            size_uniform: get_uniform_location(program_id, "uSize"),
+        }
+    }
+
+    #[cfg(target_os="linux")]
+    #[cfg(target_os="macos")]
+    fn create_if_necessary() -> Option<TextureRectangleProgram> {
+        use opengles::gl2::TEXTURE_RECTANGLE_ARB;
+        enable(TEXTURE_RECTANGLE_ARB);
+        Some(TextureRectangleProgram::new())
+    }
+
+    #[cfg(target_os="android")]
+    fn create_if_necessary() -> Option<TextureRectangleProgram> {
+        None
+    }
+
+    fn bind_uniforms_and_attributes(&self,
+                                    texture: &Texture,
+                                    transform: &Matrix4<f32>,
+                                    projection_matrix: &Matrix4<f32>,
+                                    buffers: &Buffers) {
+        uniform_1i(self.sampler_uniform, 0);
+        uniform_2f(self.size_uniform,
+                   texture.size.width as GLfloat,
+                   texture.size.height as GLfloat);
+        uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array());
+        uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array());
+
+        bind_buffer(ARRAY_BUFFER, buffers.vertex_buffer);
+        vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 3, false, 0, 0);
+
+        bind_texture_coordinate_buffer(buffers, texture.flip);
+        vertex_attrib_pointer_f32(self.texture_coord_attr as GLuint, 2, false, 0, 0);
+    }
+
+    fn enable_attribute_arrays(&self) {
+        enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
+        enable_vertex_attrib_array(self.texture_coord_attr as GLuint);
+    }
+}
+
 pub struct RenderContext {
-    program_2d: Option<Program2D>,
-    program_rectangle: Option<ProgramRectangle>,
+    texture_2d_program: Texture2DProgram,
+    texture_rectangle_program: Option<TextureRectangleProgram>,
     buffers: Buffers,
 
     /// The platform-specific graphics context.
@@ -150,58 +243,26 @@ pub struct RenderContext {
 }
 
 impl RenderContext {
-    fn new(compositing_context: NativeCompositingGraphicsContext,
-           program_2d: Option<GLuint>,
-           program_rectangle: Option<GLuint>) -> RenderContext {
-        let render_context = RenderContext {
-            program_2d: match program_2d {
-                Some(program) => {
-                    Some(Program2D {
-                        id: program,
-                        vertex_position_attr: get_attrib_location(program, "aVertexPosition"),
-                        texture_coord_attr: get_attrib_location(program, "aTextureCoord"),
-                        modelview_uniform: get_uniform_location(program, "uMVMatrix"),
-                        projection_uniform: get_uniform_location(program, "uPMatrix"),
-                        sampler_uniform: get_uniform_location(program, "uSampler"),
-                    })
-                },
-                None => None,
-            },
-            program_rectangle: match program_rectangle {
-                Some(program) => {
-                    Some(ProgramRectangle {
-                        id: program,
-                        vertex_position_attr: get_attrib_location(program, "aVertexPosition"),
-                        texture_coord_attr: get_attrib_location(program, "aTextureCoord"),
-                        modelview_uniform: get_uniform_location(program, "uMVMatrix"),
-                        projection_uniform: get_uniform_location(program, "uPMatrix"),
-                        sampler_uniform: get_uniform_location(program, "uSampler"),
-                        size_uniform: get_uniform_location(program, "uSize"),
-                    })
-                },
-                None => None,
-            },
+    pub fn new(compositing_context: NativeCompositingGraphicsContext) -> RenderContext {
+        enable(TEXTURE_2D);
+        enable(BLEND);
+        blend_func(SRC_ALPHA, ONE_MINUS_SRC_ALPHA);
+
+        let texture_2d_program = Texture2DProgram::new();
+        texture_2d_program.enable_attribute_arrays();
+
+        let texture_rectangle_program = TextureRectangleProgram::create_if_necessary();
+        match texture_rectangle_program {
+            Some(program) => program.enable_attribute_arrays(),
+            None => {},
+        }
+
+        RenderContext {
+            texture_2d_program: texture_2d_program,
+            texture_rectangle_program: texture_rectangle_program,
             buffers: RenderContext::init_buffers(),
             compositing_context: compositing_context,
-        };
-
-        match render_context.program_2d {
-            Some(program) => {
-                enable_vertex_attrib_array(program.vertex_position_attr as GLuint);
-                enable_vertex_attrib_array(program.texture_coord_attr as GLuint);
-            },
-            None => {}
         }
-
-        match render_context.program_rectangle {
-            Some(program) => {
-                enable_vertex_attrib_array(program.vertex_position_attr as GLuint);
-                enable_vertex_attrib_array(program.texture_coord_attr as GLuint);
-            },
-            None=> {}
-        }
-
-        render_context
     }
 
     fn init_buffers() -> Buffers {
@@ -237,45 +298,11 @@ pub fn init_program(vertex_shader: GLuint, fragment_shader: GLuint) -> GLuint {
     program
 }
 
-#[cfg(target_os="linux")]
-#[cfg(target_os="macos")]
-pub fn init_render_context(compositing_context: NativeCompositingGraphicsContext) -> RenderContext {
-    use opengles::gl2::TEXTURE_RECTANGLE_ARB;
-
-    let vertex_2d_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
-    let fragment_2d_shader = load_shader(FRAGMENT_2D_SHADER_SOURCE, FRAGMENT_SHADER);
-    let program_2d = init_program(vertex_2d_shader, fragment_2d_shader);
-
-    let vertex_rectangle_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
-    let fragment_rectangle_shader = load_shader(FRAGMENT_RECTANGLE_SHADER_SOURCE, FRAGMENT_SHADER);
-    let program_rectangle = init_program(vertex_rectangle_shader, fragment_rectangle_shader);
-
-    enable(TEXTURE_2D);
-    enable(TEXTURE_RECTANGLE_ARB);
-    enable(BLEND);
-    blend_func(SRC_ALPHA, ONE_MINUS_SRC_ALPHA);
-
-    RenderContext::new(compositing_context, Some(program_2d), Some(program_rectangle))
-}
-
-#[cfg(target_os="android")]
-pub fn init_render_context(compositing_context: NativeCompositingGraphicsContext) -> RenderContext {
-    let vertex_2d_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
-    let fragment_2d_shader = load_shader(FRAGMENT_2D_SHADER_SOURCE, FRAGMENT_SHADER);
-    let program_2d = init_program(vertex_2d_shader, fragment_2d_shader);
-
-    enable(TEXTURE_2D);
-    enable(BLEND);
-    blend_func(SRC_ALPHA, ONE_MINUS_SRC_ALPHA);
-
-    RenderContext::new(compositing_context, Some(program_2d), None)
-}
-
-fn bind_texture_coordinate_buffer(render_context: RenderContext, flip: Flip) {
+fn bind_texture_coordinate_buffer(buffers: &Buffers, flip: Flip) {
     match flip {
-        NoFlip => bind_buffer(ARRAY_BUFFER, render_context.buffers.texture_coordinate_buffer),
+        NoFlip => bind_buffer(ARRAY_BUFFER, buffers.texture_coordinate_buffer),
         VerticalFlip => {
-            bind_buffer(ARRAY_BUFFER, render_context.buffers.flipped_texture_coordinate_buffer)
+            bind_buffer(ARRAY_BUFFER, buffers.flipped_texture_coordinate_buffer)
         }
     }
 }
@@ -285,11 +312,8 @@ pub fn bind_and_render_quad(render_context: RenderContext,
                             transform: &Matrix4<f32>,
                             scene_size: Size2D<f32>) {
     let program_id = match texture.target {
-        TextureTarget2D => match render_context.program_2d {
-            Some(program) => {program.id},
-            None => {fail!("There is no shader program for texture 2D");}
-        },
-        TextureTargetRectangle(..) => match render_context.program_rectangle {
+        TextureTarget2D => render_context.texture_2d_program.id,
+        TextureTargetRectangle(..) => match render_context.texture_rectangle_program {
             Some(program) => {program.id},
             None => {fail!("There is no shader program for texture rectangle");}
         },
@@ -305,55 +329,18 @@ pub fn bind_and_render_quad(render_context: RenderContext,
     // Set uniforms and vertex attribute pointers.
     match texture.target {
         TextureTarget2D => {
-            uniform_1i(render_context.program_2d.unwrap().sampler_uniform, 0);
-            uniform_matrix_4fv(render_context.program_2d.unwrap().modelview_uniform,
-                               false,
-                               transform.to_array());
-            uniform_matrix_4fv(render_context.program_2d.unwrap().projection_uniform,
-                               false,
-                               projection_matrix.to_array());
-
-            bind_buffer(ARRAY_BUFFER, render_context.buffers.vertex_buffer);
-            vertex_attrib_pointer_f32(render_context.program_2d.unwrap().vertex_position_attr as GLuint,
-                                      3,
-                                      false,
-                                      0,
-                                      0);
-
-            bind_texture_coordinate_buffer(render_context, texture.flip);
-            vertex_attrib_pointer_f32(render_context.program_2d.unwrap().texture_coord_attr as GLuint,
-                                      2,
-                                      false,
-                                      0,
-                                      0);
+            render_context.texture_2d_program.
+                bind_uniforms_and_attributes(texture,
+                                             transform,
+                                             &projection_matrix,
+                                             &render_context.buffers);
         }
-        TextureTargetRectangle(size) => {
-            uniform_1i(render_context.program_rectangle.unwrap().sampler_uniform, 0);
-            uniform_2f(render_context.program_rectangle.unwrap().size_uniform,
-                       size.width as GLfloat,
-                       size.height as GLfloat);
-            uniform_matrix_4fv(render_context.program_rectangle.unwrap().modelview_uniform,
-                               false,
-                               transform.to_array());
-            uniform_matrix_4fv(render_context.program_rectangle.unwrap().projection_uniform,
-                               false,
-                               projection_matrix.to_array());
-
-            bind_buffer(ARRAY_BUFFER, render_context.buffers.vertex_buffer);
-            vertex_attrib_pointer_f32(render_context.program_rectangle.unwrap().vertex_position_attr as
-                                      GLuint,
-                                      3,
-                                      false,
-                                      0,
-                                      0);
-
-            bind_texture_coordinate_buffer(render_context, texture.flip);
-            vertex_attrib_pointer_f32(render_context.program_rectangle.unwrap().texture_coord_attr as
-                                      GLuint,
-                                      2,
-                                      false,
-                                      0,
-                                      0);
+        TextureTargetRectangle => {
+            render_context.texture_rectangle_program.unwrap().
+                bind_uniforms_and_attributes(texture,
+                                             transform,
+                                             &projection_matrix,
+                                             &render_context.buffers);
         }
     }
 
