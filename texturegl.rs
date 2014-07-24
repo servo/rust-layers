@@ -36,14 +36,14 @@ pub enum TextureTarget {
     /// TEXTURE_2D.
     TextureTarget2D,
     /// TEXTURE_RECTANGLE_ARB, with the size included.
-    TextureTargetRectangle(Size2D<uint>),
+    TextureTargetRectangle,
 }
 
 impl TextureTarget {
     fn as_gl_target(self) -> GLenum {
         match self {
             TextureTarget2D => TEXTURE_2D,
-            TextureTargetRectangle(_) => TEXTURE_RECTANGLE_ARB,
+            TextureTargetRectangle => TEXTURE_RECTANGLE_ARB,
         }
     }
 }
@@ -64,6 +64,9 @@ pub struct Texture {
 
     // Whether or not this texture needs to be flipped upon display.
     pub flip: Flip,
+
+    // The size of this texture in device pixels.
+    pub size: Size2D<uint>
 }
 
 impl Drop for Texture {
@@ -89,6 +92,7 @@ impl Zero for Texture {
             target: TextureTarget2D,
             weak: true,
             flip: NoFlip,
+            size: Size2D(0u, 0u),
         }
     }
     fn is_zero(&self) -> bool {
@@ -110,39 +114,39 @@ impl Drop for BoundTexture {
 
 impl Texture {
     /// Creates a new blank texture.
-    pub fn new(target: TextureTarget) -> Texture {
+    pub fn new(target: TextureTarget, size: Size2D<uint>) -> Texture {
         let this = Texture {
             id: *gl2::gen_textures(1).get(0),
             target: target,
             weak: false,
             flip: NoFlip,
+            size: size,
         };
         this.set_default_params();
         this
     }
 
     pub fn new_with_buffer(buffer: &Box<LayerBuffer>) -> Texture {
-        let (flip, target) =
-            Texture::texture_flip_and_target(buffer.painted_with_cpu, buffer.screen_pos.size);
-        let mut texture = Texture::new(target);
+        let (flip, target) = Texture::texture_flip_and_target(buffer.painted_with_cpu);
+        let mut texture = Texture::new(target, buffer.screen_pos.size);
         texture.flip = flip;
         return texture;
     }
 
     // Returns whether the layer should be vertically flipped.
     #[cfg(target_os="macos")]
-    fn texture_flip_and_target(cpu_painting: bool, size: Size2D<uint>) -> (Flip, TextureTarget) {
+    fn texture_flip_and_target(cpu_painting: bool) -> (Flip, TextureTarget) {
         let flip = if cpu_painting {
             NoFlip
         } else {
             VerticalFlip
         };
 
-        (flip, TextureTargetRectangle(size))
+        (flip, TextureTargetRectangle)
     }
 
     #[cfg(target_os="android")]
-    fn texture_flip_and_target(cpu_painting: bool, _: Size2D<uint>) -> (Flip, TextureTarget) {
+    fn texture_flip_and_target(cpu_painting: bool) -> (Flip, TextureTarget) {
         let flip = if cpu_painting {
             NoFlip
         } else {
@@ -153,33 +157,8 @@ impl Texture {
     }
 
     #[cfg(target_os="linux")]
-    fn texture_flip_and_target(_: bool, _: Size2D<uint>) -> (Flip, TextureTarget) {
+    fn texture_flip_and_target(_: bool) -> (Flip, TextureTarget) {
         (NoFlip, TextureTarget2D)
-    }
-
-    /// Creates a texture from an existing OpenGL texture. The texture will be deleted when this
-    /// `Texture` object goes out of scope.
-    pub fn adopt_native_texture(native_texture_id: GLuint, target: TextureTarget) -> Texture {
-        let this = Texture {
-            id: native_texture_id,
-            target: target,
-            weak: false,
-            flip: NoFlip,
-        };
-        this
-    }
-
-    /// Creates a texture from an existing OpenGL texture. The texture will *not* be deleted when
-    /// this `Texture` object goes out of scope.
-    pub fn wrap_native_texture(native_texture_id: GLuint, target: TextureTarget) -> Texture {
-        let this = Texture {
-            id: native_texture_id,
-            target: target,
-            weak: true,
-            flip: NoFlip,
-        };
-        this.set_default_params();
-        this
     }
 
     /// Returns the raw OpenGL texture underlying this texture.
