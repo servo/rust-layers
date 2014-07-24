@@ -7,6 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use color::Color;
 use layers::Layer;
 use layers;
 use scene::Scene;
@@ -21,13 +22,13 @@ use libc::c_int;
 use opengles::gl2::{ARRAY_BUFFER, BLEND, COLOR_BUFFER_BIT, COMPILE_STATUS, FRAGMENT_SHADER};
 use opengles::gl2::{LINK_STATUS, NO_ERROR, ONE_MINUS_SRC_ALPHA};
 use opengles::gl2::{SRC_ALPHA, STATIC_DRAW, TEXTURE_2D, TEXTURE0};
-use opengles::gl2::{TRIANGLE_STRIP, VERTEX_SHADER, GLenum, GLfloat, GLint, GLsizei};
+use opengles::gl2::{LINE_STRIP, TRIANGLE_STRIP, VERTEX_SHADER, GLenum, GLfloat, GLint, GLsizei};
 use opengles::gl2::{GLuint, active_texture, attach_shader, bind_buffer, bind_texture, blend_func};
 use opengles::gl2::{buffer_data, create_program, clear, clear_color, compile_shader};
-use opengles::gl2::{create_shader, draw_arrays, enable, enable_vertex_attrib_array};
+use opengles::gl2::{create_shader, draw_arrays, enable, enable_vertex_attrib_array, disable_vertex_attrib_array};
 use opengles::gl2::{gen_buffers, get_attrib_location, get_error, get_program_iv};
-use opengles::gl2::{get_shader_info_log, get_shader_iv, get_uniform_location};
-use opengles::gl2::{link_program, shader_source, uniform_1i, uniform_2f};
+use opengles::gl2::{get_shader_info_log, get_shader_iv, get_uniform_location, line_width};
+use opengles::gl2::{link_program, shader_source, uniform_1i, uniform_2f, uniform_4f};
 use opengles::gl2::{uniform_matrix_4fv, use_program, vertex_attrib_pointer_f32, viewport};
 use std::num::Zero;
 use std::rc::Rc;
@@ -61,6 +62,13 @@ static FRAGMENT_RECTANGLE_SHADER_SOURCE: &'static str = "
     }
 ";
 
+static SOLID_COLOR_FRAGMENT_SHADER_SOURCE: &'static str = "
+    uniform vec4 uColor;
+    void main(void) {
+        gl_FragColor = uColor;
+    }
+";
+
 static VERTEX_SHADER_SOURCE: &'static str = "
     attribute vec3 aVertexPosition;
     attribute vec2 aTextureCoord;
@@ -76,7 +84,7 @@ static VERTEX_SHADER_SOURCE: &'static str = "
     }
 ";
 
-static VERTICES: [f32, ..12] = [
+static TEXTURED_QUAD_VERTICES: [f32, ..12] = [
     0.0, 0.0, 0.0,
     0.0, 1.0, 0.0,
     1.0, 0.0, 0.0,
@@ -97,6 +105,19 @@ static FLIPPED_TEXTURE_COORDINATES: [f32, ..8] = [
     1.0, 0.0,
 ];
 
+static LINE_QUAD_VERTICES: [f32, ..15] = [
+    0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0,
+    1.0, 1.0, 0.0,
+    1.0, 0.0, 0.0,
+    0.0, 0.0, 0.0,
+];
+
+static TILE_DEBUG_BORDER_COLOR: Color = Color { r: 0., g: 1., b: 1., a: 1.0 };
+static TILE_DEBUG_BORDER_THICKNESS: uint = 1;
+static LAYER_DEBUG_BORDER_COLOR: Color = Color { r: 1., g: 0.5, b: 0., a: 1.0 };
+static LAYER_DEBUG_BORDER_THICKNESS: uint = 2;
+
 pub fn load_shader(source_string: &str, shader_type: GLenum) -> GLuint {
     let shader_id = create_shader(shader_type);
     shader_source(shader_id, [ source_string.as_bytes() ]);
@@ -116,9 +137,10 @@ pub fn load_shader(source_string: &str, shader_type: GLenum) -> GLuint {
 }
 
 struct Buffers {
-    vertex_buffer: GLuint,
+    textured_quad_vertex_buffer: GLuint,
     texture_coordinate_buffer: GLuint,
     flipped_texture_coordinate_buffer: GLuint,
+    line_quad_vertex_buffer: GLuint,
 }
 
 struct Texture2DProgram {
@@ -155,7 +177,7 @@ impl Texture2DProgram {
         uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array());
         uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array());
 
-        bind_buffer(ARRAY_BUFFER, buffers.vertex_buffer);
+        bind_buffer(ARRAY_BUFFER, buffers.textured_quad_vertex_buffer);
         vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 3, false, 0, 0);
 
         bind_texture_coordinate_buffer(buffers, texture.flip);
@@ -165,6 +187,11 @@ impl Texture2DProgram {
     fn enable_attribute_arrays(&self) {
         enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
         enable_vertex_attrib_array(self.texture_coord_attr as GLuint);
+    }
+
+    fn disable_attribute_arrays(&self) {
+        disable_vertex_attrib_array(self.vertex_position_attr as GLuint);
+        disable_vertex_attrib_array(self.texture_coord_attr as GLuint);
     }
 }
 
@@ -220,7 +247,7 @@ impl TextureRectangleProgram {
         uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array());
         uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array());
 
-        bind_buffer(ARRAY_BUFFER, buffers.vertex_buffer);
+        bind_buffer(ARRAY_BUFFER, buffers.textured_quad_vertex_buffer);
         vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 3, false, 0, 0);
 
         bind_texture_coordinate_buffer(buffers, texture.flip);
@@ -231,44 +258,104 @@ impl TextureRectangleProgram {
         enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
         enable_vertex_attrib_array(self.texture_coord_attr as GLuint);
     }
+
+    fn disable_attribute_arrays(&self) {
+        disable_vertex_attrib_array(self.vertex_position_attr as GLuint);
+        disable_vertex_attrib_array(self.texture_coord_attr as GLuint);
+    }
+}
+
+struct SolidLineProgram {
+    id: GLuint,
+    vertex_position_attr: c_int,
+    modelview_uniform: c_int,
+    projection_uniform: c_int,
+    color_uniform: c_int,
+}
+
+impl SolidLineProgram {
+    fn new() -> SolidLineProgram {
+        let vertex_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
+        let fragment_shader = load_shader(SOLID_COLOR_FRAGMENT_SHADER_SOURCE, FRAGMENT_SHADER);
+        let program_id = init_program(vertex_shader, fragment_shader);
+
+        SolidLineProgram {
+            id: program_id,
+            vertex_position_attr: get_attrib_location(program_id, "aVertexPosition"),
+            modelview_uniform: get_uniform_location(program_id, "uMVMatrix"),
+            projection_uniform: get_uniform_location(program_id, "uPMatrix"),
+            color_uniform: get_uniform_location(program_id, "uColor"),
+        }
+    }
+
+    fn bind_uniforms_and_attributes(&self,
+                                    transform: &Matrix4<f32>,
+                                    projection_matrix: &Matrix4<f32>,
+                                    buffers: &Buffers,
+                                    color: Color) {
+        uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array());
+        uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array());
+        uniform_4f(self.color_uniform,
+                   color.r as GLfloat,
+                   color.g as GLfloat,
+                   color.b as GLfloat,
+                   color.a as GLfloat);
+
+        bind_buffer(ARRAY_BUFFER, buffers.line_quad_vertex_buffer);
+        vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 3, false, 0, 0);
+    }
+
+    fn enable_attribute_arrays(&self) {
+        enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
+    }
+
+    fn disable_attribute_arrays(&self) {
+        disable_vertex_attrib_array(self.vertex_position_attr as GLuint);
+    }
 }
 
 pub struct RenderContext {
     texture_2d_program: Texture2DProgram,
     texture_rectangle_program: Option<TextureRectangleProgram>,
+    solid_line_program: SolidLineProgram,
     buffers: Buffers,
 
     /// The platform-specific graphics context.
     compositing_context: NativeCompositingGraphicsContext,
+
+    /// Whether to show lines at border and tile boundaries for debugging purposes.
+    show_debug_borders: bool,
 }
 
 impl RenderContext {
-    pub fn new(compositing_context: NativeCompositingGraphicsContext) -> RenderContext {
+    pub fn new(compositing_context: NativeCompositingGraphicsContext,
+               show_debug_borders: bool) -> RenderContext {
         enable(TEXTURE_2D);
         enable(BLEND);
         blend_func(SRC_ALPHA, ONE_MINUS_SRC_ALPHA);
 
         let texture_2d_program = Texture2DProgram::new();
-        texture_2d_program.enable_attribute_arrays();
-
+        let solid_line_program = SolidLineProgram::new();
         let texture_rectangle_program = TextureRectangleProgram::create_if_necessary();
-        match texture_rectangle_program {
-            Some(program) => program.enable_attribute_arrays(),
-            None => {},
-        }
 
         RenderContext {
             texture_2d_program: texture_2d_program,
             texture_rectangle_program: texture_rectangle_program,
+            solid_line_program: solid_line_program,
             buffers: RenderContext::init_buffers(),
             compositing_context: compositing_context,
+            show_debug_borders: show_debug_borders,
         }
     }
 
     fn init_buffers() -> Buffers {
-        let vertex_buffer = *gen_buffers(1).get(0);
-        bind_buffer(ARRAY_BUFFER, vertex_buffer);
-        buffer_data(ARRAY_BUFFER, VERTICES, STATIC_DRAW);
+        let textured_quad_vertex_buffer = *gen_buffers(1).get(0);
+        bind_buffer(ARRAY_BUFFER, textured_quad_vertex_buffer);
+        buffer_data(ARRAY_BUFFER, TEXTURED_QUAD_VERTICES, STATIC_DRAW);
+
+        let line_quad_vertex_buffer = *gen_buffers(1).get(0);
+        bind_buffer(ARRAY_BUFFER, line_quad_vertex_buffer);
+        buffer_data(ARRAY_BUFFER, LINE_QUAD_VERTICES, STATIC_DRAW);
 
         let texture_coordinate_buffer = *gen_buffers(1).get(0);
         bind_buffer(ARRAY_BUFFER, texture_coordinate_buffer);
@@ -279,9 +366,10 @@ impl RenderContext {
         buffer_data(ARRAY_BUFFER, FLIPPED_TEXTURE_COORDINATES, STATIC_DRAW);
 
         Buffers {
-            vertex_buffer: vertex_buffer,
+            textured_quad_vertex_buffer: textured_quad_vertex_buffer,
             texture_coordinate_buffer: texture_coordinate_buffer,
             flipped_texture_coordinate_buffer: flipped_texture_coordinate_buffer,
+            line_quad_vertex_buffer: line_quad_vertex_buffer,
         }
     }
 }
@@ -312,10 +400,16 @@ pub fn bind_and_render_quad(render_context: RenderContext,
                             transform: &Matrix4<f32>,
                             scene_size: Size2D<f32>) {
     let program_id = match texture.target {
-        TextureTarget2D => render_context.texture_2d_program.id,
+        TextureTarget2D => {
+            render_context.texture_2d_program.enable_attribute_arrays();
+            render_context.texture_2d_program.id
+        }
         TextureTargetRectangle(..) => match render_context.texture_rectangle_program {
-            Some(program) => {program.id},
-            None => {fail!("There is no shader program for texture rectangle");}
+            Some(program) => {
+                program.enable_attribute_arrays();
+                program.id
+            }
+            None => fail!("There is no shader program for texture rectangle"),
         },
     };
 
@@ -347,6 +441,32 @@ pub fn bind_and_render_quad(render_context: RenderContext,
     // Draw!
     draw_arrays(TRIANGLE_STRIP, 0, 4);
     bind_texture(TEXTURE_2D, 0);
+
+    match texture.target {
+        TextureTarget2D => render_context.texture_2d_program.disable_attribute_arrays(),
+        TextureTargetRectangle(..) => match render_context.texture_rectangle_program {
+            Some(program) => program.disable_attribute_arrays(),
+            None => {},
+        },
+    };
+}
+
+pub fn bind_and_render_quad_lines(render_context: RenderContext,
+                                  transform: &Matrix4<f32>,
+                                  scene_size: Size2D<f32>,
+                                  color: Color,
+                                  line_thickness: uint) {
+    let solid_line_program = render_context.solid_line_program;
+    solid_line_program.enable_attribute_arrays();
+    use_program(solid_line_program.id);
+    let projection_matrix = ortho(0.0, scene_size.width, scene_size.height, 0.0, -10.0, 10.0);
+    solid_line_program.bind_uniforms_and_attributes(transform,
+                                                    &projection_matrix,
+                                                    &render_context.buffers,
+                                                    color);
+    line_width(line_thickness as GLfloat);
+    draw_arrays(LINE_STRIP, 0, 5);
+    solid_line_program.disable_attribute_arrays();
 }
 
 // Layer rendering
@@ -363,17 +483,28 @@ impl<T> Render for layers::Layer<T> {
               render_context: RenderContext,
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>) {
-        let origin = self.bounds.borrow().origin;
-        let transform = transform.translate(origin.x, origin.y, 0.0).mul(&*self.transform.borrow());
+        let bounds = self.bounds.borrow();
+        let transform = transform.translate(bounds.origin.x, bounds.origin.y, 0.0)
+            .mul(&*self.transform.borrow());
 
         self.create_textures(&render_context.compositing_context);
         self.do_for_all_tiles(|tile: &Tile| {
             tile.render(render_context, transform, scene_size)
         });
 
+        if render_context.show_debug_borders {
+            let quad_transform = transform.scale(bounds.size.width, bounds.size.height, 1.);
+            bind_and_render_quad_lines(render_context,
+                                       &quad_transform,
+                                       scene_size,
+                                       LAYER_DEBUG_BORDER_COLOR,
+                                       LAYER_DEBUG_BORDER_THICKNESS);
+        }
+
         for child in self.children().iter() {
             child.render(render_context, transform, scene_size)
         }
+
     }
 }
 
@@ -388,6 +519,14 @@ impl Render for Tile {
 
         let transform = transform.mul(&self.transform);
         bind_and_render_quad(render_context, &self.texture, &transform, scene_size);
+
+        if render_context.show_debug_borders {
+            bind_and_render_quad_lines(render_context,
+                                       &transform,
+                                       scene_size,
+                                       TILE_DEBUG_BORDER_COLOR,
+                                       TILE_DEBUG_BORDER_THICKNESS);
+        }
     }
 }
 
