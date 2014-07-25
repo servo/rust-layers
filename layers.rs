@@ -11,6 +11,7 @@ use tiling::{Tile, TileGrid};
 
 use geom::matrix::{Matrix4, identity};
 use geom::size::Size2D;
+use geom::point::Point2D;
 use geom::rect::Rect;
 use platform::surface::{NativeSurfaceMethods, NativeSurface};
 use platform::surface::{NativeCompositingGraphicsContext, NativePaintingGraphicsContext};
@@ -43,6 +44,9 @@ pub struct Layer<T> {
 
     /// A monotonically increasing counter that keeps track of the current content age.
     pub content_age: RefCell<ContentAge>,
+
+    /// The content offset for this layer in device pixels.
+    pub content_offset: RefCell<Point2D<f32>>,
 }
 
 impl<T> Layer<T> {
@@ -55,6 +59,7 @@ impl<T> Layer<T> {
             extra_data: RefCell::new(data),
             tile_grid: RefCell::new(TileGrid::new(tile_size)),
             content_age: RefCell::new(ContentAge::new()),
+            content_offset: RefCell::new(Point2D(0f32, 0f32)),
         }
     }
 
