@@ -180,7 +180,7 @@ impl TileGrid {
         let tile_rect = self.get_rect_for_tile_index(tile_index);
         let tile_screen_rect = rect_uint_as_rect_f32(tile_rect);
 
-        let mut tile = self.tiles.find_or_insert_with(tile_index, |_| Tile::new());
+        let tile = self.tiles.find_or_insert_with(tile_index, |_| Tile::new());
         if !tile.should_request_buffer(current_content_age) {
             return None;
         }

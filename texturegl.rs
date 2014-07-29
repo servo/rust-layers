@@ -31,7 +31,6 @@ pub enum FilterMode {
 /// Image data used when uploading to a texture.
 pub struct TextureImageData<'a> {
     size: Size2D<uint>,
-    stride: uint,
     format: Format,
     data: &'a [u8],
 }

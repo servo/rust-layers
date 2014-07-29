@@ -66,7 +66,6 @@ impl NativePaintingGraphicsContext {
 /// FIXME(pcwalton): Mark nonsendable.
 pub struct NativeCompositingGraphicsContext {
     display: *Display,
-    visual_info: *XVisualInfo,
     framebuffer_configuration: Option<GLXFBConfig>,
 }
 
@@ -124,11 +123,10 @@ impl NativeCompositingGraphicsContext {
     /// Creates a native graphics context from the given X display connection. This uses GLX. Only
     /// the compositor is allowed to call this.
     pub fn from_display(display: *Display) -> NativeCompositingGraphicsContext {
-        let (visual_info, fbconfig) = NativeCompositingGraphicsContext::compositor_visual_info(display);
+        let (_, fbconfig) = NativeCompositingGraphicsContext::compositor_visual_info(display);
 
         NativeCompositingGraphicsContext {
             display: display,
-            visual_info: visual_info,
             framebuffer_configuration: fbconfig,
         }
     }
