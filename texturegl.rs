@@ -12,7 +12,7 @@
 use layers::LayerBuffer;
 
 use geom::size::Size2D;
-use opengles::gl2::{BGRA, CLAMP_TO_EDGE, GLenum, GLint, GLsizei, GLuint, LINEAR, RGB, RGBA};
+use opengles::gl2::{BGRA, CLAMP_TO_EDGE, GLenum, GLint, GLsizei, GLuint, LINEAR, NEAREST, RGB, RGBA};
 use opengles::gl2::{TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER, TEXTURE_2D, TEXTURE_RECTANGLE_ARB};
 use opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T, UNSIGNED_BYTE, UNSIGNED_INT_8_8_8_8_REV};
 use opengles::gl2;
@@ -21,6 +21,11 @@ use std::num::Zero;
 pub enum Format {
     ARGB32Format,
     RGB24Format
+}
+
+pub enum FilterMode {
+    Nearest,
+    Linear
 }
 
 /// Image data used when uploading to a texture.
@@ -173,6 +178,17 @@ impl Texture {
         gl2::tex_parameter_i(self.target.as_gl_target(), TEXTURE_MIN_FILTER, LINEAR as GLint);
         gl2::tex_parameter_i(self.target.as_gl_target(), TEXTURE_WRAP_S, CLAMP_TO_EDGE as GLint);
         gl2::tex_parameter_i(self.target.as_gl_target(), TEXTURE_WRAP_T, CLAMP_TO_EDGE as GLint);
+    }
+
+    /// Sets the filter mode for this texture.
+    pub fn set_filter_mode(&self, mode: FilterMode) {
+        let _bound_texture = self.bind();
+        let gl_mode = match mode {
+            Nearest => NEAREST,
+            Linear => LINEAR,
+        } as GLint;
+        gl2::tex_parameter_i(self.target.as_gl_target(), TEXTURE_MAG_FILTER, gl_mode);
+        gl2::tex_parameter_i(self.target.as_gl_target(), TEXTURE_MIN_FILTER, gl_mode);
     }
 
     /// Binds the texture to the current context.
