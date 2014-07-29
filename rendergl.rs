@@ -11,7 +11,7 @@ use color::Color;
 use layers::Layer;
 use layers;
 use scene::Scene;
-use texturegl::{Flip, NoFlip, VerticalFlip};
+use texturegl::{Flip, Linear, Nearest, NoFlip, VerticalFlip};
 use texturegl::{Texture, TextureTarget2D, TextureTargetRectangle};
 use tiling::Tile;
 use platform::surface::NativeCompositingGraphicsContext;
@@ -415,6 +415,18 @@ pub fn bind_and_render_quad(render_context: RenderContext,
 
     use_program(program_id);
     active_texture(TEXTURE0);
+
+    // FIXME: This should technically check that the transform
+    // matrix only contains scale in these components.
+    let has_scale = transform.m11 as uint != texture.size.width ||
+                    transform.m22 as uint != texture.size.height;
+    let filter_mode = if has_scale {
+        Linear
+    } else {
+        Nearest
+    };
+    texture.set_filter_mode(filter_mode);
+
     let _bound_texture = texture.bind();
 
     // Set the projection matrix.
@@ -530,7 +542,8 @@ impl Render for Tile {
     }
 }
 
-pub fn render_scene<T>(root_layer: Rc<Layer<T>>, render_context: RenderContext, scene: &Scene<T>) {
+pub fn render_scene<T>(root_layer: Rc<Layer<T>>, render_context: RenderContext,
+                        scene: &Scene<T>) {
     // Set the viewport.
     viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
 
