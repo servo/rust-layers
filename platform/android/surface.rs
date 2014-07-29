@@ -43,15 +43,11 @@ impl Drop for NativePaintingGraphicsContext {
     fn drop(&mut self) {}
 }
 
-pub struct NativeCompositingGraphicsContext {
-    contents: (),
-}
+pub struct NativeCompositingGraphicsContext;
 
 impl NativeCompositingGraphicsContext {
     pub fn new() -> NativeCompositingGraphicsContext {
-        NativeCompositingGraphicsContext {
-            contents: (),
-        }
+        NativeCompositingGraphicsContext
     }
 }
 

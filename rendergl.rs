@@ -47,6 +47,7 @@ static FRAGMENT_2D_SHADER_SOURCE: &'static str = "
     }
 ";
 
+#[cfg(not(target_os="android"))]
 static FRAGMENT_RECTANGLE_SHADER_SOURCE: &'static str = "
     #ifdef GL_ES
         precision mediump float;
@@ -201,6 +202,7 @@ struct TextureRectangleProgram {
 }
 
 impl TextureRectangleProgram {
+    #[cfg(not(target_os="android"))]
     fn new() -> TextureRectangleProgram {
         let vertex_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
         let fragment_shader = load_shader(FRAGMENT_RECTANGLE_SHADER_SOURCE, FRAGMENT_SHADER);
@@ -217,8 +219,7 @@ impl TextureRectangleProgram {
         }
     }
 
-    #[cfg(target_os="linux")]
-    #[cfg(target_os="macos")]
+    #[cfg(not(target_os="android"))]
     fn create_if_necessary() -> Option<TextureRectangleProgram> {
         use opengles::gl2::TEXTURE_RECTANGLE_ARB;
         enable(TEXTURE_RECTANGLE_ARB);
