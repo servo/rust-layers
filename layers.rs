@@ -71,9 +71,11 @@ impl<T> Layer<T> {
         self.children().push(new_child);
     }
 
-    pub fn get_tile_rects_page(&self, window: Rect<f32>, scale: f32) -> (Vec<BufferRequest>, Vec<Box<LayerBuffer>>) {
+    pub fn get_tile_rects_page(&self,
+                               window: Rect<f32>)
+                               -> (Vec<BufferRequest>, Vec<Box<LayerBuffer>>) {
         let mut tile_grid = self.tile_grid.borrow_mut();
-        (tile_grid.get_buffer_requests_in_rect(window, scale, *self.content_age.borrow()),
+        (tile_grid.get_buffer_requests_in_rect(window, *self.content_age.borrow()),
          tile_grid.take_unused_buffers())
     }
 

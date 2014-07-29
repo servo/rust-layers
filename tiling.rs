@@ -175,11 +175,10 @@ impl TileGrid {
 
     pub fn get_buffer_request_for_tile(&mut self,
                                        tile_index: Point2D<uint>,
-                                       scale: f32,
                                        current_content_age: ContentAge)
                                        -> Option<BufferRequest> {
         let tile_rect = self.get_rect_for_tile_index(tile_index);
-        let tile_screen_rect = rect_uint_as_rect_f32(tile_rect) / scale;
+        let tile_screen_rect = rect_uint_as_rect_f32(tile_rect);
 
         let mut tile = self.tiles.find_or_insert_with(tile_index, |_| Tile::new());
         if !tile.should_request_buffer(current_content_age) {
@@ -192,17 +191,16 @@ impl TileGrid {
 
     pub fn get_buffer_requests_in_rect(&mut self,
                                        screen_rect: Rect<f32>,
-                                       scale: f32,
                                        current_content_age: ContentAge)
                                        -> Vec<BufferRequest> {
         let mut buffer_requests = Vec::new();
-        let rect_in_layer_pixels = screen_rect * scale;
+        let rect_in_layer_pixels = screen_rect;
         let (top_left_index, bottom_right_index) =
             self.get_tile_index_range_for_rect(rect_in_layer_pixels);
 
         for x in range_inclusive(top_left_index.x, bottom_right_index.x) {
             for y in range_inclusive(top_left_index.y, bottom_right_index.y) {
-                match self.get_buffer_request_for_tile(Point2D(x, y), scale, current_content_age) {
+                match self.get_buffer_request_for_tile(Point2D(x, y), current_content_age) {
                     Some(buffer) => buffer_requests.push(buffer),
                     None => {},
                 }
