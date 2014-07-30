@@ -266,7 +266,7 @@ impl NativeSurfaceMethods for NativeSurface {
     }
 
     /// This may only be called on the painting side.
-    fn upload(&self, graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
+    fn upload(&mut self, graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
         unsafe {
             // Ensure that we're running on the render task. Take the display.
             let pixmap = self.pixmap;

@@ -54,7 +54,7 @@ pub trait NativeSurfaceMethods {
                        size: Size2D<int>);
 
     /// Uploads pixel data to the surface. Painting task only.
-    fn upload(&self, native_context: &NativePaintingGraphicsContext, data: &[u8]);
+    fn upload(&mut self, native_context: &NativePaintingGraphicsContext, data: &[u8]);
 
     /// Returns an opaque ID identifying the surface for debugging.
     fn get_id(&self) -> int;
