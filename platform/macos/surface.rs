@@ -206,7 +206,7 @@ impl NativeSurfaceMethods for NativeSurface {
         io_surface.bind_to_gl_texture(size)
     }
 
-    fn upload(&self, _: &NativePaintingGraphicsContext, data: &[u8]) {
+    fn upload(&mut self, _: &NativePaintingGraphicsContext, data: &[u8]) {
         let io_surface = io_surface::lookup(self.io_surface_id.unwrap());
         io_surface.upload(data)
     }

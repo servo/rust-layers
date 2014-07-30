@@ -110,11 +110,11 @@ impl NativeSurfaceMethods for NativeSurface {
     }
 
     /// This may only be called on the painting side.
-    fn upload(&self, _graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
+    fn upload(&mut self, _graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
         match self.bitmap {
-            Some(ref bitmap) => {
+            Some(ref mut bitmap) => {
                 unsafe {
-                    let dest:&mut [u8] = mem::transmute((bitmap.as_ptr(), data.len()));
+                    let dest: &mut [u8] = mem::transmute((bitmap.as_ptr(), bitmap.len()));
                     dest.copy_memory(data);
                 }
             }
