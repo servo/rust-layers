@@ -90,21 +90,21 @@ impl NativeSurfaceMethods for NativeSurface {
                        texture: &Texture,
                        _size: Size2D<int>) {
         let _bound = texture.bind();
-
-        unsafe {
-            match self.image {
-                None => match self.bitmap {
-                    Some(ref bitmap) => {
-                        let data: *c_void = mem::transmute(bitmap.as_ptr());
-                        glTexImage2D(TEXTURE_2D, 0, BGRA as i32, _size.width as i32, _size.height as i32, 0, BGRA as u32, UNSIGNED_BYTE, data);
+        match self.image {
+            None => match self.bitmap {
+                Some(ref bitmap) => {
+                    let data = bitmap.as_ptr() as *c_void;
+                    unsafe {
+                        glTexImage2D(TEXTURE_2D, 0, BGRA as i32, _size.width as i32, _size.height as i32,
+                                     0, BGRA as u32, UNSIGNED_BYTE, data);
                     }
-                    None => {
-                        debug!("Cannot bind the buffer(CPU rendering), there is no bitmap");
-                    }
-                },
-                Some(image_khr) => {
-                    egl_image_target_texture2d_oes(TEXTURE_2D, image_khr);
                 }
+                None => {
+                    debug!("Cannot bind the buffer(CPU rendering), there is no bitmap");
+                }
+            },
+            Some(image_khr) => {
+                egl_image_target_texture2d_oes(TEXTURE_2D, image_khr);
             }
         }
     }
@@ -114,8 +114,7 @@ impl NativeSurfaceMethods for NativeSurface {
         match self.bitmap {
             Some(ref mut bitmap) => {
                 unsafe {
-                    let dest: &mut [u8] = mem::transmute((bitmap.as_ptr(), bitmap.len()));
-                    dest.copy_memory(data);
+                    bitmap.as_mut_slice().copy_memory(data);
                 }
             }
             None => {
