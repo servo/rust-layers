@@ -52,8 +52,8 @@ impl NativeCompositingGraphicsContext {
 }
 
 pub struct NativeSurface {
-    image: Option<EGLImageKHR>,
-    bitmap: *c_void,
+    image: Option<EGLImageKHR>, // For GPU rendering
+    bitmap: Option<Vec<u8>>, // For CPU rendering
     will_leak: bool,
 }
 
@@ -65,7 +65,7 @@ impl NativeSurface {
         }
         NativeSurface {
             image : _image,
-            bitmap : ptr::null(),
+            bitmap: None,
             will_leak: true,
         }
     }
@@ -74,15 +74,13 @@ impl NativeSurface {
 impl NativeSurfaceMethods for NativeSurface {
     /// This may only be called on the case of CPU rendering.
     fn new(_native_context: &NativePaintingGraphicsContext, size: Size2D<i32>, _stride: i32) -> NativeSurface {
-        unsafe {
-            let len = size.width * size.height * 4;
-            let bitmap: Vec<u8> = Vec::from_elem(len as uint, 0 as u8);
+        let len = size.width * size.height * 4;
+        let bitmap: Vec<u8> = Vec::from_elem(len as uint, 0 as u8);
 
-            NativeSurface {
-                image: None,
-                bitmap: mem::transmute(bitmap.as_ptr()),
-                will_leak : true,
-            }
+        NativeSurface {
+            image: None,
+            bitmap: Some(bitmap),
+            will_leak : true,
         }
     }
 
@@ -95,11 +93,12 @@ impl NativeSurfaceMethods for NativeSurface {
 
         unsafe {
             match self.image {
-                None => {
-                    if self.bitmap != ptr::null() {
-                        glTexImage2D(TEXTURE_2D, 0, BGRA as i32, _size.width as i32, _size.height as i32, 0, BGRA as u32, UNSIGNED_BYTE, self.bitmap);
+                None => match self.bitmap {
+                    Some(ref bitmap) => {
+                        let data: *c_void = mem::transmute(bitmap.as_ptr());
+                        glTexImage2D(TEXTURE_2D, 0, BGRA as i32, _size.width as i32, _size.height as i32, 0, BGRA as u32, UNSIGNED_BYTE, data);
                     }
-                    else {
+                    None => {
                         debug!("Cannot bind the buffer(CPU rendering), there is no bitmap");
                     }
                 },
@@ -112,12 +111,14 @@ impl NativeSurfaceMethods for NativeSurface {
 
     /// This may only be called on the painting side.
     fn upload(&self, _graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
-        unsafe {
-            if self.bitmap != ptr::null() {
-                let dest:&mut [u8] = mem::transmute((self.bitmap, data.len()));
-                dest.copy_memory(data);
+        match self.bitmap {
+            Some(ref bitmap) => {
+                unsafe {
+                    let dest:&mut [u8] = mem::transmute((bitmap.as_ptr(), data.len()));
+                    dest.copy_memory(data);
+                }
             }
-            else {
+            None => {
                 debug!("Cannot upload the buffer(CPU rendering), there is no bitmap");
             }
         }
