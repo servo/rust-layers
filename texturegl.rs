@@ -96,7 +96,7 @@ impl Zero for Texture {
             target: TextureTarget2D,
             weak: true,
             flip: NoFlip,
-            size: Size2D(0u, 0u),
+            size: Size2D::new(0u, 0u),
         }
     }
     fn is_zero(&self) -> bool {
