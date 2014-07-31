@@ -61,11 +61,11 @@ impl NativeGraphicsMetadata {
                 attributes.push(value as CGLPixelFormatAttribute);
             }
             attributes.push(0);
-            let mut pixel_format = ptr::null();
+            let mut pixel_format = ptr::mut_null();
             let mut count = 0;
             assert!(CGLChoosePixelFormat(attributes.as_ptr(), &mut pixel_format, &mut count) ==
                     kCGLNoError);
-            assert!(pixel_format != ptr::null());
+            assert!(pixel_format != ptr::mut_null());
             assert!(count > 0);
 
             NativeGraphicsMetadata {
@@ -111,13 +111,13 @@ impl NativeGraphicsMetadataDescriptor {
 }
 
 pub struct NativePaintingGraphicsContext {
-    metadata: NativeGraphicsMetadata,
+    _metadata: NativeGraphicsMetadata,
 }
 
 impl NativePaintingGraphicsContext {
     pub fn from_metadata(metadata: &NativeGraphicsMetadata) -> NativePaintingGraphicsContext {
         NativePaintingGraphicsContext {
-            metadata: (*metadata).clone(),
+            _metadata: (*metadata).clone(),
         }
     }
 }
@@ -127,13 +127,13 @@ impl Drop for NativePaintingGraphicsContext {
 }
 
 pub struct NativeCompositingGraphicsContext {
-    contents: (),
+    _contents: (),
 }
 
 impl NativeCompositingGraphicsContext {
     pub fn new() -> NativeCompositingGraphicsContext {
         NativeCompositingGraphicsContext {
-            contents: (),
+            _contents: (),
         }
     }
 }

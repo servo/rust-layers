@@ -37,8 +37,8 @@ use xlib::xlib::{XVisualInfo, ZPixmap};
 ///
 /// FIXME(pcwalton): Mark nonsendable and noncopyable.
 pub struct NativePaintingGraphicsContext {
-    display: *Display,
-    visual_info: *XVisualInfo,
+    display: *mut Display,
+    visual_info: *mut XVisualInfo,
 }
 
 impl NativePaintingGraphicsContext {
@@ -65,7 +65,7 @@ impl NativePaintingGraphicsContext {
 ///
 /// FIXME(pcwalton): Mark nonsendable.
 pub struct NativeCompositingGraphicsContext {
-    display: *Display,
+    display: *mut Display,
     framebuffer_configuration: Option<GLXFBConfig>,
 }
 
@@ -73,7 +73,7 @@ impl NativeCompositingGraphicsContext {
     /// Chooses the compositor visual info using the same algorithm that the compositor uses.
     ///
     /// FIXME(pcwalton): It would be more robust to actually have the compositor pass the visual.
-    fn compositor_visual_info(display: *Display) -> (*XVisualInfo, Option<GLXFBConfig>) {
+    fn compositor_visual_info(display: *mut Display) -> (*mut XVisualInfo, Option<GLXFBConfig>) {
         unsafe {
             let glx_display = mem::transmute(display);
 
@@ -81,7 +81,7 @@ impl NativeCompositingGraphicsContext {
             // In skia, they compute the GLX_ALPHA_SIZE minimum and request
             // that as well.
 
-            let fbconfig_attributes = [
+            let mut fbconfig_attributes = [
                 GLX_DOUBLEBUFFER, 0,
                 GLX_DRAWABLE_TYPE, GLX_PIXMAP_BIT | GLX_WINDOW_BIT,
                 GLX_BIND_TO_TEXTURE_RGBA_EXT, 1,
@@ -92,10 +92,10 @@ impl NativeCompositingGraphicsContext {
             let screen = XDefaultScreen(display);
             let mut number_of_configs = 0;
             let configs = glXChooseFBConfig(glx_display, screen,
-                                            &fbconfig_attributes[0], &mut number_of_configs);
-            let glXGetClientString: extern "C" fn(*Display, c_int) -> *c_char =
-                mem::transmute(glXGetProcAddress(mem::transmute(&"glXGetClientString\x00"[0])));
-            assert!(glXGetClientString as *c_void != ptr::null());
+                                            &mut fbconfig_attributes[0], &mut number_of_configs);
+            let glXGetClientString: extern "C" fn(*mut Display, c_int) -> *const c_char =
+                mem::transmute(glXGetProcAddress(mem::transmute(&"glXGetClientString\x00".as_bytes()[0])));
+            assert!(glXGetClientString as *mut c_void != ptr::mut_null());
             let glx_cli_vendor_c_str = CString::new(glXGetClientString(display, GLX_VENDOR), false);
             let glx_cli_vendor = match glx_cli_vendor_c_str.as_str() { Some(s) => s,
                                                                        None => fail!("Can't get glx client vendor.") };
@@ -106,7 +106,7 @@ impl NativeCompositingGraphicsContext {
                 // with a full set of 32 bits.
                 for i in range(0, number_of_configs as int) {
                     let config = *configs.offset(i);
-                    let visual_info : *XVisualInfo = mem::transmute(glXGetVisualFromFBConfig(glx_display, config));
+                    let visual_info : *mut XVisualInfo = mem::transmute(glXGetVisualFromFBConfig(glx_display, config));
                     if (*visual_info).depth == 32 {
                         return (visual_info, Some(config))
                     }
@@ -122,7 +122,7 @@ impl NativeCompositingGraphicsContext {
 
     /// Creates a native graphics context from the given X display connection. This uses GLX. Only
     /// the compositor is allowed to call this.
-    pub fn from_display(display: *Display) -> NativeCompositingGraphicsContext {
+    pub fn from_display(display: *mut Display) -> NativeCompositingGraphicsContext {
         let (_, fbconfig) = NativeCompositingGraphicsContext::compositor_visual_info(display);
 
         NativeCompositingGraphicsContext {
@@ -135,7 +135,7 @@ impl NativeCompositingGraphicsContext {
 /// The X display.
 #[deriving(Clone)]
 pub struct NativeGraphicsMetadata {
-    pub display: *Display,
+    pub display: *mut Display,
 }
 
 impl NativeGraphicsMetadata {
@@ -147,9 +147,7 @@ impl NativeGraphicsMetadata {
         // the X Pixmap will not be sharable across them. Using this
         // method breaks that assumption.
         unsafe {
-            let display = descriptor.display.with_c_str(|c_str| {
-                    XOpenDisplay(c_str)
-                });
+            let display = XOpenDisplay(descriptor.display.to_c_str().as_mut_ptr());
             if display.is_null() {
                 fail!("XOpenDisplay() failed!");
             }
@@ -170,9 +168,9 @@ impl NativeGraphicsMetadataDescriptor {
     /// Creates a metadata descriptor from metadata.
     pub fn from_metadata(metadata: NativeGraphicsMetadata) -> NativeGraphicsMetadataDescriptor {
         unsafe {
-            let c_str = CString::new(XDisplayString(metadata.display), false);
+            let c_str = CString::new(XDisplayString(metadata.display) as *const i8, false);
             NativeGraphicsMetadataDescriptor {
-                display: c_str.as_str().unwrap().to_str(),
+                display: c_str.as_str().unwrap().to_string(),
             }
         }
     }
@@ -181,7 +179,7 @@ impl NativeGraphicsMetadataDescriptor {
 #[deriving(PartialEq)]
 pub enum NativeSurfaceTransientData {
     NoTransientData,
-    RenderTaskTransientData(*Display, *XVisualInfo),
+    RenderTaskTransientData(*mut Display, *mut XVisualInfo),
 }
 
 #[deriving(Decodable, Encodable)]
@@ -236,7 +234,7 @@ impl NativeSurfaceMethods for NativeSurface {
             // Create the GLX pixmap.
             //
             // FIXME(pcwalton): RAII for exception safety?
-            let pixmap_attributes = [
+            let mut pixmap_attributes = [
                 GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
                 GLX_TEXTURE_FORMAT_EXT, GLX_TEXTURE_FORMAT_RGBA_EXT,
                 0
@@ -248,16 +246,16 @@ impl NativeSurfaceMethods for NativeSurface {
                                              native_context.framebuffer_configuration.expect(
                                                  "GLX 1.3 should have a framebuffer_configuration"),
                                              self.pixmap,
-                                             &pixmap_attributes[0]);
+                                             &mut pixmap_attributes[0]);
 
-            let glXBindTexImageEXT: extern "C" fn(*Display, GLXDrawable, c_int, *c_int) =
-                mem::transmute(glXGetProcAddress(mem::transmute(&"glXBindTexImageEXT\x00"[0])));
-            assert!(glXBindTexImageEXT as *c_void != ptr::null());
+            let glXBindTexImageEXT: extern "C" fn(*mut Display, GLXDrawable, c_int, *mut c_int) =
+                mem::transmute(glXGetProcAddress(mem::transmute(&"glXBindTexImageEXT\x00".as_bytes()[0])));
+            assert!(glXBindTexImageEXT as *mut c_void != ptr::mut_null());
             let _bound = texture.bind();
             glXBindTexImageEXT(native_context.display,
                                mem::transmute(glx_pixmap),
                                GLX_FRONT_EXT,
-                               ptr::null());
+                               ptr::mut_null());
             assert_eq!(gl2::get_error(), NO_ERROR);
 
             // FIXME(pcwalton): Recycle these for speed?
@@ -302,7 +300,7 @@ impl NativeSurfaceMethods for NativeSurface {
                                      0);
 
             // Create the X graphics context.
-            let gc = XCreateGC(graphics_context.display, pixmap, 0, ptr::null());
+            let gc = XCreateGC(graphics_context.display, pixmap, 0, ptr::mut_null());
 
             // Draw the image.
             let _ = XPutImage(graphics_context.display,
