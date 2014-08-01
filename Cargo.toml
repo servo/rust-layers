@@ -1,0 +1,18 @@
+[package]
+
+name = "layers"
+version = "0.1.0"
+authors = ["The Servo Project Developers"]
+
+[[lib]]
+
+name = "layers"
+crate-type = ["rlib"]
+
+[dependencies.geom]
+
+git = "https://github.com/servo/rust-geom.git"
+
+[dependencies.opengles]
+
+git = "https://github.com/servo/rust-opengles.git"
