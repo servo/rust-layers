@@ -12,6 +12,8 @@
 
 #![feature(managed_boxes, phase)]
 
+#![allow(raw_pointer_deriving)]
+
 extern crate geom;
 extern crate libc;
 #[phase(plugin, link)]
