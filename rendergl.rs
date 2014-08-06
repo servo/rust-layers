@@ -345,19 +345,19 @@ impl RenderContext {
     }
 
     fn init_buffers() -> Buffers {
-        let textured_quad_vertex_buffer = *gen_buffers(1).get(0);
+        let textured_quad_vertex_buffer = gen_buffers(1)[0];
         bind_buffer(ARRAY_BUFFER, textured_quad_vertex_buffer);
         buffer_data(ARRAY_BUFFER, TEXTURED_QUAD_VERTICES, STATIC_DRAW);
 
-        let line_quad_vertex_buffer = *gen_buffers(1).get(0);
+        let line_quad_vertex_buffer = gen_buffers(1)[0];
         bind_buffer(ARRAY_BUFFER, line_quad_vertex_buffer);
         buffer_data(ARRAY_BUFFER, LINE_QUAD_VERTICES, STATIC_DRAW);
 
-        let texture_coordinate_buffer = *gen_buffers(1).get(0);
+        let texture_coordinate_buffer = gen_buffers(1)[0];
         bind_buffer(ARRAY_BUFFER, texture_coordinate_buffer);
         buffer_data(ARRAY_BUFFER, TEXTURE_COORDINATES, STATIC_DRAW);
 
-        let flipped_texture_coordinate_buffer = *gen_buffers(1).get(0);
+        let flipped_texture_coordinate_buffer = gen_buffers(1)[0];
         bind_buffer(ARRAY_BUFFER, flipped_texture_coordinate_buffer);
         buffer_data(ARRAY_BUFFER, FLIPPED_TEXTURE_COORDINATES, STATIC_DRAW);
 
