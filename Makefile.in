@@ -3,6 +3,9 @@ VPATH=%VPATH%
 RUSTC ?= rustc
 RUSTFLAGS ?=
 EXT_DEPS ?=
+RUSTDOC ?= rustdoc
+RUSTDOC_FLAGS ?=
+RUSTDOC_TARGET ?= doc
 
 RUST_SRC=$(shell find $(VPATH)/. -type f -name '*.rs')
 
@@ -15,6 +18,12 @@ librust-layers.dummy: lib.rs $(RUST_SRC) $(EXT_DEPS)
 
 rust-layers-test: lib.rs $(RUST_SRC)
 	$(RUSTC) $(RUSTFLAGS) $< -o $@ --test
+
+.PHONY: doc
+doc: $(RUSTDOC_TARGET)/layers/index.html
+
+$(RUSTDOC_TARGET)/layers/index.html: lib.rs $(RUST_SRC) $(EXT_DEPS)
+	$(RUSTDOC) $(RUSTDOC_FLAGS) $< -o $(RUSTDOC_TARGET)
 
 .PHONY: check
 check: rust-layers-test
