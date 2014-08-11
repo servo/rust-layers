@@ -64,6 +64,10 @@ static FRAGMENT_RECTANGLE_SHADER_SOURCE: &'static str = "
 ";
 
 static SOLID_COLOR_FRAGMENT_SHADER_SOURCE: &'static str = "
+    #ifdef GL_ES
+        precision mediump float;
+    #endif
+
     uniform vec4 uColor;
     void main(void) {
         gl_FragColor = uColor;
