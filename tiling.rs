@@ -24,9 +24,6 @@ pub struct Tile {
     /// The buffer displayed by this tile.
     buffer: Option<Box<LayerBuffer>>,
 
-    /// The content age of the current buffer. Only valid when buffer is not None.
-    content_age_of_current_buffer: ContentAge,
-
     /// The content age of any pending buffer request to avoid re-requesting
     /// a buffer while waiting for it to come back from rendering.
     content_age_of_pending_buffer: Option<ContentAge>,
@@ -44,28 +41,27 @@ impl Tile {
             buffer: None,
             texture: Zero::zero(),
             transform: identity(),
-            content_age_of_current_buffer: ContentAge::new(),
             content_age_of_pending_buffer: None,
         }
     }
 
+    fn should_use_new_buffer(&self, new_buffer: &Box<LayerBuffer>) -> bool {
+        match self.buffer {
+            Some(ref buffer) => new_buffer.content_age >= buffer.content_age,
+            None => true,
+        }
+    }
+
     fn replace_buffer(&mut self, buffer: Box<LayerBuffer>) -> Option<Box<LayerBuffer>> {
+        if !self.should_use_new_buffer(&buffer) {
+            warn!("Layer received an old buffer.");
+            return Some(buffer);
+        }
+
         let old_buffer = self.buffer.take();
         self.buffer = Some(buffer);
         self.texture = Zero::zero(); // The old texture is bound to the old buffer.
-
-        // TODO: If content_age_of_pending_buffer is None, that means that we were passed
-        // a stale buffer at some point. We could handle this situation more gracefully if
-        // Servo and rust-layers shared Epoch/ContentAge values. That would make using rust-layers
-        // more complicated though.
-        match self.content_age_of_pending_buffer {
-            Some(pending_content_age) => {
-                self.content_age_of_current_buffer = pending_content_age;
-            },
-            None => warn!("Tile content out of sync with ContentAge count!"),
-        }
         self.content_age_of_pending_buffer = None;
-
         return old_buffer;
     }
 
@@ -96,8 +92,14 @@ impl Tile {
     }
 
     fn should_request_buffer(&self, content_age: ContentAge) -> bool {
-        if self.buffer.is_some() && self.content_age_of_current_buffer == content_age {
-            return false;
+        // Don't resend a request if our buffer's content age matches the current content age.
+        match self.buffer {
+            Some(ref buffer) => {
+                if buffer.content_age >= content_age {
+                    return false;
+                }
+            }
+            None => {}
         }
 
         // Don't resend a request, if we already have one pending.
@@ -186,7 +188,7 @@ impl TileGrid {
         }
 
         tile.content_age_of_pending_buffer = Some(current_content_age);
-        return Some(BufferRequest::new(tile_rect, tile_screen_rect));
+        return Some(BufferRequest::new(tile_rect, tile_screen_rect, current_content_age));
     }
 
     pub fn get_buffer_requests_in_rect(&mut self,

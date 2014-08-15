@@ -95,5 +95,20 @@ impl<T> Scene<T> {
         mem::swap(&mut unused_buffers, &mut self.unused_buffers);
         return unused_buffers;
     }
+
+    pub fn mark_layer_contents_as_changed_recursively_for_layer(&self, layer: Rc<Layer<T>>) {
+        layer.contents_changed();
+        for kid in layer.children().iter() {
+            self.mark_layer_contents_as_changed_recursively_for_layer(kid.clone());
+        }
+    }
+
+    pub fn mark_layer_contents_as_changed_recursively(&self) {
+        let root_layer = match self.root {
+            Some(ref root_layer) => root_layer.clone(),
+            None => return,
+        };
+        self.mark_layer_contents_as_changed_recursively_for_layer(root_layer);
+    }
 }
 

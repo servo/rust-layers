@@ -18,7 +18,7 @@ use platform::surface::{NativeCompositingGraphicsContext, NativePaintingGraphics
 use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
 
-#[deriving(PartialEq)]
+#[deriving(Clone, PartialEq, PartialOrd)]
 pub struct ContentAge {
     age: uint,
 }
@@ -29,6 +29,7 @@ impl ContentAge {
             age: 0,
         }
     }
+
     pub fn next(&mut self) {
         self.age += 1;
     }
@@ -113,13 +114,20 @@ pub struct BufferRequest {
 
     // The rect in page coordinates that this tile represents
     pub page_rect: Rect<f32>,
+
+    /// The content age of that this BufferRequest corresponds to.
+    pub content_age: ContentAge,
 }
 
 impl BufferRequest {
-    pub fn new(screen_rect: Rect<uint>, page_rect: Rect<f32>) -> BufferRequest {
+    pub fn new(screen_rect: Rect<uint>,
+               page_rect: Rect<f32>,
+               content_age: ContentAge)
+               -> BufferRequest {
         BufferRequest {
             screen_rect: screen_rect,
             page_rect: page_rect,
+            content_age: content_age,
         }
     }
 }
@@ -143,6 +151,9 @@ pub struct LayerBuffer {
 
     /// Whether or not this buffer was painted with the CPU rasterization.
     pub painted_with_cpu: bool,
+
+    /// The content age of that this buffer request corresponds to.
+    pub content_age: ContentAge,
 }
 
 impl LayerBuffer {
