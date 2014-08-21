@@ -58,7 +58,7 @@ impl<T> Layer<T> {
             bounds: RefCell::new(bounds),
             tile_size: tile_size,
             extra_data: RefCell::new(data),
-            tile_grid: RefCell::new(TileGrid::new(tile_size)),
+            tile_grid: RefCell::new(TileGrid::new(tile_size, bounds.size)),
             content_age: RefCell::new(ContentAge::new()),
             content_offset: RefCell::new(Point2D(0f32, 0f32)),
         }
@@ -79,6 +79,7 @@ impl<T> Layer<T> {
 
     pub fn resize(&self, new_size: Size2D<f32>) {
         self.bounds.borrow_mut().size = new_size;
+        self.tile_grid.borrow_mut().set_size(new_size);
     }
 
     pub fn add_buffer(&self, tile: Box<LayerBuffer>) {
