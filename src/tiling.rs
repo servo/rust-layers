@@ -7,14 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use geometry::DevicePixel;
 use layers::{BufferRequest, ContentAge, LayerBuffer};
 use platform::surface::{NativeCompositingGraphicsContext, NativeSurfaceMethods};
 use texturegl::Texture;
 
 use geom::matrix::{Matrix4, identity};
 use geom::point::Point2D;
-use geom::size::Size2D;
 use geom::rect::Rect;
+use geom::size::{Size2D, TypedSize2D};
 use std::collections::hashmap::HashMap;
 use std::iter::range_inclusive;
 use std::mem;
