@@ -12,10 +12,11 @@ use layers::{BufferRequest, ContentAge, LayerBuffer};
 use platform::surface::{NativeCompositingGraphicsContext, NativeSurfaceMethods};
 use texturegl::Texture;
 
+use geom::length::Length;
 use geom::matrix::{Matrix4, identity};
 use geom::point::Point2D;
-use geom::rect::Rect;
-use geom::size::{Size2D, TypedSize2D};
+use geom::rect::{Rect, TypedRect};
+use geom::size::Size2D;
 use std::collections::hashmap::HashMap;
 use std::iter::range_inclusive;
 use std::mem;
@@ -114,8 +115,8 @@ impl Tile {
 pub struct TileGrid {
     pub tiles: HashMap<Point2D<uint>, Tile>,
 
-    // The size of tiles in this grid in device pixels.
-    tile_size: uint,
+    /// The size of tiles in this grid in device pixels.
+    tile_size: Length<DevicePixel, uint>,
 
     // Buffers that are currently unused.
     unused_buffers: Vec<Box<LayerBuffer>>,
@@ -130,21 +131,28 @@ impl TileGrid {
     pub fn new(tile_size: uint) -> TileGrid {
         TileGrid {
             tiles: HashMap::new(),
-            tile_size: tile_size,
+            tile_size: Length(tile_size),
             unused_buffers: Vec::new(),
         }
     }
 
-    pub fn get_tile_index_range_for_rect(&self, rect: Rect<f32>) -> (Point2D<uint>, Point2D<uint>) {
-        (Point2D((rect.origin.x / self.tile_size as f32) as uint,
-                 (rect.origin.y / self.tile_size as f32) as uint),
-         Point2D(((rect.origin.x + rect.size.width) / self.tile_size as f32) as uint,
-                 ((rect.origin.y + rect.size.height) / self.tile_size as f32) as uint))
+    pub fn get_tile_index_range_for_rect(&self,
+                                         rect: TypedRect<DevicePixel, f32>)
+                                         -> (Point2D<uint>, Point2D<uint>) {
+        let rect = rect.to_untyped();
+        (Point2D((rect.origin.x / self.tile_size.get() as f32) as uint,
+                 (rect.origin.y / self.tile_size.get() as f32) as uint),
+         Point2D(((rect.origin.x + rect.size.width) / self.tile_size.get() as f32) as uint,
+                 ((rect.origin.y + rect.size.height) / self.tile_size.get() as f32) as uint))
     }
 
-    pub fn get_rect_for_tile_index(&self, tile_index: Point2D<uint>) -> Rect<uint> {
-        Rect(Point2D(self.tile_size * tile_index.x, self.tile_size * tile_index.y),
-             Size2D(self.tile_size, self.tile_size))
+    pub fn get_rect_for_tile_index(&self,
+                                   tile_index: Point2D<uint>)
+                                   -> TypedRect<DevicePixel, uint> {
+        let tile_rect = Rect(Point2D(self.tile_size.get() * tile_index.x,
+                                     self.tile_size.get() * tile_index.y),
+                             Size2D(self.tile_size.get(), self.tile_size.get()));
+        Rect::from_untyped(&tile_rect)
     }
 
     pub fn take_unused_buffers(&mut self) -> Vec<Box<LayerBuffer>> {
@@ -160,10 +168,10 @@ impl TileGrid {
         }
     }
 
-    pub fn mark_tiles_outside_of_rect_as_unused(&mut self, rect: Rect<f32>) {
+    pub fn mark_tiles_outside_of_rect_as_unused(&mut self, rect: TypedRect<DevicePixel, f32>) {
         let mut tile_indexes_to_take = Vec::new();
         for tile_index in self.tiles.keys() {
-            if !rect_uint_as_rect_f32(self.get_rect_for_tile_index(*tile_index)).intersects(&rect) {
+            if !self.get_rect_for_tile_index(*tile_index).as_f32().intersects(&rect) {
                 tile_indexes_to_take.push(tile_index.clone());
             }
         }
@@ -181,25 +189,25 @@ impl TileGrid {
                                        current_content_age: ContentAge)
                                        -> Option<BufferRequest> {
         let tile_rect = self.get_rect_for_tile_index(tile_index);
-        let tile_screen_rect = rect_uint_as_rect_f32(tile_rect);
-
         let tile = self.tiles.find_or_insert_with(tile_index, |_| Tile::new());
         if !tile.should_request_buffer(current_content_age) {
             return None;
         }
 
         tile.content_age_of_pending_buffer = Some(current_content_age);
-        return Some(BufferRequest::new(tile_rect, tile_screen_rect, current_content_age));
+
+        return Some(BufferRequest::new(tile_rect.to_untyped(),
+                                       tile_rect.as_f32().to_untyped(),
+                                       current_content_age));
     }
 
     pub fn get_buffer_requests_in_rect(&mut self,
-                                       screen_rect: Rect<f32>,
+                                       rect_in_layer: TypedRect<DevicePixel, f32>,
                                        current_content_age: ContentAge)
                                        -> Vec<BufferRequest> {
         let mut buffer_requests = Vec::new();
-        let rect_in_layer_pixels = screen_rect;
         let (top_left_index, bottom_right_index) =
-            self.get_tile_index_range_for_rect(rect_in_layer_pixels);
+            self.get_tile_index_range_for_rect(rect_in_layer);
 
         for x in range_inclusive(top_left_index.x, bottom_right_index.x) {
             for y in range_inclusive(top_left_index.y, bottom_right_index.y) {
@@ -210,15 +218,15 @@ impl TileGrid {
             }
         }
 
-        self.mark_tiles_outside_of_rect_as_unused(rect_in_layer_pixels);
+        self.mark_tiles_outside_of_rect_as_unused(rect_in_layer);
         return buffer_requests;
     }
 
     pub fn get_tile_index_for_point(&self, point: Point2D<uint>) -> Point2D<uint> {
-        assert!(point.x % self.tile_size == 0);
-        assert!(point.y % self.tile_size == 0);
-        Point2D((point.x / self.tile_size) as uint,
-                (point.y / self.tile_size) as uint)
+        assert!(point.x % self.tile_size.get() == 0);
+        assert!(point.y % self.tile_size.get() == 0);
+        Point2D((point.x / self.tile_size.get()) as uint,
+                (point.y / self.tile_size.get()) as uint)
     }
 
     pub fn add_buffer(&mut self, buffer: Box<LayerBuffer>) {

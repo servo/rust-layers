@@ -75,7 +75,7 @@ impl<T> Layer<T> {
         self.children().push(new_child);
     }
 
-    pub fn get_buffer_requests(&self, rect_in_layer: Rect<f32>) -> Vec<BufferRequest> {
+    pub fn get_buffer_requests(&self, rect_in_layer: TypedRect<DevicePixel, f32>) -> Vec<BufferRequest> {
         let mut tile_grid = self.tile_grid.borrow_mut();
         return tile_grid.get_buffer_requests_in_rect(rect_in_layer, *self.content_age.borrow());
     }
