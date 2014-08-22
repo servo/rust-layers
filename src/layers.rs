@@ -7,12 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use geometry::DevicePixel;
 use tiling::{Tile, TileGrid};
 
 use geom::matrix::{Matrix4, identity};
-use geom::size::Size2D;
+use geom::size::{Size2D, TypedSize2D};
 use geom::point::Point2D;
-use geom::rect::Rect;
+use geom::rect::{Rect, TypedRect};
 use platform::surface::{NativeSurfaceMethods, NativeSurface};
 use platform::surface::{NativeCompositingGraphicsContext, NativePaintingGraphicsContext};
 use std::cell::{RefCell, RefMut};
@@ -38,10 +39,12 @@ impl ContentAge {
 pub struct Layer<T> {
     pub children: RefCell<Vec<Rc<Layer<T>>>>,
     pub transform: RefCell<Matrix4<f32>>,
-    pub bounds: RefCell<Rect<f32>>,
     pub tile_size: uint,
     pub extra_data: RefCell<T>,
     tile_grid: RefCell<TileGrid>,
+
+    /// The boundaries of this layer in the coordinate system of the parent layer.
+    pub bounds: RefCell<TypedRect<DevicePixel, f32>>,
 
     /// A monotonically increasing counter that keeps track of the current content age.
     pub content_age: RefCell<ContentAge>,
@@ -51,7 +54,7 @@ pub struct Layer<T> {
 }
 
 impl<T> Layer<T> {
-    pub fn new(bounds: Rect<f32>, tile_size: uint, data: T) -> Layer<T> {
+    pub fn new(bounds: TypedRect<DevicePixel, f32>, tile_size: uint, data: T) -> Layer<T> {
         Layer {
             children: RefCell::new(vec!()),
             transform: RefCell::new(identity()),
@@ -77,7 +80,7 @@ impl<T> Layer<T> {
         return tile_grid.get_buffer_requests_in_rect(rect_in_layer, *self.content_age.borrow());
     }
 
-    pub fn resize(&self, new_size: Size2D<f32>) {
+    pub fn resize(&self, new_size: TypedSize2D<DevicePixel, f32>) {
         self.bounds.borrow_mut().size = new_size;
     }
 

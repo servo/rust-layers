@@ -48,12 +48,12 @@ impl<T> Scene<T> {
         // The rectangle passed in is in the coordinate system of our parent, so we
         // need to intersect with our boundaries and convert it to our coordinate system.
         let content_offset = layer.content_offset.borrow();
-        let layer_bounds = layer.bounds.borrow();
+        let layer_bounds = layer.bounds.borrow().to_untyped();
         let layer_rect = Rect(Point2D(rect_in_window.origin.x - content_offset.x,
                                       rect_in_window.origin.y - content_offset.y),
                               rect_in_window.size);
 
-        match layer_rect.intersection(&*layer_bounds) {
+        match layer_rect.intersection(&layer_bounds) {
             Some(mut intersected_rect) => {
                 // Child layers act as if they are rendered at (0,0), so we
                 // subtract the layer's (x,y) coords in its containing page
