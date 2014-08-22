@@ -48,7 +48,7 @@ impl<T> Scene<T> {
                                          rect_in_window: TypedRect<DevicePixel, f32>) {
         // The rectangle passed in is in the coordinate system of our parent, so we
         // need to intersect with our boundaries and convert it to our coordinate system.
-        let content_offset = Point2D::from_untyped(&*layer.content_offset.borrow());
+        let content_offset = layer.content_offset.borrow();
         let layer_bounds = layer.bounds.borrow().clone();
         let layer_rect = Rect(Point2D(rect_in_window.origin.x - content_offset.x,
                                       rect_in_window.origin.y - content_offset.y),
