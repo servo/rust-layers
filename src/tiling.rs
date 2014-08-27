@@ -113,14 +113,11 @@ impl Tile {
 pub struct TileGrid {
     pub tiles: HashMap<Point2D<uint>, Tile>,
 
-    /// The size of tiles in this grid in device pixels.
+    // The size of tiles in this grid in device pixels.
     tile_size: uint,
 
-    /// Buffers that are currently unused.
+    // Buffers that are currently unused.
     unused_buffers: Vec<Box<LayerBuffer>>,
-
-    /// The size of this layer, to save memory along the edge of the layer.
-    size: Size2D<f32>,
 }
 
 pub fn rect_uint_as_rect_f32(rect: Rect<uint>) -> Rect<f32> {
@@ -129,17 +126,12 @@ pub fn rect_uint_as_rect_f32(rect: Rect<uint>) -> Rect<f32> {
 }
 
 impl TileGrid {
-    pub fn new(tile_size: uint, size: Size2D<f32>) -> TileGrid {
+    pub fn new(tile_size: uint) -> TileGrid {
         TileGrid {
             tiles: HashMap::new(),
             tile_size: tile_size,
             unused_buffers: Vec::new(),
-            size: size,
         }
-    }
-
-    pub fn set_size(&mut self, size: Size2D<f32>) {
-        self.size = size;
     }
 
     pub fn get_tile_index_range_for_rect(&self, rect: Rect<f32>) -> (Point2D<uint>, Point2D<uint>) {
@@ -150,13 +142,8 @@ impl TileGrid {
     }
 
     pub fn get_rect_for_tile_index(&self, tile_index: Point2D<uint>) -> Rect<uint> {
-        let origin = Point2D(self.tile_size * tile_index.x, self.tile_size * tile_index.y);
-        let size = Size2D((origin.x as f32 + self.tile_size as f32).min(self.size.width),
-                          (origin.y as f32 + self.tile_size as f32).min(self.size.height));
-
-        // Round up to texture pixels and make it relative to the origin.
-        Rect(origin, Size2D(size.width.ceil() as uint - origin.x,
-                            size.height.ceil() as uint - origin.y))
+        Rect(Point2D(self.tile_size * tile_index.x, self.tile_size * tile_index.y),
+             Size2D(self.tile_size, self.tile_size))
     }
 
     pub fn take_unused_buffers(&mut self) -> Vec<Box<LayerBuffer>> {
