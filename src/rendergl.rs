@@ -495,7 +495,7 @@ impl<T> Render for layers::Layer<T> {
               render_context: RenderContext,
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>) {
-        let bounds = self.bounds.borrow();
+        let bounds = self.bounds.borrow().to_untyped();
         let transform = transform.translate(bounds.origin.x, bounds.origin.y, 0.0)
             .mul(&*self.transform.borrow());
 

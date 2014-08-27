@@ -35,13 +35,14 @@ extern crate xlib;
 #[cfg(target_os="android")]
 extern crate egl;
 
-pub mod layers;
 pub mod color;
+pub mod geometry;
+pub mod layers;
 pub mod rendergl;
 pub mod scene;
 pub mod texturegl;
-pub mod util;
 pub mod tiling;
+pub mod util;
 
 pub mod platform {
     #[cfg(target_os="linux")]
