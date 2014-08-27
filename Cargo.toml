@@ -1,0 +1,29 @@
+[package]
+
+name = "layers"
+version = "0.1.0"
+authors = ["The Servo Project Developers"]
+
+[dependencies.geom]
+
+git = "https://github.com/servo/rust-geom"
+
+[dependencies.opengles]
+
+git = "https://github.com/servo/rust-opengles"
+
+[dependencies.core_foundation]
+
+git = "https://github.com/servo/rust-core-foundation"
+
+[dependencies.io_surface]
+
+git = "https://github.com/servo/rust-io-surface"
+
+[dependencies.xlib]
+
+git = "https://github.com/servo/rust-xlib"
+
+[dependencies.egl]
+
+git = "https://github.com/servo/rust-egl"
