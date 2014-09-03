@@ -15,7 +15,7 @@ use texturegl::Texture;
 use geom::size::Size2D;
 use libc::{c_char, c_int, c_uint, c_void};
 use opengles::glx::{GLXFBConfig, GLXDrawable};
-use opengles::glx::{GLX_BIND_TO_TEXTURE_RGBA_EXT};
+use opengles::glx::{GLX_ALPHA_SIZE, GLX_BIND_TO_TEXTURE_RGBA_EXT};
 use opengles::glx::{GLX_DRAWABLE_TYPE, GLX_FRONT_EXT, GLX_PIXMAP_BIT};
 use opengles::glx::{GLX_TEXTURE_2D_EXT, GLX_TEXTURE_FORMAT_EXT, GLX_TEXTURE_FORMAT_RGBA_EXT};
 use opengles::glx::{GLX_TEXTURE_TARGET_EXT, glXCreatePixmap, glXDestroyPixmap};
@@ -76,16 +76,12 @@ impl NativeCompositingGraphicsContext {
     fn compositor_visual_info(display: *mut Display) -> (*mut XVisualInfo, Option<GLXFBConfig>) {
         unsafe {
             let glx_display = mem::transmute(display);
-
-            // CONSIDER:
-            // In skia, they compute the GLX_ALPHA_SIZE minimum and request
-            // that as well.
-
             let mut fbconfig_attributes = [
                 GLX_DOUBLEBUFFER, 0,
                 GLX_DRAWABLE_TYPE, GLX_PIXMAP_BIT | GLX_WINDOW_BIT,
                 GLX_BIND_TO_TEXTURE_RGBA_EXT, 1,
                 GLX_RENDER_TYPE, GLX_RGBA_BIT,
+                GLX_ALPHA_SIZE, 8,
                 0
             ];
 
