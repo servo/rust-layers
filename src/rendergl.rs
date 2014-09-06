@@ -229,6 +229,7 @@ struct SolidLineProgram {
     modelview_uniform: c_int,
     projection_uniform: c_int,
     color_uniform: c_int,
+    texture_space_transform_uniform: c_int,
 }
 
 impl SolidLineProgram {
@@ -240,6 +241,7 @@ impl SolidLineProgram {
             modelview_uniform: program.get_uniform_location("uMVMatrix"),
             projection_uniform: program.get_uniform_location("uPMatrix"),
             color_uniform: program.get_uniform_location("uColor"),
+            texture_space_transform_uniform: program.get_uniform_location("uTextureSpaceTransform"),
         }
     }
 
@@ -258,6 +260,11 @@ impl SolidLineProgram {
 
         bind_buffer(ARRAY_BUFFER, buffers.line_quad_vertex_buffer);
         vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 3, false, 0, 0);
+
+        let texture_transform: Matrix4<f32> = identity();
+        uniform_matrix_4fv(self.texture_space_transform_uniform,
+                           false,
+                           texture_transform.to_array());
     }
 
     fn enable_attribute_arrays(&self) {
