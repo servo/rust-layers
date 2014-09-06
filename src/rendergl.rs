@@ -26,7 +26,7 @@ use opengles::gl2::{LINE_STRIP, TRIANGLE_STRIP, VERTEX_SHADER, GLenum, GLfloat, 
 use opengles::gl2::{GLuint, active_texture, attach_shader, bind_buffer, bind_texture, blend_func};
 use opengles::gl2::{buffer_data, create_program, clear, clear_color, compile_shader};
 use opengles::gl2::{create_shader, draw_arrays, enable, enable_vertex_attrib_array, disable_vertex_attrib_array};
-use opengles::gl2::{gen_buffers, get_attrib_location, get_program_iv};
+use opengles::gl2::{gen_buffers, get_attrib_location, get_program_info_log, get_program_iv};
 use opengles::gl2::{get_shader_info_log, get_shader_iv, get_uniform_location, line_width};
 use opengles::gl2::{link_program, shader_source, uniform_1i, uniform_4f};
 use opengles::gl2::{uniform_matrix_4fv, use_program, vertex_attrib_pointer_f32, viewport};
@@ -101,27 +101,53 @@ static TILE_DEBUG_BORDER_THICKNESS: uint = 1;
 static LAYER_DEBUG_BORDER_COLOR: Color = Color { r: 1., g: 0.5, b: 0., a: 1.0 };
 static LAYER_DEBUG_BORDER_THICKNESS: uint = 2;
 
-pub fn load_shader(source_string: &str, shader_type: GLenum) -> GLuint {
-    let shader_id = create_shader(shader_type);
-    shader_source(shader_id, [ source_string.as_bytes() ]);
-    compile_shader(shader_id);
-
-    if get_shader_iv(shader_id, COMPILE_STATUS) == (0 as GLint) {
-        debug!("shader info log: {:s}", get_shader_info_log(shader_id));
-        fail!("failed to compile shader");
-    }
-
-    return shader_id;
-}
-
 struct Buffers {
     textured_quad_vertex_buffer: GLuint,
     texture_coordinate_buffer: GLuint,
     line_quad_vertex_buffer: GLuint,
 }
 
-struct TextureProgram {
+struct ShaderProgram {
     id: GLuint,
+}
+
+impl ShaderProgram {
+    pub fn new(vertex_shader_source: &str, fragment_shader_source: &str) -> ShaderProgram {
+        let id = create_program();
+        attach_shader(id, ShaderProgram::compile_shader(fragment_shader_source, FRAGMENT_SHADER));
+        attach_shader(id, ShaderProgram::compile_shader(vertex_shader_source, VERTEX_SHADER));
+        link_program(id);
+        if get_program_iv(id, LINK_STATUS) == (0 as GLint) {
+            fail!("Failed to compile shader program: {:s}", get_program_info_log(id));
+        }
+
+        ShaderProgram {
+            id: id,
+        }
+    }
+
+    pub fn compile_shader(source_string: &str, shader_type: GLenum) -> GLuint {
+        let id = create_shader(shader_type);
+        shader_source(id, [ source_string.as_bytes() ]);
+        compile_shader(id);
+        if get_shader_iv(id, COMPILE_STATUS) == (0 as GLint) {
+            fail!("Failed to compile shader: {:s}", get_shader_info_log(id));
+        }
+
+        return id;
+    }
+
+    pub fn get_attribute_location(&self, name: &str) -> GLint {
+        get_attrib_location(self.id, name)
+    }
+
+    pub fn get_uniform_location(&self, name: &str) -> GLint {
+        get_uniform_location(self.id, name)
+    }
+}
+
+struct TextureProgram {
+    program: ShaderProgram,
     vertex_position_attr: c_int,
     texture_coord_attr: c_int,
     modelview_uniform: c_int,
@@ -138,19 +164,15 @@ impl TextureProgram {
                             sampler_function,
                             sampler_type,
                             FRAGMENT_SHADER_SOURCE);
-        let fragment_shader = load_shader(fragment_shader_source.as_slice(), FRAGMENT_SHADER);
-        let vertex_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
-        let program_id = init_program(vertex_shader, fragment_shader);
-
+        let program = ShaderProgram::new(VERTEX_SHADER_SOURCE, fragment_shader_source.as_slice());
         TextureProgram {
-            id: program_id,
-            vertex_position_attr: get_attrib_location(program_id, "aVertexPosition"),
-            texture_coord_attr: get_attrib_location(program_id, "aTextureCoord"),
-            modelview_uniform: get_uniform_location(program_id, "uMVMatrix"),
-            projection_uniform: get_uniform_location(program_id, "uPMatrix"),
-            sampler_uniform: get_uniform_location(program_id, "uSampler"),
-            texture_space_transform_uniform:
-                get_uniform_location(program_id, "uTextureSpaceTransform"),
+            program: program,
+            vertex_position_attr: program.get_attribute_location("aVertexPosition"),
+            texture_coord_attr: program.get_attribute_location("aTextureCoord"),
+            modelview_uniform: program.get_uniform_location("uMVMatrix"),
+            projection_uniform: program.get_uniform_location("uPMatrix"),
+            sampler_uniform: program.get_uniform_location("uSampler"),
+            texture_space_transform_uniform: program.get_uniform_location("uTextureSpaceTransform"),
         }
     }
 
@@ -202,7 +224,7 @@ impl TextureProgram {
 }
 
 struct SolidLineProgram {
-    id: GLuint,
+    program: ShaderProgram,
     vertex_position_attr: c_int,
     modelview_uniform: c_int,
     projection_uniform: c_int,
@@ -211,16 +233,13 @@ struct SolidLineProgram {
 
 impl SolidLineProgram {
     fn new() -> SolidLineProgram {
-        let vertex_shader = load_shader(VERTEX_SHADER_SOURCE, VERTEX_SHADER);
-        let fragment_shader = load_shader(SOLID_COLOR_FRAGMENT_SHADER_SOURCE, FRAGMENT_SHADER);
-        let program_id = init_program(vertex_shader, fragment_shader);
-
+        let program = ShaderProgram::new(VERTEX_SHADER_SOURCE, SOLID_COLOR_FRAGMENT_SHADER_SOURCE);
         SolidLineProgram {
-            id: program_id,
-            vertex_position_attr: get_attrib_location(program_id, "aVertexPosition"),
-            modelview_uniform: get_uniform_location(program_id, "uMVMatrix"),
-            projection_uniform: get_uniform_location(program_id, "uPMatrix"),
-            color_uniform: get_uniform_location(program_id, "uColor"),
+            program: program,
+            vertex_position_attr: program.get_attribute_location("aVertexPosition"),
+            modelview_uniform: program.get_uniform_location("uMVMatrix"),
+            projection_uniform: program.get_uniform_location("uPMatrix"),
+            color_uniform: program.get_uniform_location("uColor"),
         }
     }
 
@@ -305,18 +324,6 @@ impl RenderContext {
     }
 }
 
-pub fn init_program(vertex_shader: GLuint, fragment_shader: GLuint) -> GLuint {
-    let program = create_program();
-    attach_shader(program, vertex_shader);
-    attach_shader(program, fragment_shader);
-    link_program(program);
-    if get_program_iv(program, LINK_STATUS) == (0 as GLint) {
-        fail!("failed to initialize program");
-    }
-
-    program
-}
-
 pub fn bind_and_render_quad(render_context: RenderContext,
                             texture: &Texture,
                             transform: &Matrix4<f32>,
@@ -334,7 +341,7 @@ pub fn bind_and_render_quad(render_context: RenderContext,
     };
     program.enable_attribute_arrays();
 
-    use_program(program.id);
+    use_program(program.program.id);
     active_texture(TEXTURE0);
 
     // FIXME: This should technically check that the transform
@@ -389,7 +396,7 @@ pub fn bind_and_render_quad_lines(render_context: RenderContext,
                                   line_thickness: uint) {
     let solid_line_program = render_context.solid_line_program;
     solid_line_program.enable_attribute_arrays();
-    use_program(solid_line_program.id);
+    use_program(solid_line_program.program.id);
     let projection_matrix = ortho(0.0, scene_size.width, scene_size.height, 0.0, -10.0, 10.0);
     solid_line_program.bind_uniforms_and_attributes(transform,
                                                     &projection_matrix,
