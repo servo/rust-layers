@@ -59,7 +59,7 @@ static SOLID_COLOR_FRAGMENT_SHADER_SOURCE: &'static str = "
 ";
 
 static VERTEX_SHADER_SOURCE: &'static str = "
-    attribute vec3 aVertexPosition;
+    attribute vec2 aVertexPosition;
     attribute vec2 aTextureCoord;
 
     uniform mat4 uMVMatrix;
@@ -69,16 +69,16 @@ static VERTEX_SHADER_SOURCE: &'static str = "
     varying vec2 vTextureCoord;
 
     void main(void) {
-        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 0.0, 1.0);
         vTextureCoord = (uTextureSpaceTransform * vec4(aTextureCoord, 0., 1.)).xy;
     }
 ";
 
-static TEXTURED_QUAD_VERTICES: [f32, ..12] = [
-    0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0,
-    1.0, 0.0, 0.0,
-    1.0, 1.0, 0.0,
+static TEXTURED_QUAD_VERTICES: [f32, ..8] = [
+    0.0, 0.0,
+    0.0, 1.0,
+    1.0, 0.0,
+    1.0, 1.0,
 ];
 
 static TEXTURE_COORDINATES: [f32, ..8] = [
@@ -88,12 +88,12 @@ static TEXTURE_COORDINATES: [f32, ..8] = [
     1.0, 1.0,
 ];
 
-static LINE_QUAD_VERTICES: [f32, ..15] = [
-    0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0,
-    1.0, 1.0, 0.0,
-    1.0, 0.0, 0.0,
-    0.0, 0.0, 0.0,
+static LINE_QUAD_VERTICES: [f32, ..10] = [
+    0.0, 0.0,
+    0.0, 1.0,
+    1.0, 1.0,
+    1.0, 0.0,
+    0.0, 0.0,
 ];
 
 static TILE_DEBUG_BORDER_COLOR: Color = Color { r: 0., g: 1., b: 1., a: 1.0 };
@@ -186,7 +186,7 @@ impl TextureProgram {
         uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array());
 
         bind_buffer(ARRAY_BUFFER, buffers.textured_quad_vertex_buffer);
-        vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 3, false, 0, 0);
+        vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
 
         bind_buffer(ARRAY_BUFFER, buffers.texture_coordinate_buffer);
         vertex_attrib_pointer_f32(self.texture_coord_attr as GLuint, 2, false, 0, 0);
@@ -259,7 +259,7 @@ impl SolidLineProgram {
                    color.a as GLfloat);
 
         bind_buffer(ARRAY_BUFFER, buffers.line_quad_vertex_buffer);
-        vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 3, false, 0, 0);
+        vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
 
         let texture_transform: Matrix4<f32> = identity();
         uniform_matrix_4fv(self.texture_space_transform_uniform,
