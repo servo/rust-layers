@@ -60,7 +60,6 @@ static SOLID_COLOR_FRAGMENT_SHADER_SOURCE: &'static str = "
 
 static VERTEX_SHADER_SOURCE: &'static str = "
     attribute vec2 aVertexPosition;
-    attribute vec2 aTextureCoord;
 
     uniform mat4 uMVMatrix;
     uniform mat4 uPMatrix;
@@ -70,18 +69,11 @@ static VERTEX_SHADER_SOURCE: &'static str = "
 
     void main(void) {
         gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 0.0, 1.0);
-        vTextureCoord = (uTextureSpaceTransform * vec4(aTextureCoord, 0., 1.)).xy;
+        vTextureCoord = (uTextureSpaceTransform * vec4(aVertexPosition, 0., 1.)).xy;
     }
 ";
 
 static TEXTURED_QUAD_VERTICES: [f32, ..8] = [
-    0.0, 0.0,
-    0.0, 1.0,
-    1.0, 0.0,
-    1.0, 1.0,
-];
-
-static TEXTURE_COORDINATES: [f32, ..8] = [
     0.0, 0.0,
     0.0, 1.0,
     1.0, 0.0,
@@ -103,7 +95,6 @@ static LAYER_DEBUG_BORDER_THICKNESS: uint = 2;
 
 struct Buffers {
     textured_quad_vertex_buffer: GLuint,
-    texture_coordinate_buffer: GLuint,
     line_quad_vertex_buffer: GLuint,
 }
 
@@ -149,7 +140,6 @@ impl ShaderProgram {
 struct TextureProgram {
     program: ShaderProgram,
     vertex_position_attr: c_int,
-    texture_coord_attr: c_int,
     modelview_uniform: c_int,
     projection_uniform: c_int,
     sampler_uniform: c_int,
@@ -168,7 +158,6 @@ impl TextureProgram {
         TextureProgram {
             program: program,
             vertex_position_attr: program.get_attribute_location("aVertexPosition"),
-            texture_coord_attr: program.get_attribute_location("aTextureCoord"),
             modelview_uniform: program.get_uniform_location("uMVMatrix"),
             projection_uniform: program.get_uniform_location("uPMatrix"),
             sampler_uniform: program.get_uniform_location("uSampler"),
@@ -188,9 +177,6 @@ impl TextureProgram {
         bind_buffer(ARRAY_BUFFER, buffers.textured_quad_vertex_buffer);
         vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
 
-        bind_buffer(ARRAY_BUFFER, buffers.texture_coordinate_buffer);
-        vertex_attrib_pointer_f32(self.texture_coord_attr as GLuint, 2, false, 0, 0);
-
         uniform_matrix_4fv(self.texture_space_transform_uniform,
                            false,
                            texture_space_transform.to_array());
@@ -198,12 +184,10 @@ impl TextureProgram {
 
     fn enable_attribute_arrays(&self) {
         enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
-        enable_vertex_attrib_array(self.texture_coord_attr as GLuint);
     }
 
     fn disable_attribute_arrays(&self) {
         disable_vertex_attrib_array(self.vertex_position_attr as GLuint);
-        disable_vertex_attrib_array(self.texture_coord_attr as GLuint);
     }
 
     fn create_2d_program() -> TextureProgram {
@@ -319,13 +303,8 @@ impl RenderContext {
         bind_buffer(ARRAY_BUFFER, line_quad_vertex_buffer);
         buffer_data(ARRAY_BUFFER, LINE_QUAD_VERTICES, STATIC_DRAW);
 
-        let texture_coordinate_buffer = gen_buffers(1)[0];
-        bind_buffer(ARRAY_BUFFER, texture_coordinate_buffer);
-        buffer_data(ARRAY_BUFFER, TEXTURE_COORDINATES, STATIC_DRAW);
-
         Buffers {
             textured_quad_vertex_buffer: textured_quad_vertex_buffer,
-            texture_coordinate_buffer: texture_coordinate_buffer,
             line_quad_vertex_buffer: line_quad_vertex_buffer,
         }
     }
