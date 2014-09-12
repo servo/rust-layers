@@ -76,12 +76,16 @@ impl NativeCompositingGraphicsContext {
     fn compositor_visual_info(display: *mut Display) -> (*mut XVisualInfo, Option<GLXFBConfig>) {
         unsafe {
             let glx_display = mem::transmute(display);
+
+            // FIXME(mrobison): We would like to specify GLX_ALPHA_SIZE here, and it fixes bugs on certain
+            // drivers, but it seems to break on the dummy X11 configuration used on travis. Until
+            // we can work out that issue, we need to omit GLX_ALPHA_SIZE.
+            // See: https://github.com/servo/servo/issues/3245
             let mut fbconfig_attributes = [
                 GLX_DOUBLEBUFFER, 0,
                 GLX_DRAWABLE_TYPE, GLX_PIXMAP_BIT | GLX_WINDOW_BIT,
                 GLX_BIND_TO_TEXTURE_RGBA_EXT, 1,
                 GLX_RENDER_TYPE, GLX_RGBA_BIT,
-                GLX_ALPHA_SIZE, 8,
                 0
             ];
 
