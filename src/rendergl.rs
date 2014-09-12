@@ -408,12 +408,12 @@ impl<T> Render for layers::Layer<T> {
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>) {
         let bounds = self.bounds.borrow().to_untyped();
-        let transform = transform.translate(bounds.origin.x, bounds.origin.y, 0.0)
-            .mul(&*self.transform.borrow());
+        let cumulative_transform = transform.translate(bounds.origin.x, bounds.origin.y, 0.0);
+        let tile_transform = cumulative_transform.mul(&*self.transform.borrow());
 
         self.create_textures(&render_context.compositing_context);
         self.do_for_all_tiles(|tile: &Tile| {
-            tile.render(render_context, transform, scene_size)
+            tile.render(render_context, tile_transform, scene_size)
         });
 
         if render_context.show_debug_borders {
@@ -426,7 +426,7 @@ impl<T> Render for layers::Layer<T> {
         }
 
         for child in self.children().iter() {
-            child.render(render_context, transform, scene_size)
+            child.render(render_context, cumulative_transform, scene_size)
         }
 
     }
@@ -454,8 +454,9 @@ impl Render for Tile {
     }
 }
 
-pub fn render_scene<T>(root_layer: Rc<Layer<T>>, render_context: RenderContext,
-                        scene: &Scene<T>) {
+pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
+                       render_context: RenderContext,
+                       scene: &Scene<T>) {
     // Set the viewport.
     viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
 
@@ -467,7 +468,7 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>, render_context: RenderContext,
     clear(COLOR_BUFFER_BIT);
 
     // Set up the initial modelview matrix.
-    let transform = scene.transform;
+    let transform = identity().scale(scene.scale, scene.scale, 1.0);
 
     // Render the root layer.
     root_layer.render(render_context, transform, scene.size);
