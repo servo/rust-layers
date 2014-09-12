@@ -20,17 +20,18 @@ use std::rc::Rc;
 pub struct Scene<T> {
     pub root: Option<Rc<Layer<T>>>,
     pub size: Size2D<f32>,
-    pub transform: Matrix4<f32>,
     pub background_color: Color,
     pub unused_buffers: Vec<Box<LayerBuffer>>,
+
+    /// The scene scale, to allow for zooming and high-resolution painting.
+    pub scale: f32,
 }
 
 impl<T> Scene<T> {
-    pub fn new(size: Size2D<f32>, transform: Matrix4<f32>) -> Scene<T> {
+    pub fn new(size: Size2D<f32>) -> Scene<T> {
         Scene {
             root: None,
             size: size,
-            transform: transform,
             background_color: Color {
                 r: 0.38f32,
                 g: 0.36f32,
@@ -38,6 +39,7 @@ impl<T> Scene<T> {
                 a: 1.0f32
             },
             unused_buffers: Vec::new(),
+            scale: 1.,
         }
     }
 
@@ -46,9 +48,11 @@ impl<T> Scene<T> {
                                          layers_and_requests: &mut Vec<(Rc<Layer<T>>,
                                                                         Vec<BufferRequest>)>,
                                          rect_in_window: TypedRect<DevicePixel, f32>) {
+        let content_offset = *layer.content_offset.borrow() * self.scale;
+        let content_offset = Point2D::from_untyped(&content_offset);
+
         // The rectangle passed in is in the coordinate system of our parent, so we
         // need to intersect with our boundaries and convert it to our coordinate system.
-        let content_offset = layer.content_offset.borrow();
         let layer_bounds = layer.bounds.borrow().clone();
         let layer_rect = Rect(Point2D(rect_in_window.origin.x - content_offset.x,
                                       rect_in_window.origin.y - content_offset.y),
