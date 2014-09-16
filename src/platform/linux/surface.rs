@@ -28,9 +28,9 @@ use opengles::gl2;
 use std::c_str::CString;
 use std::mem;
 use std::ptr;
-use xlib::xlib::{Display, Pixmap, XCreateGC, XCreateImage, XCreatePixmap, XDefaultScreen};
-use xlib::xlib::{XDisplayString, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage, XRootWindow};
-use xlib::xlib::{XVisualInfo, ZPixmap};
+use xlib::{Display, Pixmap, XCreateGC, XCreateImage, XCreatePixmap, XDefaultScreen};
+use xlib::{XDisplayString, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage, XRootWindow};
+use xlib::{XVisualInfo, ZPixmap};
 
 /// The display and visual info. This is needed in order to upload on the painting side. This
 /// holds a weak reference to the display and will not close it when done.
