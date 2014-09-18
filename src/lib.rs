@@ -19,7 +19,6 @@ extern crate libc;
 #[phase(plugin, link)]
 extern crate log;
 extern crate opengles;
-extern crate std;
 extern crate serialize;
 
 #[cfg(target_os="macos")]
