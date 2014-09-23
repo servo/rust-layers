@@ -11,10 +11,11 @@ use color::Color;
 use geom::matrix::Matrix4;
 use geom::point::Point2D;
 use geom::rect::{Rect, TypedRect};
-use geom::size::Size2D;
+use geom::size::{Size2D, TypedSize2D};
 use geometry::DevicePixel;
 use layers::{BufferRequest, Layer, LayerBuffer};
 use std::mem;
+use std::num::Zero;
 use std::rc::Rc;
 
 pub struct Scene<T> {
@@ -112,6 +113,13 @@ impl<T> Scene<T> {
             None => return,
         };
         self.mark_layer_contents_as_changed_recursively_for_layer(root_layer);
+    }
+
+    pub fn set_root_layer_size(&self, new_size: TypedSize2D<DevicePixel, f32>) {
+        match self.root {
+            Some(ref root_layer) => *root_layer.bounds.borrow_mut() = Rect(Zero::zero(), new_size),
+            None => {},
+        }
     }
 }
 
