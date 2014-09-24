@@ -35,15 +35,19 @@ pub struct Tile {
 
     /// The transformation applied to this tiles texture.
     pub transform: Matrix4<f32>,
+
+    /// The tile boundaries in the parent layer.
+    pub bounds: Rect<f32>,
 }
 
 impl Tile {
-    fn new() -> Tile {
+    fn new(bounds: Rect<f32>) -> Tile {
         Tile {
             buffer: None,
             texture: Zero::zero(),
             transform: identity(),
             content_age_of_pending_buffer: None,
+            bounds: bounds,
         }
     }
 
@@ -189,7 +193,8 @@ impl TileGrid {
                                        current_content_age: ContentAge)
                                        -> Option<BufferRequest> {
         let tile_rect = self.get_rect_for_tile_index(tile_index);
-        let tile = self.tiles.find_or_insert_with(tile_index, |_| Tile::new());
+        let untyped_tile_rect = tile_rect.as_f32().to_untyped();
+        let tile = self.tiles.find_or_insert_with(tile_index, |_| Tile::new(untyped_tile_rect));
         if !tile.should_request_buffer(current_content_age) {
             return None;
         }
@@ -197,7 +202,7 @@ impl TileGrid {
         tile.content_age_of_pending_buffer = Some(current_content_age);
 
         return Some(BufferRequest::new(tile_rect.to_untyped(),
-                                       tile_rect.as_f32().to_untyped(),
+                                       untyped_tile_rect,
                                        current_content_age));
     }
 
