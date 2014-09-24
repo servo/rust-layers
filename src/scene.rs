@@ -22,7 +22,6 @@ use std::rc::Rc;
 pub struct Scene<T> {
     pub root: Option<Rc<Layer<T>>>,
     pub viewport: TypedRect<DevicePixel, f32>,
-    pub background_color: Color,
     pub unused_buffers: Vec<Box<LayerBuffer>>,
 
     /// The scene scale, to allow for zooming and high-resolution painting.
@@ -34,12 +33,6 @@ impl<T> Scene<T> {
         Scene {
             root: None,
             viewport: viewport,
-            background_color: Color {
-                r: 0.38f32,
-                g: 0.36f32,
-                b: 0.36f32,
-                a: 1.0f32
-            },
             unused_buffers: Vec::new(),
             scale: ScaleFactor(1.0),
         }

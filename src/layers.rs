@@ -7,6 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use color::Color;
 use geometry::{DevicePixel, LayerPixel};
 use tiling::{Tile, TileGrid};
 
@@ -56,10 +57,17 @@ pub struct Layer<T> {
 
     /// Whether this layer clips its children to its boundaries.
     pub masks_to_bounds: RefCell<bool>,
+
+    /// The background color for this layer.
+    pub background_color: RefCell<Color>,
 }
 
 impl<T> Layer<T> {
-    pub fn new(bounds: TypedRect<LayerPixel, f32>, tile_size: uint, data: T) -> Layer<T> {
+    pub fn new(bounds: TypedRect<LayerPixel, f32>,
+               tile_size: uint,
+               background_color: Color,
+               data: T)
+               -> Layer<T> {
         Layer {
             children: RefCell::new(vec!()),
             transform: RefCell::new(identity()),
@@ -70,6 +78,7 @@ impl<T> Layer<T> {
             content_age: RefCell::new(ContentAge::new()),
             masks_to_bounds: RefCell::new(false),
             content_offset: RefCell::new(Zero::zero()),
+            background_color: RefCell::new(background_color),
         }
     }
 
