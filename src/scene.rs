@@ -11,8 +11,9 @@ use color::Color;
 use geom::matrix::Matrix4;
 use geom::point::Point2D;
 use geom::rect::{Rect, TypedRect};
+use geom::scale_factor::ScaleFactor;
 use geom::size::TypedSize2D;
-use geometry::DevicePixel;
+use geometry::{DevicePixel, LayerPixel};
 use layers::{BufferRequest, Layer, LayerBuffer};
 use std::mem;
 use std::num::Zero;
@@ -25,7 +26,7 @@ pub struct Scene<T> {
     pub unused_buffers: Vec<Box<LayerBuffer>>,
 
     /// The scene scale, to allow for zooming and high-resolution painting.
-    pub scale: f32,
+    pub scale: ScaleFactor<LayerPixel, DevicePixel, f32>,
 }
 
 impl<T> Scene<T> {
@@ -40,7 +41,7 @@ impl<T> Scene<T> {
                 a: 1.0f32
             },
             unused_buffers: Vec::new(),
-            scale: 1.,
+            scale: ScaleFactor(1.0),
         }
     }
 
@@ -48,9 +49,8 @@ impl<T> Scene<T> {
                                          layer: Rc<Layer<T>>,
                                          layers_and_requests: &mut Vec<(Rc<Layer<T>>,
                                                                         Vec<BufferRequest>)>,
-                                         rect_in_window: TypedRect<DevicePixel, f32>) {
-        let content_offset = *layer.content_offset.borrow() * self.scale;
-        let content_offset = Point2D::from_untyped(&content_offset);
+                                         rect_in_window: TypedRect<LayerPixel, f32>) {
+        let content_offset = layer.content_offset.borrow();
 
         // The rectangle passed in is in the coordinate system of our parent, so we
         // need to intersect with our boundaries and convert it to our coordinate system.
@@ -66,7 +66,7 @@ impl<T> Scene<T> {
                 // to make the child_rect appear in coordinates local to it.
                 intersected_rect.origin = intersected_rect.origin.sub(&layer_bounds.origin);
 
-                let requests = layer.get_buffer_requests(intersected_rect);
+                let requests = layer.get_buffer_requests(intersected_rect, self.scale);
                 if !requests.is_empty() {
                     layers_and_requests.push((layer.clone(), requests));
                 }
@@ -91,7 +91,10 @@ impl<T> Scene<T> {
             None => return,
         };
 
-        self.get_buffer_requests_for_layer(root_layer.clone(), requests, window_rect);
+        let scale = self.scale; // Necessary to avoid a double borrow.
+        self.get_buffer_requests_for_layer(root_layer.clone(),
+                                           requests,
+                                           window_rect / scale);
     }
 
     pub fn collect_unused_buffers(&mut self) -> Vec<Box<LayerBuffer>> {
@@ -117,7 +120,9 @@ impl<T> Scene<T> {
 
     pub fn set_root_layer_size(&self, new_size: TypedSize2D<DevicePixel, f32>) {
         match self.root {
-            Some(ref root_layer) => *root_layer.bounds.borrow_mut() = Rect(Zero::zero(), new_size),
+            Some(ref root_layer) => {
+                *root_layer.bounds.borrow_mut() = Rect(Zero::zero(), new_size / self.scale);
+            },
             None => {},
         }
     }

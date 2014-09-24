@@ -442,7 +442,7 @@ impl<T> Render for layers::Layer<T> {
         let bounds = self.bounds.borrow().to_untyped();
         let cumulative_transform = transform.translate(bounds.origin.x, bounds.origin.y, 0.0);
         let tile_transform = cumulative_transform.mul(&*self.transform.borrow());
-        let content_offset = *self.content_offset.borrow();
+        let content_offset = self.content_offset.borrow().to_untyped();
 
         self.create_textures(&render_context.compositing_context);
         self.do_for_all_tiles(|tile: &Tile| {
@@ -499,7 +499,7 @@ impl Render for Tile {
         }
 
         let bounds = match self.bounds {
-            Some(ref bounds) => bounds.translate(&content_offset),
+            Some(ref bounds) => bounds.to_untyped().translate(&content_offset),
             None => return,
         };
 
@@ -541,7 +541,7 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
     clear(COLOR_BUFFER_BIT);
 
     // Set up the initial modelview matrix.
-    let transform = identity().scale(scene.scale, scene.scale, 1.0);
+    let transform = identity().scale(scene.scale.get(), scene.scale.get(), 1.0);
 
     // Render the root layer.
     root_layer.render(render_context, transform, scene.viewport.size.to_untyped(), None,
