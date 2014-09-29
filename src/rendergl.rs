@@ -17,6 +17,8 @@ use tiling::Tile;
 use platform::surface::NativeCompositingGraphicsContext;
 
 use geom::matrix::{Matrix4, identity, ortho};
+use geom::point::Point2D;
+use geom::rect::Rect;
 use geom::size::Size2D;
 use libc::c_int;
 use opengles::gl2::{ARRAY_BUFFER, BLEND, COLOR_BUFFER_BIT, COMPILE_STATUS, FRAGMENT_SHADER};
@@ -169,12 +171,20 @@ impl TextureProgram {
                                     transform: &Matrix4<f32>,
                                     projection_matrix: &Matrix4<f32>,
                                     texture_space_transform: &Matrix4<f32>,
-                                    buffers: &Buffers) {
+                                    buffers: &Buffers,
+                                    unit_rect: Rect<f32>) {
         uniform_1i(self.sampler_uniform, 0);
         uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array());
         uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array());
 
+        let new_coords: [f32, ..8] = [
+            unit_rect.min_x(), unit_rect.min_y(),
+            unit_rect.min_x(), unit_rect.max_y(),
+            unit_rect.max_x(), unit_rect.min_y(),
+            unit_rect.max_x(), unit_rect.max_y(),
+        ];
         bind_buffer(ARRAY_BUFFER, buffers.textured_quad_vertex_buffer);
+        buffer_data(ARRAY_BUFFER, new_coords, STATIC_DRAW);
         vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
 
         uniform_matrix_4fv(self.texture_space_transform_uniform,
@@ -313,7 +323,8 @@ impl RenderContext {
 pub fn bind_and_render_quad(render_context: RenderContext,
                             texture: &Texture,
                             transform: &Matrix4<f32>,
-                            scene_size: Size2D<f32>) {
+                            scene_size: Size2D<f32>,
+                            unit_rect: Rect<f32>) {
     let mut texture_coordinates_need_to_be_scaled_by_size = false;
     let program = match texture.target {
         TextureTarget2D => render_context.texture_2d_program,
@@ -365,8 +376,8 @@ pub fn bind_and_render_quad(render_context: RenderContext,
     program.bind_uniforms_and_attributes(transform,
                                          &projection_matrix,
                                          &texture_transform,
-                                         &render_context.buffers);
-
+                                         &render_context.buffers,
+                                         unit_rect);
 
     // Draw!
     draw_arrays(TRIANGLE_STRIP, 0, 4);
@@ -393,27 +404,49 @@ pub fn bind_and_render_quad_lines(render_context: RenderContext,
     solid_line_program.disable_attribute_arrays();
 }
 
-// Layer rendering
+fn map_clip_to_unit_rectangle(rect: Rect<f32>,
+                              clip_rect: Option<Rect<f32>>)
+                              -> Rect<f32> {
+    match clip_rect {
+        Some(clip_rect) => {
+            match clip_rect.intersection(&rect) {
+                Some(intersected_rect) => {
+                    let offset = Point2D(0., 0.) - rect.origin;
+                    intersected_rect.translate(&offset).scale(1. / rect.size.width,
+                                                              1. / rect.size.height)
+                }
+                None => Rect(Point2D(0., 0.), Size2D(0., 0.)),
+            }
+        },
+        None => Rect(Point2D(0., 0.), Size2D(1., 1.))
+    }
+}
 
+// Layer rendering
 pub trait Render {
     fn render(&self,
               render_context: RenderContext,
               transform: Matrix4<f32>,
-              scene_size: Size2D<f32>);
+              scene_size: Size2D<f32>,
+              mut clip_rect: Option<Rect<f32>>,
+              content_offset: Point2D<f32>);
 }
 
 impl<T> Render for layers::Layer<T> {
     fn render(&self,
               render_context: RenderContext,
               transform: Matrix4<f32>,
-              scene_size: Size2D<f32>) {
+              scene_size: Size2D<f32>,
+              mut clip_rect: Option<Rect<f32>>,
+              _: Point2D<f32>) {
         let bounds = self.bounds.borrow().to_untyped();
         let cumulative_transform = transform.translate(bounds.origin.x, bounds.origin.y, 0.0);
         let tile_transform = cumulative_transform.mul(&*self.transform.borrow());
+        let content_offset = *self.content_offset.borrow();
 
         self.create_textures(&render_context.compositing_context);
         self.do_for_all_tiles(|tile: &Tile| {
-            tile.render(render_context, tile_transform, scene_size)
+            tile.render(render_context, tile_transform, scene_size, clip_rect, content_offset)
         });
 
         if render_context.show_debug_borders {
@@ -425,8 +458,30 @@ impl<T> Render for layers::Layer<T> {
                                        LAYER_DEBUG_BORDER_THICKNESS);
         }
 
+        if *self.masks_to_bounds.borrow() {
+            clip_rect = match clip_rect {
+                Some(ref clip_rect) => clip_rect.intersection(&bounds),
+                None => Some(bounds),
+            };
+
+            // We move our clipping rectangle into the coordinate system of child layers
+            // and also account for the content offset, so that we can test based on
+            // the final screen position.
+            clip_rect = match clip_rect {
+                Some(ref clip_rect) => {
+                    let clip_offset = content_offset - bounds.origin;
+                    Some(clip_rect.translate(&clip_offset))
+                },
+                None => return, // Don't render children, because we have an empty clip rect.
+            };
+        }
+
         for child in self.children().iter() {
-            child.render(render_context, cumulative_transform, scene_size)
+            child.render(render_context,
+                         cumulative_transform,
+                         scene_size,
+                         clip_rect,
+                         Point2D(0., 0.))
         }
 
     }
@@ -436,13 +491,29 @@ impl Render for Tile {
     fn render(&self,
               render_context: RenderContext,
               transform: Matrix4<f32>,
-              scene_size: Size2D<f32>) {
+              scene_size: Size2D<f32>,
+              mut clip_rect: Option<Rect<f32>>,
+              content_offset: Point2D<f32>) {
         if self.texture.is_zero() {
             return;
         }
 
+        let bounds = match self.bounds {
+            Some(ref bounds) => bounds.translate(&content_offset),
+            None => return,
+        };
+
+        let quad_unit_rect = map_clip_to_unit_rectangle(bounds, clip_rect);
+        if quad_unit_rect.is_empty() {
+            return;
+        }
+
         let transform = transform.mul(&self.transform);
-        bind_and_render_quad(render_context, &self.texture, &transform, scene_size);
+        bind_and_render_quad(render_context,
+                             &self.texture,
+                             &transform,
+                             scene_size,
+                             quad_unit_rect);
 
         if render_context.show_debug_borders {
             bind_and_render_quad_lines(render_context,
@@ -471,5 +542,5 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
     let transform = identity().scale(scene.scale, scene.scale, 1.0);
 
     // Render the root layer.
-    root_layer.render(render_context, transform, scene.size);
+    root_layer.render(render_context, transform, scene.size, None, Point2D(0., 0.));
 }

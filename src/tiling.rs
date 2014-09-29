@@ -35,6 +35,9 @@ pub struct Tile {
 
     /// The transformation applied to this tiles texture.
     pub transform: Matrix4<f32>,
+
+    /// The tile boundaries in the parent layer coordinates.
+    pub bounds: Option<Rect<f32>>,
 }
 
 impl Tile {
@@ -44,6 +47,7 @@ impl Tile {
             texture: Zero::zero(),
             transform: identity(),
             content_age_of_pending_buffer: None,
+            bounds: None,
         }
     }
 
@@ -88,6 +92,7 @@ impl Tile {
                 let rect = buffer.rect;
                 let transform = identity().translate(rect.origin.x, rect.origin.y, 0.0);
                 self.transform = transform.scale(rect.size.width, rect.size.height, 1.0);
+                self.bounds = Some(rect);
             },
             None => {},
         }

@@ -51,6 +51,9 @@ pub struct Layer<T> {
 
     /// The content offset for this layer in unscaled layer pixels.
     pub content_offset: RefCell<Point2D<f32>>,
+
+    /// Whether this layer clips its children to its boundaries.
+    pub masks_to_bounds: RefCell<bool>,
 }
 
 impl<T> Layer<T> {
@@ -63,6 +66,7 @@ impl<T> Layer<T> {
             extra_data: RefCell::new(data),
             tile_grid: RefCell::new(TileGrid::new(tile_size)),
             content_age: RefCell::new(ContentAge::new()),
+            masks_to_bounds: RefCell::new(false),
             content_offset: RefCell::new(Point2D(0f32, 0f32)),
         }
     }
