@@ -529,7 +529,9 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
                        render_context: RenderContext,
                        scene: &Scene<T>) {
     // Set the viewport.
-    viewport(0 as GLint, 0 as GLint, scene.size.width as GLsizei, scene.size.height as GLsizei);
+    let v = scene.viewport.to_untyped();
+    viewport(v.origin.x as GLint, v.origin.y as GLint,
+             v.size.width as GLsizei, v.size.height as GLsizei);
 
     // Clear the screen.
     clear_color(scene.background_color.r,
@@ -542,5 +544,6 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
     let transform = identity().scale(scene.scale, scene.scale, 1.0);
 
     // Render the root layer.
-    root_layer.render(render_context, transform, scene.size, None, Point2D(0., 0.));
+    root_layer.render(render_context, transform, scene.viewport.size.to_untyped(), None,
+                      Point2D(0., 0.));
 }

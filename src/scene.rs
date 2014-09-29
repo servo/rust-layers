@@ -11,7 +11,7 @@ use color::Color;
 use geom::matrix::Matrix4;
 use geom::point::Point2D;
 use geom::rect::{Rect, TypedRect};
-use geom::size::{Size2D, TypedSize2D};
+use geom::size::TypedSize2D;
 use geometry::DevicePixel;
 use layers::{BufferRequest, Layer, LayerBuffer};
 use std::mem;
@@ -20,7 +20,7 @@ use std::rc::Rc;
 
 pub struct Scene<T> {
     pub root: Option<Rc<Layer<T>>>,
-    pub size: Size2D<f32>,
+    pub viewport: TypedRect<DevicePixel, f32>,
     pub background_color: Color,
     pub unused_buffers: Vec<Box<LayerBuffer>>,
 
@@ -29,10 +29,10 @@ pub struct Scene<T> {
 }
 
 impl<T> Scene<T> {
-    pub fn new(size: Size2D<f32>) -> Scene<T> {
+    pub fn new(viewport: TypedRect<DevicePixel, f32>) -> Scene<T> {
         Scene {
             root: None,
-            size: size,
+            viewport: viewport,
             background_color: Color {
                 r: 0.38f32,
                 g: 0.36f32,
