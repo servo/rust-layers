@@ -7,7 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use geometry::DevicePixel;
+use geometry::{DevicePixel, LayerPixel};
 use layers::{BufferRequest, ContentAge, LayerBuffer};
 use platform::surface::{NativeCompositingGraphicsContext, NativeSurfaceMethods};
 use texturegl::Texture;
@@ -37,7 +37,7 @@ pub struct Tile {
     pub transform: Matrix4<f32>,
 
     /// The tile boundaries in the parent layer coordinates.
-    pub bounds: Option<Rect<f32>>,
+    pub bounds: Option<TypedRect<LayerPixel,f32>>,
 }
 
 impl Tile {
@@ -92,7 +92,7 @@ impl Tile {
                 let rect = buffer.rect;
                 let transform = identity().translate(rect.origin.x, rect.origin.y, 0.0);
                 self.transform = transform.scale(rect.size.width, rect.size.height, 1.0);
-                self.bounds = Some(rect);
+                self.bounds = Some(Rect::from_untyped(&rect));
             },
             None => {},
         }

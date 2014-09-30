@@ -7,16 +7,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use geometry::DevicePixel;
+use geometry::{DevicePixel, LayerPixel};
 use tiling::{Tile, TileGrid};
 
 use geom::matrix::{Matrix4, identity};
+use geom::scale_factor::ScaleFactor;
 use geom::size::{Size2D, TypedSize2D};
-use geom::point::Point2D;
+use geom::point::{Point2D, TypedPoint2D};
 use geom::rect::{Rect, TypedRect};
 use platform::surface::{NativeSurfaceMethods, NativeSurface};
 use platform::surface::{NativeCompositingGraphicsContext, NativePaintingGraphicsContext};
 use std::cell::{RefCell, RefMut};
+use std::num::Zero;
 use std::rc::Rc;
 
 #[deriving(Clone, PartialEq, PartialOrd)]
@@ -44,20 +46,20 @@ pub struct Layer<T> {
     tile_grid: RefCell<TileGrid>,
 
     /// The boundaries of this layer in the coordinate system of the parent layer.
-    pub bounds: RefCell<TypedRect<DevicePixel, f32>>,
+    pub bounds: RefCell<TypedRect<LayerPixel, f32>>,
 
     /// A monotonically increasing counter that keeps track of the current content age.
     pub content_age: RefCell<ContentAge>,
 
     /// The content offset for this layer in unscaled layer pixels.
-    pub content_offset: RefCell<Point2D<f32>>,
+    pub content_offset: RefCell<TypedPoint2D<LayerPixel, f32>>,
 
     /// Whether this layer clips its children to its boundaries.
     pub masks_to_bounds: RefCell<bool>,
 }
 
 impl<T> Layer<T> {
-    pub fn new(bounds: TypedRect<DevicePixel, f32>, tile_size: uint, data: T) -> Layer<T> {
+    pub fn new(bounds: TypedRect<LayerPixel, f32>, tile_size: uint, data: T) -> Layer<T> {
         Layer {
             children: RefCell::new(vec!()),
             transform: RefCell::new(identity()),
@@ -67,7 +69,7 @@ impl<T> Layer<T> {
             tile_grid: RefCell::new(TileGrid::new(tile_size)),
             content_age: RefCell::new(ContentAge::new()),
             masks_to_bounds: RefCell::new(false),
-            content_offset: RefCell::new(Point2D(0f32, 0f32)),
+            content_offset: RefCell::new(Zero::zero()),
         }
     }
 
@@ -79,12 +81,16 @@ impl<T> Layer<T> {
         self.children().push(new_child);
     }
 
-    pub fn get_buffer_requests(&self, rect_in_layer: TypedRect<DevicePixel, f32>) -> Vec<BufferRequest> {
+    pub fn get_buffer_requests(&self,
+                               rect_in_layer: TypedRect<LayerPixel, f32>,
+                               scale: ScaleFactor<LayerPixel, DevicePixel, f32>)
+                               -> Vec<BufferRequest> {
         let mut tile_grid = self.tile_grid.borrow_mut();
-        return tile_grid.get_buffer_requests_in_rect(rect_in_layer, *self.content_age.borrow());
+        return tile_grid.get_buffer_requests_in_rect(rect_in_layer * scale,
+                                                     *self.content_age.borrow());
     }
 
-    pub fn resize(&self, new_size: TypedSize2D<DevicePixel, f32>) {
+    pub fn resize(&self, new_size: TypedSize2D<LayerPixel, f32>) {
         self.bounds.borrow_mut().size = new_size;
     }
 

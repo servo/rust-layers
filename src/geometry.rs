@@ -15,4 +15,11 @@
 #[deriving(Encodable)]
 pub enum DevicePixel {}
 
+/// One pixel in layer coordinate space.
+///
+/// This unit corresponds to a "pixel" in layer coordinate space, which after scaling and
+/// transformation becomes a device pixel.
+#[deriving(Encodable)]
+pub enum LayerPixel {}
+
 
