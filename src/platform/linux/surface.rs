@@ -77,15 +77,12 @@ impl NativeCompositingGraphicsContext {
         unsafe {
             let glx_display = mem::transmute(display);
 
-            // FIXME(mrobison): We would like to specify GLX_ALPHA_SIZE here, and it fixes bugs on certain
-            // drivers, but it seems to break on the dummy X11 configuration used on travis. Until
-            // we can work out that issue, we need to omit GLX_ALPHA_SIZE.
-            // See: https://github.com/servo/servo/issues/3245
             let mut fbconfig_attributes = [
                 GLX_DOUBLEBUFFER, 0,
                 GLX_DRAWABLE_TYPE, GLX_PIXMAP_BIT | GLX_WINDOW_BIT,
                 GLX_BIND_TO_TEXTURE_RGBA_EXT, 1,
                 GLX_RENDER_TYPE, GLX_RGBA_BIT,
+                GLX_ALPHA_SIZE, 8,
                 0
             ];
 
@@ -216,11 +213,14 @@ impl NativeSurfaceMethods for NativeSurface {
             // Create the pixmap.
             let screen = XDefaultScreen(native_context.display);
             let window = XRootWindow(native_context.display, screen);
+            // The X server we use for testing on build machines always returns
+            // visuals that report 24 bit depth. But creating a 32 bit pixmap does work, so
+            // hard code the depth here.
             let pixmap = XCreatePixmap(native_context.display,
                                        window,
                                        size.width as c_uint,
                                        size.height as c_uint,
-                                       (*native_context.visual_info).depth as c_uint);
+                                       32);
             NativeSurface::from_pixmap(pixmap)
         }
     }
