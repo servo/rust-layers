@@ -9,7 +9,7 @@
 
 use color::Color;
 use geom::matrix::Matrix4;
-use geom::point::Point2D;
+use geom::point::{Point2D, TypedPoint2D};
 use geom::rect::{Rect, TypedRect};
 use geom::scale_factor::ScaleFactor;
 use geom::size::TypedSize2D;
@@ -49,23 +49,20 @@ impl<T> Scene<T> {
                                          layer: Rc<Layer<T>>,
                                          layers_and_requests: &mut Vec<(Rc<Layer<T>>,
                                                                         Vec<BufferRequest>)>,
-                                         rect_in_window: TypedRect<LayerPixel, f32>) {
-        let content_offset = layer.content_offset.borrow();
+                                         dirty_rect: TypedRect<LayerPixel, f32>) {
+        // We need to consider the intersection of the dirty rect with the final position
+        // of the layer onscreen. The layer will be translated by the content rect, so we
+        // simply do the reverse to the dirty rect.
+        let layer_bounds = *layer.bounds.borrow();
+        let content_offset = *layer.content_offset.borrow();
+        let dirty_rect_adjusted_for_content_offset = dirty_rect.translate(&-content_offset);
 
-        // The rectangle passed in is in the coordinate system of our parent, so we
-        // need to intersect with our boundaries and convert it to our coordinate system.
-        let layer_bounds = layer.bounds.borrow().clone();
-        let layer_rect = Rect(Point2D(rect_in_window.origin.x - content_offset.x,
-                                      rect_in_window.origin.y - content_offset.y),
-                              rect_in_window.size);
-
-        match layer_rect.intersection(&layer_bounds) {
+        match dirty_rect_adjusted_for_content_offset.intersection(&layer_bounds) {
             Some(mut intersected_rect) => {
-                // Child layers act as if they are rendered at (0,0), so we
-                // subtract the layer's (x,y) coords in its containing page
-                // to make the child_rect appear in coordinates local to it.
-                intersected_rect.origin = intersected_rect.origin.sub(&layer_bounds.origin);
-
+                // Layer::get_buffer_requests_for_layer expects a rectangle in coordinates relative
+                // to this layer's origin, so move our intersected rect into the coordinate space
+                // of this layer.
+                intersected_rect = intersected_rect.translate(&-layer_bounds.origin);
                 let requests = layer.get_buffer_requests(intersected_rect, self.scale);
                 if !requests.is_empty() {
                     layers_and_requests.push((layer.clone(), requests));
@@ -73,13 +70,35 @@ impl<T> Scene<T> {
 
                 self.unused_buffers.push_all_move(layer.collect_unused_buffers());
 
-                for kid in layer.children().iter() {
-                    self.get_buffer_requests_for_layer(kid.clone(),
-                                                       layers_and_requests,
-                                                       rect_in_window);
-                }
             }
             None => {},
+        }
+
+        // If this layer masks its children, we don't need to ask for tiles outside the
+        // boundaries of this layer. We can simply re-use the intersection rectangle
+        // from above, but we must undo the content_offset translation, since children
+        // will re-apply it.
+        let mut dirty_rect_in_children = dirty_rect;
+        if *layer.masks_to_bounds.borrow() {
+            // FIXME: Likely because of rust bug rust-lang/rust#16822, caching the intersected
+            // rect and reusing it causes a crash in rustc. When that bug is resolved this code
+            // should simply reuse a cached version of the intersection.
+            dirty_rect_in_children =
+                match dirty_rect_adjusted_for_content_offset.intersection(&layer_bounds) {
+                    Some(intersected_rect) => intersected_rect.translate(&content_offset),
+                    None => Rect::zero(),
+                };
+        }
+
+        if dirty_rect_in_children.is_empty() {
+            return;
+        }
+
+        dirty_rect_in_children = dirty_rect_in_children.translate(&-layer_bounds.origin);
+        for kid in layer.children().iter() {
+            self.get_buffer_requests_for_layer(kid.clone(),
+                                               layers_and_requests,
+                                               dirty_rect_in_children);
         }
     }
 
