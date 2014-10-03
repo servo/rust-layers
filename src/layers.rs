@@ -87,6 +87,7 @@ impl<T> Layer<T> {
                                -> Vec<BufferRequest> {
         let mut tile_grid = self.tile_grid.borrow_mut();
         return tile_grid.get_buffer_requests_in_rect(rect_in_layer * scale,
+                                                     self.bounds.borrow().size * scale,
                                                      *self.content_age.borrow());
     }
 
