@@ -16,7 +16,7 @@ use geom::length::Length;
 use geom::matrix::{Matrix4, identity};
 use geom::point::Point2D;
 use geom::rect::{Rect, TypedRect};
-use geom::size::Size2D;
+use geom::size::{Size2D, TypedSize2D};
 use std::collections::hashmap::HashMap;
 use std::iter::range_inclusive;
 use std::mem;
@@ -152,12 +152,22 @@ impl TileGrid {
     }
 
     pub fn get_rect_for_tile_index(&self,
-                                   tile_index: Point2D<uint>)
+                                   tile_index: Point2D<uint>,
+                                   current_layer_size: TypedSize2D<DevicePixel, f32>)
                                    -> TypedRect<DevicePixel, uint> {
-        let tile_rect = Rect(Point2D(self.tile_size.get() * tile_index.x,
-                                     self.tile_size.get() * tile_index.y),
-                             Size2D(self.tile_size.get(), self.tile_size.get()));
-        Rect::from_untyped(&tile_rect)
+
+        let origin = Point2D(self.tile_size.get() * tile_index.x,
+                             self.tile_size.get() * tile_index.y);
+
+        // Don't let tiles extend beyond the layer boundaries.
+        let tile_size = self.tile_size.get() as f32;
+        let size = Size2D(tile_size.min(current_layer_size.width.get() - origin.x as f32),
+                          tile_size.min(current_layer_size.height.get() - origin.y as f32));
+
+        // Round up to texture pixels.
+        let size = Size2D(size.width.ceil() as uint, size.height.ceil() as uint);
+
+        Rect::from_untyped(&Rect(origin, size))
     }
 
     pub fn take_unused_buffers(&mut self) -> Vec<Box<LayerBuffer>> {
@@ -173,10 +183,13 @@ impl TileGrid {
         }
     }
 
-    pub fn mark_tiles_outside_of_rect_as_unused(&mut self, rect: TypedRect<DevicePixel, f32>) {
+    pub fn mark_tiles_outside_of_rect_as_unused(&mut self,
+                                                rect: TypedRect<DevicePixel, f32>,
+                                                current_layer_size: TypedSize2D<DevicePixel, f32>) {
         let mut tile_indexes_to_take = Vec::new();
         for tile_index in self.tiles.keys() {
-            if !self.get_rect_for_tile_index(*tile_index).as_f32().intersects(&rect) {
+            let tile_rect = self.get_rect_for_tile_index(*tile_index, current_layer_size);
+            if !tile_rect.as_f32().intersects(&rect) {
                 tile_indexes_to_take.push(tile_index.clone());
             }
         }
@@ -191,9 +204,10 @@ impl TileGrid {
 
     pub fn get_buffer_request_for_tile(&mut self,
                                        tile_index: Point2D<uint>,
+                                       current_layer_size: TypedSize2D<DevicePixel, f32>,
                                        current_content_age: ContentAge)
                                        -> Option<BufferRequest> {
-        let tile_rect = self.get_rect_for_tile_index(tile_index);
+        let tile_rect = self.get_rect_for_tile_index(tile_index, current_layer_size);
         let tile = self.tiles.find_or_insert_with(tile_index, |_| Tile::new());
         if !tile.should_request_buffer(current_content_age) {
             return None;
@@ -208,6 +222,7 @@ impl TileGrid {
 
     pub fn get_buffer_requests_in_rect(&mut self,
                                        rect_in_layer: TypedRect<DevicePixel, f32>,
+                                       current_layer_size: TypedSize2D<DevicePixel, f32>,
                                        current_content_age: ContentAge)
                                        -> Vec<BufferRequest> {
         let mut buffer_requests = Vec::new();
@@ -216,14 +231,16 @@ impl TileGrid {
 
         for x in range_inclusive(top_left_index.x, bottom_right_index.x) {
             for y in range_inclusive(top_left_index.y, bottom_right_index.y) {
-                match self.get_buffer_request_for_tile(Point2D(x, y), current_content_age) {
+                match self.get_buffer_request_for_tile(Point2D(x, y),
+                                                       current_layer_size,
+                                                       current_content_age) {
                     Some(buffer) => buffer_requests.push(buffer),
                     None => {},
                 }
             }
         }
 
-        self.mark_tiles_outside_of_rect_as_unused(rect_in_layer);
+        self.mark_tiles_outside_of_rect_as_unused(rect_in_layer, current_layer_size);
         return buffer_requests;
     }
 
