@@ -450,7 +450,7 @@ impl<T> Render for layers::Layer<T> {
         });
 
         if render_context.show_debug_borders {
-            let quad_transform = transform.scale(bounds.size.width, bounds.size.height, 1.);
+            let quad_transform = tile_transform.scale(bounds.size.width, bounds.size.height, 1.);
             bind_and_render_quad_lines(render_context,
                                        &quad_transform,
                                        scene_size,
