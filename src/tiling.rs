@@ -145,10 +145,13 @@ impl TileGrid {
                                          rect: TypedRect<DevicePixel, f32>)
                                          -> (Point2D<uint>, Point2D<uint>) {
         let rect = rect.to_untyped();
+
+        // NB: Even in the case of an empty rect, the semantics of Rust floating-point-to-integer
+        // casts mean this will corrently round to zero.
         (Point2D((rect.origin.x / self.tile_size.get() as f32) as uint,
                  (rect.origin.y / self.tile_size.get() as f32) as uint),
-         Point2D(((rect.origin.x + rect.size.width) / self.tile_size.get() as f32) as uint,
-                 ((rect.origin.y + rect.size.height) / self.tile_size.get() as f32) as uint))
+         Point2D(((rect.origin.x + rect.size.width - 1.0) / self.tile_size.get() as f32) as uint,
+                 ((rect.origin.y + rect.size.height - 1.0) / self.tile_size.get() as f32) as uint))
     }
 
     pub fn get_rect_for_tile_index(&self,

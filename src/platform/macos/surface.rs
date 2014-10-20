@@ -156,6 +156,7 @@ impl NativeSurface {
             None => HashMap::new(),
             Some(repository) => repository,
         };
+
         repository.insert(id, io_surface.take().unwrap());
         io_surface_repository.replace(Some(repository));
 
