@@ -30,6 +30,8 @@ extern crate collections;
 
 #[cfg(target_os="linux")]
 extern crate xlib;
+#[cfg(target_os="linux")]
+extern crate glx;
 
 #[cfg(target_os="android")]
 extern crate egl;
