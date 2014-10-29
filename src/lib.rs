@@ -27,6 +27,8 @@ extern crate core_foundation;
 extern crate io_surface;
 #[cfg(target_os="macos")]
 extern crate collections;
+#[cfg(target_os="macos")]
+extern crate cgl;
 
 #[cfg(target_os="linux")]
 extern crate xlib;
