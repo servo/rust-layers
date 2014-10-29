@@ -14,15 +14,7 @@ use texturegl::Texture;
 
 use geom::size::Size2D;
 use libc::{c_char, c_int, c_uint, c_void};
-use opengles::glx::{GLXFBConfig, GLXDrawable};
-use opengles::glx::{GLX_ALPHA_SIZE, GLX_BIND_TO_TEXTURE_RGBA_EXT};
-use opengles::glx::{GLX_DRAWABLE_TYPE, GLX_FRONT_EXT, GLX_PIXMAP_BIT};
-use opengles::glx::{GLX_TEXTURE_2D_EXT, GLX_TEXTURE_FORMAT_EXT, GLX_TEXTURE_FORMAT_RGBA_EXT};
-use opengles::glx::{GLX_TEXTURE_TARGET_EXT, glXCreatePixmap, glXDestroyPixmap};
-use opengles::glx::{glXGetProcAddress, glXChooseFBConfig};
-use opengles::glx::{glXGetVisualFromFBConfig};
-use opengles::glx::{GLX_RGBA_BIT, GLX_WINDOW_BIT, GLX_RENDER_TYPE, GLX_DOUBLEBUFFER};
-use opengles::glx::{GLX_VENDOR};
+use glx;
 use opengles::gl2::NO_ERROR;
 use opengles::gl2;
 use std::c_str::CString;
@@ -47,7 +39,7 @@ impl NativePaintingGraphicsContext {
         // visual.
         let (compositor_visual_info, _) =
             NativeCompositingGraphicsContext::compositor_visual_info(metadata.display);
-        
+
         NativePaintingGraphicsContext {
             display: metadata.display,
             visual_info: compositor_visual_info,
@@ -66,34 +58,34 @@ impl NativePaintingGraphicsContext {
 /// FIXME(pcwalton): Mark nonsendable.
 pub struct NativeCompositingGraphicsContext {
     display: *mut Display,
-    framebuffer_configuration: Option<GLXFBConfig>,
+    framebuffer_configuration: Option<glx::types::GLXFBConfig>,
 }
 
 impl NativeCompositingGraphicsContext {
     /// Chooses the compositor visual info using the same algorithm that the compositor uses.
     ///
     /// FIXME(pcwalton): It would be more robust to actually have the compositor pass the visual.
-    fn compositor_visual_info(display: *mut Display) -> (*mut XVisualInfo, Option<GLXFBConfig>) {
+    fn compositor_visual_info(display: *mut Display) -> (*mut XVisualInfo, Option<glx::types::GLXFBConfig>) {
         unsafe {
             let glx_display = mem::transmute(display);
 
             let mut fbconfig_attributes = [
-                GLX_DOUBLEBUFFER, 0,
-                GLX_DRAWABLE_TYPE, GLX_PIXMAP_BIT | GLX_WINDOW_BIT,
-                GLX_BIND_TO_TEXTURE_RGBA_EXT, 1,
-                GLX_RENDER_TYPE, GLX_RGBA_BIT,
-                GLX_ALPHA_SIZE, 8,
+                glx::DOUBLEBUFFER as i32, 0,
+                glx::DRAWABLE_TYPE as i32, glx::PIXMAP_BIT as i32 | glx::WINDOW_BIT as i32,
+                glx::BIND_TO_TEXTURE_RGBA_EXT as i32, 1,
+                glx::RENDER_TYPE as i32, glx::RGBA_BIT as i32,
+                glx::ALPHA_SIZE as i32, 8,
                 0
             ];
 
             let screen = XDefaultScreen(display);
             let mut number_of_configs = 0;
-            let configs = glXChooseFBConfig(glx_display, screen,
-                                            &mut fbconfig_attributes[0], &mut number_of_configs);
+            let configs = glx::ChooseFBConfig(glx_display, screen,
+                                            fbconfig_attributes.as_ptr(), &mut number_of_configs);
             let glXGetClientString: extern "C" fn(*mut Display, c_int) -> *const c_char =
-                mem::transmute(glXGetProcAddress(mem::transmute(&"glXGetClientString\x00".as_bytes()[0])));
+                mem::transmute(glx::GetProcAddress(mem::transmute(&"glXGetClientString\x00".as_bytes()[0])));
             assert!(glXGetClientString as *mut c_void != ptr::mut_null());
-            let glx_cli_vendor_c_str = CString::new(glXGetClientString(display, GLX_VENDOR), false);
+            let glx_cli_vendor_c_str = CString::new(glx::GetClientString(glx_display, glx::VENDOR as i32), false);
             let glx_cli_vendor = match glx_cli_vendor_c_str.as_str() { Some(s) => s,
                                                                        None => fail!("Can't get glx client vendor.") };
             if glx_cli_vendor.to_ascii().eq_ignore_case("NVIDIA".to_ascii()) ||
@@ -103,14 +95,14 @@ impl NativeCompositingGraphicsContext {
                 // with a full set of 32 bits.
                 for i in range(0, number_of_configs as int) {
                     let config = *configs.offset(i);
-                    let visual_info : *mut XVisualInfo = mem::transmute(glXGetVisualFromFBConfig(glx_display, config));
+                    let visual_info : *mut XVisualInfo = mem::transmute(glx::GetVisualFromFBConfig(glx_display, config));
                     if (*visual_info).depth == 32 {
                         return (visual_info, Some(config))
                     }
                 }
             } else if number_of_configs != 0 {
                 let fbconfig = *configs.offset(0);
-                let vi = glXGetVisualFromFBConfig(glx_display, fbconfig);
+                let vi = glx::GetVisualFromFBConfig(glx_display, fbconfig);
                 return (mem::transmute(vi), Some(fbconfig));
             }
             fail!("Unable to locate a GLX FB configuration that supports RGBA.");
@@ -235,31 +227,31 @@ impl NativeSurfaceMethods for NativeSurface {
             //
             // FIXME(pcwalton): RAII for exception safety?
             let mut pixmap_attributes = [
-                GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
-                GLX_TEXTURE_FORMAT_EXT, GLX_TEXTURE_FORMAT_RGBA_EXT,
+                glx::TEXTURE_TARGET_EXT as i32, glx::TEXTURE_2D_EXT as i32,
+                glx::TEXTURE_FORMAT_EXT as i32, glx::TEXTURE_FORMAT_RGBA_EXT as i32,
                 0
             ];
 
             let glx_display = mem::transmute(native_context.display);
-        
-            let glx_pixmap = glXCreatePixmap(glx_display,
+
+            let glx_pixmap = glx::CreatePixmap(glx_display,
                                              native_context.framebuffer_configuration.expect(
                                                  "GLX 1.3 should have a framebuffer_configuration"),
                                              self.pixmap,
-                                             &mut pixmap_attributes[0]);
+                                             pixmap_attributes.as_ptr());
 
-            let glXBindTexImageEXT: extern "C" fn(*mut Display, GLXDrawable, c_int, *mut c_int) =
-                mem::transmute(glXGetProcAddress(mem::transmute(&"glXBindTexImageEXT\x00".as_bytes()[0])));
+            let glXBindTexImageEXT: extern "C" fn(*mut Display, glx::types::GLXDrawable, c_int, *mut c_int) =
+                mem::transmute(glx::GetProcAddress(mem::transmute(&"glXBindTexImageEXT\x00".as_bytes()[0])));
             assert!(glXBindTexImageEXT as *mut c_void != ptr::mut_null());
             let _bound = texture.bind();
             glXBindTexImageEXT(native_context.display,
                                mem::transmute(glx_pixmap),
-                               GLX_FRONT_EXT,
+                               glx::FRONT_EXT  as i32,
                                ptr::mut_null());
             assert_eq!(gl2::get_error(), NO_ERROR);
 
             // FIXME(pcwalton): Recycle these for speed?
-            glXDestroyPixmap(glx_display, glx_pixmap);
+            glx::DestroyPixmap(glx_display, glx_pixmap);
         }
     }
 
