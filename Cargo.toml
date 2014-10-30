@@ -8,10 +8,6 @@ authors = ["The Servo Project Developers"]
 
 git = "https://github.com/servo/rust-geom"
 
-[dependencies.opengles]
-
-git = "https://github.com/servo/rust-opengles"
-
 [dependencies.core_foundation]
 
 git = "https://github.com/servo/rust-core-foundation"
@@ -35,3 +31,6 @@ git = "https://github.com/servo/rust-glx"
 [dependencies.cgl]
 
 git = "https://github.com/servo/rust-cgl"
+
+[dependencies.gleam]
+git = "https://github.com/servo/gleam"

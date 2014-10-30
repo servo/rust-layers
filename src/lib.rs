@@ -18,8 +18,8 @@ extern crate geom;
 extern crate libc;
 #[phase(plugin, link)]
 extern crate log;
-extern crate opengles;
 extern crate serialize;
+extern crate gleam;
 
 #[cfg(target_os="macos")]
 extern crate core_foundation;

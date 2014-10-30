@@ -12,11 +12,16 @@
 use layers::LayerBuffer;
 
 use geom::size::Size2D;
-use opengles::gl2::{BGRA, CLAMP_TO_EDGE, GLenum, GLint, GLsizei, GLuint, LINEAR, NEAREST, RGB, RGBA};
-use opengles::gl2::{TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER, TEXTURE_2D, TEXTURE_RECTANGLE_ARB};
-use opengles::gl2::{TEXTURE_WRAP_S, TEXTURE_WRAP_T, UNSIGNED_BYTE, UNSIGNED_INT_8_8_8_8_REV};
-use opengles::gl2;
+use gleam::gl;
+use gleam::gl::{GLenum, GLint, GLsizei, GLuint};
 use std::num::Zero;
+use libc::c_void;
+
+#[cfg(not(target_os = "android"))]
+use gleam::gl::BGRA;
+
+#[cfg(target_os = "android")]
+use gleam::gl::BGRA_EXT as BGRA;
 
 pub enum Format {
     ARGB32Format,
@@ -44,10 +49,20 @@ pub enum TextureTarget {
 }
 
 impl TextureTarget {
+
+    #[cfg(not(target_os = "android"))]
     fn as_gl_target(self) -> GLenum {
         match self {
-            TextureTarget2D => TEXTURE_2D,
-            TextureTargetRectangle => TEXTURE_RECTANGLE_ARB,
+            TextureTarget2D => gl::TEXTURE_2D,
+            TextureTargetRectangle => gl::TEXTURE_RECTANGLE_ARB,
+        }
+    }
+
+    #[cfg(target_os = "android")]
+    fn as_gl_target(self) -> GLenum {
+        match self {
+            TextureTarget2D => gl::TEXTURE_2D,
+            TextureTargetRectangle => fail!("android doesn't supported rectangle targets"),
         }
     }
 }
@@ -76,7 +91,7 @@ pub struct Texture {
 impl Drop for Texture {
     fn drop(&mut self) {
         if !self.weak {
-            gl2::delete_textures([ self.id ])
+            gl::delete_textures([ self.id ])
         }
     }
 }
@@ -112,7 +127,7 @@ pub struct BoundTexture {
 
 impl Drop for BoundTexture {
     fn drop(&mut self) {
-        gl2::bind_texture(self.target.as_gl_target(), 0)
+        gl::bind_texture(self.target.as_gl_target(), 0);
     }
 }
 
@@ -120,7 +135,7 @@ impl Texture {
     /// Creates a new blank texture.
     pub fn new(target: TextureTarget, size: Size2D<uint>) -> Texture {
         let this = Texture {
-            id: gl2::gen_textures(1)[0],
+            id: gl::gen_textures(1)[0],
             target: target,
             weak: false,
             flip: NoFlip,
@@ -173,59 +188,29 @@ impl Texture {
     /// Sets default parameters for this texture.
     fn set_default_params(&self) {
         let _bound_texture = self.bind();
-        gl2::tex_parameter_i(self.target.as_gl_target(), TEXTURE_MAG_FILTER, LINEAR as GLint);
-        gl2::tex_parameter_i(self.target.as_gl_target(), TEXTURE_MIN_FILTER, LINEAR as GLint);
-        gl2::tex_parameter_i(self.target.as_gl_target(), TEXTURE_WRAP_S, CLAMP_TO_EDGE as GLint);
-        gl2::tex_parameter_i(self.target.as_gl_target(), TEXTURE_WRAP_T, CLAMP_TO_EDGE as GLint);
+        gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_MAG_FILTER, gl::LINEAR as GLint);
+        gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_MIN_FILTER, gl::LINEAR as GLint);
+        gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as GLint);
+        gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as GLint);
     }
 
     /// Sets the filter mode for this texture.
     pub fn set_filter_mode(&self, mode: FilterMode) {
         let _bound_texture = self.bind();
         let gl_mode = match mode {
-            Nearest => NEAREST,
-            Linear => LINEAR,
+            Nearest => gl::NEAREST,
+            Linear => gl::LINEAR,
         } as GLint;
-        gl2::tex_parameter_i(self.target.as_gl_target(), TEXTURE_MAG_FILTER, gl_mode);
-        gl2::tex_parameter_i(self.target.as_gl_target(), TEXTURE_MIN_FILTER, gl_mode);
+        gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_MAG_FILTER, gl_mode);
+        gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_MIN_FILTER, gl_mode);
     }
 
     /// Binds the texture to the current context.
     pub fn bind(&self) -> BoundTexture {
-        gl2::bind_texture(self.target.as_gl_target(), self.id);
+        gl::bind_texture(self.target.as_gl_target(), self.id);
 
         BoundTexture {
             target: self.target,
-        }
-    }
-
-    /// Uploads raw image data to the texture.
-    pub fn upload_image<'a>(&self, texture_image_data: &TextureImageData<'a>) {
-        let _bound_texture = self.bind();
-
-        match texture_image_data.format {
-            RGB24Format => {
-                gl2::tex_image_2d(self.target.as_gl_target(),
-                                  0,
-                                  RGB as GLint,
-                                  texture_image_data.size.width as GLsizei,
-                                  texture_image_data.size.height as GLsizei,
-                                  0,
-                                  RGB,
-                                  UNSIGNED_BYTE,
-                                  Some(texture_image_data.data))
-            }
-            ARGB32Format => {
-                gl2::tex_image_2d(self.target.as_gl_target(),
-                                  0,
-                                  RGBA as GLint,
-                                  texture_image_data.size.width as GLsizei,
-                                  texture_image_data.size.height as GLsizei,
-                                  0,
-                                  BGRA,
-                                  UNSIGNED_INT_8_8_8_8_REV,
-                                  Some(texture_image_data.data))
-            }
         }
     }
 }

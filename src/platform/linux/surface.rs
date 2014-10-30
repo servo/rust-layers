@@ -15,8 +15,7 @@ use texturegl::Texture;
 use geom::size::Size2D;
 use libc::{c_char, c_int, c_uint, c_void};
 use glx;
-use opengles::gl2::NO_ERROR;
-use opengles::gl2;
+use gleam::gl;
 use std::c_str::CString;
 use std::mem;
 use std::ptr;
@@ -248,7 +247,7 @@ impl NativeSurfaceMethods for NativeSurface {
                                mem::transmute(glx_pixmap),
                                glx::FRONT_EXT  as i32,
                                ptr::mut_null());
-            assert_eq!(gl2::get_error(), NO_ERROR);
+            assert_eq!(gl::GetError(), gl::NO_ERROR);
 
             // FIXME(pcwalton): Recycle these for speed?
             glx::DestroyPixmap(glx_display, glx_pixmap);
