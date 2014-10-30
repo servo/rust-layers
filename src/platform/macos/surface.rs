@@ -23,7 +23,7 @@ use io_surface;
 use cgl::{CGLChoosePixelFormat, CGLDescribePixelFormat, CGLPixelFormatAttribute};
 use cgl::{CGLPixelFormatObj, CORE_BOOLEAN_ATTRIBUTES, CORE_INTEGER_ATTRIBUTES};
 use cgl::{kCGLNoError};
-use opengles::gl2::GLint;
+use gleam::gl::GLint;
 use std::collections::hashmap::HashMap;
 use std::ptr;
 use std::vec::Vec;

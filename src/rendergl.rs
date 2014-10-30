@@ -21,17 +21,8 @@ use geom::point::Point2D;
 use geom::rect::Rect;
 use geom::size::Size2D;
 use libc::c_int;
-use opengles::gl2::{ARRAY_BUFFER, BLEND, COLOR_BUFFER_BIT, COMPILE_STATUS, FRAGMENT_SHADER};
-use opengles::gl2::{LINK_STATUS, ONE_MINUS_SRC_ALPHA};
-use opengles::gl2::{SRC_ALPHA, STATIC_DRAW, TEXTURE_2D, TEXTURE0};
-use opengles::gl2::{LINE_STRIP, TRIANGLE_STRIP, VERTEX_SHADER, GLenum, GLfloat, GLint, GLsizei};
-use opengles::gl2::{GLuint, active_texture, attach_shader, bind_buffer, bind_texture, blend_func};
-use opengles::gl2::{buffer_data, create_program, clear, clear_color, compile_shader};
-use opengles::gl2::{create_shader, draw_arrays, enable, enable_vertex_attrib_array, disable_vertex_attrib_array};
-use opengles::gl2::{gen_buffers, get_attrib_location, get_program_info_log, get_program_iv};
-use opengles::gl2::{get_shader_info_log, get_shader_iv, get_uniform_location, line_width};
-use opengles::gl2::{link_program, shader_source, uniform_1i, uniform_4f};
-use opengles::gl2::{uniform_matrix_4fv, use_program, vertex_attrib_pointer_f32, viewport};
+use gleam::gl;
+use gleam::gl::{GLenum, GLfloat, GLint, GLsizei, GLuint};
 use std::fmt;
 use std::num::Zero;
 use std::rc::Rc;
@@ -106,12 +97,12 @@ struct ShaderProgram {
 
 impl ShaderProgram {
     pub fn new(vertex_shader_source: &str, fragment_shader_source: &str) -> ShaderProgram {
-        let id = create_program();
-        attach_shader(id, ShaderProgram::compile_shader(fragment_shader_source, FRAGMENT_SHADER));
-        attach_shader(id, ShaderProgram::compile_shader(vertex_shader_source, VERTEX_SHADER));
-        link_program(id);
-        if get_program_iv(id, LINK_STATUS) == (0 as GLint) {
-            fail!("Failed to compile shader program: {:s}", get_program_info_log(id));
+        let id = gl::create_program();
+        gl::attach_shader(id, ShaderProgram::compile_shader(fragment_shader_source, gl::FRAGMENT_SHADER));
+        gl::attach_shader(id, ShaderProgram::compile_shader(vertex_shader_source, gl::VERTEX_SHADER));
+        gl::link_program(id);
+        if gl::get_program_iv(id, gl::LINK_STATUS) == (0 as GLint) {
+            fail!("Failed to compile shader program: {:s}", gl::get_program_info_log(id));
         }
 
         ShaderProgram {
@@ -120,22 +111,22 @@ impl ShaderProgram {
     }
 
     pub fn compile_shader(source_string: &str, shader_type: GLenum) -> GLuint {
-        let id = create_shader(shader_type);
-        shader_source(id, [ source_string.as_bytes() ]);
-        compile_shader(id);
-        if get_shader_iv(id, COMPILE_STATUS) == (0 as GLint) {
-            fail!("Failed to compile shader: {:s}", get_shader_info_log(id));
+        let id = gl::create_shader(shader_type);
+        gl::shader_source(id, [ source_string.as_bytes() ]);
+        gl::compile_shader(id);
+        if gl::get_shader_iv(id, gl::COMPILE_STATUS) == (0 as GLint) {
+            fail!("Failed to compile shader: {:s}", gl::get_shader_info_log(id));
         }
 
         return id;
     }
 
     pub fn get_attribute_location(&self, name: &str) -> GLint {
-        get_attrib_location(self.id, name)
+        gl::get_attrib_location(self.id, name)
     }
 
     pub fn get_uniform_location(&self, name: &str) -> GLint {
-        get_uniform_location(self.id, name)
+        gl::get_uniform_location(self.id, name)
     }
 }
 
@@ -173,9 +164,9 @@ impl TextureProgram {
                                     texture_space_transform: &Matrix4<f32>,
                                     buffers: &Buffers,
                                     unit_rect: Rect<f32>) {
-        uniform_1i(self.sampler_uniform, 0);
-        uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array());
-        uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array());
+        gl::uniform_1i(self.sampler_uniform, 0);
+        gl::uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array());
+        gl::uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array());
 
         let new_coords: [f32, ..8] = [
             unit_rect.min_x(), unit_rect.min_y(),
@@ -183,21 +174,21 @@ impl TextureProgram {
             unit_rect.max_x(), unit_rect.min_y(),
             unit_rect.max_x(), unit_rect.max_y(),
         ];
-        bind_buffer(ARRAY_BUFFER, buffers.textured_quad_vertex_buffer);
-        buffer_data(ARRAY_BUFFER, new_coords, STATIC_DRAW);
-        vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
+        gl::bind_buffer(gl::ARRAY_BUFFER, buffers.textured_quad_vertex_buffer);
+        gl::buffer_data(gl::ARRAY_BUFFER, new_coords, gl::STATIC_DRAW);
+        gl::vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
 
-        uniform_matrix_4fv(self.texture_space_transform_uniform,
+        gl::uniform_matrix_4fv(self.texture_space_transform_uniform,
                            false,
                            texture_space_transform.to_array());
     }
 
     fn enable_attribute_arrays(&self) {
-        enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
+        gl::enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
     }
 
     fn disable_attribute_arrays(&self) {
-        disable_vertex_attrib_array(self.vertex_position_attr as GLuint);
+        gl::disable_vertex_attrib_array(self.vertex_position_attr as GLuint);
     }
 
     fn create_2d_program() -> TextureProgram {
@@ -206,8 +197,7 @@ impl TextureProgram {
 
     #[cfg(not(target_os="android"))]
     fn create_rectangle_program_if_necessary() -> Option<TextureProgram> {
-        use opengles::gl2::TEXTURE_RECTANGLE_ARB;
-        enable(TEXTURE_RECTANGLE_ARB);
+        gl::enable(gl::TEXTURE_RECTANGLE_ARB);
         Some(TextureProgram::new("texture2DRect", "sampler2DRect"))
     }
 
@@ -243,16 +233,16 @@ impl SolidColorProgram {
                                            transform: &Matrix4<f32>,
                                            projection_matrix: &Matrix4<f32>,
                                            color: Color) {
-        uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array());
-        uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array());
-        uniform_4f(self.color_uniform,
+        gl::uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array());
+        gl::uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array());
+        gl::uniform_4f(self.color_uniform,
                    color.r as GLfloat,
                    color.g as GLfloat,
                    color.b as GLfloat,
                    color.a as GLfloat);
 
         let texture_transform: Matrix4<f32> = identity();
-        uniform_matrix_4fv(self.texture_space_transform_uniform,
+        gl::uniform_matrix_4fv(self.texture_space_transform_uniform,
                            false,
                            texture_transform.to_array());
     }
@@ -263,8 +253,8 @@ impl SolidColorProgram {
                                               buffers: &Buffers,
                                               color: Color) {
         self.bind_uniforms_and_attributes_common(transform, projection_matrix, color);
-        bind_buffer(ARRAY_BUFFER, buffers.line_quad_vertex_buffer);
-        vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
+        gl::bind_buffer(gl::ARRAY_BUFFER, buffers.line_quad_vertex_buffer);
+        gl::vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
     }
 
     fn bind_uniforms_and_attributes_for_quad(&self,
@@ -281,17 +271,17 @@ impl SolidColorProgram {
             unit_rect.origin.x + unit_rect.size.width, unit_rect.origin.y,
             unit_rect.origin.x + unit_rect.size.width, unit_rect.origin.y + unit_rect.size.height,
         ];
-        bind_buffer(ARRAY_BUFFER, buffers.textured_quad_vertex_buffer);
-        buffer_data(ARRAY_BUFFER, new_coords, STATIC_DRAW);
-        vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
+        gl::bind_buffer(gl::ARRAY_BUFFER, buffers.textured_quad_vertex_buffer);
+        gl::buffer_data(gl::ARRAY_BUFFER, new_coords, gl::STATIC_DRAW);
+        gl::vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
     }
 
     fn enable_attribute_arrays(&self) {
-        enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
+        gl::enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
     }
 
     fn disable_attribute_arrays(&self) {
-        disable_vertex_attrib_array(self.vertex_position_attr as GLuint);
+        gl::disable_vertex_attrib_array(self.vertex_position_attr as GLuint);
     }
 }
 
@@ -311,9 +301,9 @@ pub struct RenderContext {
 impl RenderContext {
     pub fn new(compositing_context: NativeCompositingGraphicsContext,
                show_debug_borders: bool) -> RenderContext {
-        enable(TEXTURE_2D);
-        enable(BLEND);
-        blend_func(SRC_ALPHA, ONE_MINUS_SRC_ALPHA);
+        gl::enable(gl::TEXTURE_2D);
+        gl::enable(gl::BLEND);
+        gl::blend_func(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
 
         let texture_2d_program = TextureProgram::create_2d_program();
         let solid_color_program = SolidColorProgram::new();
@@ -330,13 +320,13 @@ impl RenderContext {
     }
 
     fn init_buffers() -> Buffers {
-        let textured_quad_vertex_buffer = gen_buffers(1)[0];
-        bind_buffer(ARRAY_BUFFER, textured_quad_vertex_buffer);
-        buffer_data(ARRAY_BUFFER, TEXTURED_QUAD_VERTICES, STATIC_DRAW);
+        let textured_quad_vertex_buffer = gl::gen_buffers(1)[0];
+        gl::bind_buffer(gl::ARRAY_BUFFER, textured_quad_vertex_buffer);
+        gl::buffer_data(gl::ARRAY_BUFFER, TEXTURED_QUAD_VERTICES, gl::STATIC_DRAW);
 
-        let line_quad_vertex_buffer = gen_buffers(1)[0];
-        bind_buffer(ARRAY_BUFFER, line_quad_vertex_buffer);
-        buffer_data(ARRAY_BUFFER, LINE_QUAD_VERTICES, STATIC_DRAW);
+        let line_quad_vertex_buffer = gl::gen_buffers(1)[0];
+        gl::bind_buffer(gl::ARRAY_BUFFER, line_quad_vertex_buffer);
+        gl::buffer_data(gl::ARRAY_BUFFER, LINE_QUAD_VERTICES, gl::STATIC_DRAW);
 
         Buffers {
             textured_quad_vertex_buffer: textured_quad_vertex_buffer,
@@ -363,8 +353,8 @@ pub fn bind_and_render_quad(render_context: RenderContext,
     };
     program.enable_attribute_arrays();
 
-    use_program(program.program.id);
-    active_texture(TEXTURE0);
+    gl::use_program(program.program.id);
+    gl::active_texture(gl::TEXTURE0);
 
     // FIXME: This should technically check that the transform
     // matrix only contains scale in these components.
@@ -405,8 +395,8 @@ pub fn bind_and_render_quad(render_context: RenderContext,
                                          unit_rect);
 
     // Draw!
-    draw_arrays(TRIANGLE_STRIP, 0, 4);
-    bind_texture(TEXTURE_2D, 0);
+    gl::draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
+    gl::bind_texture(gl::TEXTURE_2D, 0);
 
     program.disable_attribute_arrays()
 }
@@ -418,14 +408,14 @@ pub fn bind_and_render_quad_lines(render_context: RenderContext,
                                   line_thickness: uint) {
     let solid_color_program = render_context.solid_color_program;
     solid_color_program.enable_attribute_arrays();
-    use_program(solid_color_program.program.id);
+    gl::use_program(solid_color_program.program.id);
     let projection_matrix = ortho(0.0, scene_size.width, scene_size.height, 0.0, -10.0, 10.0);
     solid_color_program.bind_uniforms_and_attributes_for_lines(transform,
                                                                &projection_matrix,
                                                                &render_context.buffers,
                                                                color);
-    line_width(line_thickness as GLfloat);
-    draw_arrays(LINE_STRIP, 0, 5);
+    gl::line_width(line_thickness as GLfloat);
+    gl::draw_arrays(gl::LINE_STRIP, 0, 5);
     solid_color_program.disable_attribute_arrays();
 }
 
@@ -436,14 +426,14 @@ pub fn bind_and_render_solid_quad(render_context: RenderContext,
                                   unit_rect: Rect<f32>) {
     let solid_color_program = render_context.solid_color_program;
     solid_color_program.enable_attribute_arrays();
-    use_program(solid_color_program.program.id);
+    gl::use_program(solid_color_program.program.id);
     let projection_matrix = ortho(0.0, scene_size.width, scene_size.height, 0.0, -10.0, 10.0);
     solid_color_program.bind_uniforms_and_attributes_for_quad(transform,
                                                               &projection_matrix,
                                                               &render_context.buffers,
                                                               color,
                                                               unit_rect);
-    draw_arrays(TRIANGLE_STRIP, 0, 4);
+    gl::draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
     solid_color_program.disable_attribute_arrays();
 }
 
@@ -586,8 +576,8 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
                        scene: &Scene<T>) {
     // Set the viewport.
     let v = scene.viewport.to_untyped();
-    viewport(v.origin.x as GLint, v.origin.y as GLint,
-             v.size.width as GLsizei, v.size.height as GLsizei);
+    gl::viewport(v.origin.x as GLint, v.origin.y as GLint,
+                 v.size.width as GLsizei, v.size.height as GLsizei);
 
     // Set up the initial modelview matrix.
     let transform = identity().scale(scene.scale.get(), scene.scale.get(), 1.0);
