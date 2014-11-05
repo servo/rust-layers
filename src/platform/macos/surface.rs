@@ -24,7 +24,7 @@ use cgl::{CGLChoosePixelFormat, CGLDescribePixelFormat, CGLPixelFormatAttribute}
 use cgl::{CGLPixelFormatObj, CORE_BOOLEAN_ATTRIBUTES, CORE_INTEGER_ATTRIBUTES};
 use cgl::{kCGLNoError};
 use gleam::gl::GLint;
-use std::collections::hashmap::HashMap;
+use std::collections::HashMap;
 use std::ptr;
 use std::vec::Vec;
 
@@ -237,4 +237,3 @@ impl NativeSurfaceMethods for NativeSurface {
         self.will_leak = false
     }
 }
-
