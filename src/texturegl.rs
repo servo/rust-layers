@@ -62,7 +62,7 @@ impl TextureTarget {
     fn as_gl_target(self) -> GLenum {
         match self {
             TextureTarget2D => gl::TEXTURE_2D,
-            TextureTargetRectangle => fail!("android doesn't supported rectangle targets"),
+            TextureTargetRectangle => panic!("android doesn't supported rectangle targets"),
         }
     }
 }
@@ -100,7 +100,7 @@ impl Drop for Texture {
 // for Zero, but we should never call it on textures.
 impl Add<Texture, Texture> for Texture {
     fn add(&self, _: &Texture) -> Texture {
-        fail!("Textures cannot be added.");
+        panic!("Textures cannot be added.");
     }
 }
 

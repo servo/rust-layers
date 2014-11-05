@@ -24,7 +24,7 @@ use cgl::{CGLChoosePixelFormat, CGLDescribePixelFormat, CGLPixelFormatAttribute}
 use cgl::{CGLPixelFormatObj, CORE_BOOLEAN_ATTRIBUTES, CORE_INTEGER_ATTRIBUTES};
 use cgl::{kCGLNoError};
 use gleam::gl::GLint;
-use std::collections::hashmap::HashMap;
+use std::collections::HashMap;
 use std::ptr;
 use std::vec::Vec;
 
@@ -61,11 +61,11 @@ impl NativeGraphicsMetadata {
                 attributes.push(value as CGLPixelFormatAttribute);
             }
             attributes.push(0);
-            let mut pixel_format = ptr::mut_null();
+            let mut pixel_format = ptr::null_mut();
             let mut count = 0;
             assert!(CGLChoosePixelFormat(attributes.as_ptr(), &mut pixel_format, &mut count) ==
                     kCGLNoError);
-            assert!(pixel_format != ptr::mut_null());
+            assert!(pixel_format != ptr::null_mut());
             assert!(count > 0);
 
             NativeGraphicsMetadata {
@@ -237,4 +237,3 @@ impl NativeSurfaceMethods for NativeSurface {
         self.will_leak = false
     }
 }
-

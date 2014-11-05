@@ -10,7 +10,7 @@
 #![crate_name = "layers"]
 #![crate_type = "rlib"]
 
-#![feature(managed_boxes, phase)]
+#![feature(phase)]
 
 #![allow(raw_pointer_deriving)]
 

@@ -102,7 +102,7 @@ impl ShaderProgram {
         gl::attach_shader(id, ShaderProgram::compile_shader(vertex_shader_source, gl::VERTEX_SHADER));
         gl::link_program(id);
         if gl::get_program_iv(id, gl::LINK_STATUS) == (0 as GLint) {
-            fail!("Failed to compile shader program: {:s}", gl::get_program_info_log(id));
+            panic!("Failed to compile shader program: {:s}", gl::get_program_info_log(id));
         }
 
         ShaderProgram {
@@ -115,7 +115,7 @@ impl ShaderProgram {
         gl::shader_source(id, [ source_string.as_bytes() ]);
         gl::compile_shader(id);
         if gl::get_shader_iv(id, gl::COMPILE_STATUS) == (0 as GLint) {
-            fail!("Failed to compile shader: {:s}", gl::get_shader_info_log(id));
+            panic!("Failed to compile shader: {:s}", gl::get_shader_info_log(id));
         }
 
         return id;
@@ -348,7 +348,7 @@ pub fn bind_and_render_quad(render_context: RenderContext,
                 texture_coordinates_need_to_be_scaled_by_size = true;
                 program
             }
-            None => fail!("There is no shader program for texture rectangle"),
+            None => panic!("There is no shader program for texture rectangle"),
         },
     };
     program.enable_attribute_arrays();
