@@ -61,7 +61,7 @@ pub struct NativeSurface {
 impl NativeSurface {
     pub fn from_image_khr(image_khr: EGLImageKHR) -> NativeSurface {
         let mut _image: Option<EGLImageKHR> = None;
-        if image_khr != ptr::mut_null() {
+        if image_khr != ptr::null_mut() {
             _image = Some(image_khr);
         }
         NativeSurface {

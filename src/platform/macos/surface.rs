@@ -61,11 +61,11 @@ impl NativeGraphicsMetadata {
                 attributes.push(value as CGLPixelFormatAttribute);
             }
             attributes.push(0);
-            let mut pixel_format = ptr::mut_null();
+            let mut pixel_format = ptr::null_mut();
             let mut count = 0;
             assert!(CGLChoosePixelFormat(attributes.as_ptr(), &mut pixel_format, &mut count) ==
                     kCGLNoError);
-            assert!(pixel_format != ptr::mut_null());
+            assert!(pixel_format != ptr::null_mut());
             assert!(count > 0);
 
             NativeGraphicsMetadata {

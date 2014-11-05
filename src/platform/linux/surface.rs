@@ -83,10 +83,10 @@ impl NativeCompositingGraphicsContext {
                                             fbconfig_attributes.as_ptr(), &mut number_of_configs);
             let glXGetClientString: extern "C" fn(*mut Display, c_int) -> *const c_char =
                 mem::transmute(glx::GetProcAddress(mem::transmute(&"glXGetClientString\x00".as_bytes()[0])));
-            assert!(glXGetClientString as *mut c_void != ptr::mut_null());
+            assert!(glXGetClientString as *mut c_void != ptr::null_mut());
             let glx_cli_vendor_c_str = CString::new(glx::GetClientString(glx_display, glx::VENDOR as i32), false);
             let glx_cli_vendor = match glx_cli_vendor_c_str.as_str() { Some(s) => s,
-                                                                       None => fail!("Can't get glx client vendor.") };
+                                                                       None => panic!("Can't get glx client vendor.") };
             if glx_cli_vendor.to_ascii().eq_ignore_case("NVIDIA".to_ascii()) ||
                glx_cli_vendor.to_ascii().eq_ignore_case("ATI".to_ascii()) {
                 // NVidia (and AMD/ATI) drivers have RGBA configurations that use 24-bit XVisual, not capable of
@@ -104,7 +104,7 @@ impl NativeCompositingGraphicsContext {
                 let vi = glx::GetVisualFromFBConfig(glx_display, fbconfig);
                 return (mem::transmute(vi), Some(fbconfig));
             }
-            fail!("Unable to locate a GLX FB configuration that supports RGBA.");
+            panic!("Unable to locate a GLX FB configuration that supports RGBA.");
         }
     }
 
@@ -137,7 +137,7 @@ impl NativeGraphicsMetadata {
         unsafe {
             let display = XOpenDisplay(descriptor.display.to_c_str().as_mut_ptr());
             if display.is_null() {
-                fail!("XOpenDisplay() failed!");
+                panic!("XOpenDisplay() failed!");
             }
             NativeGraphicsMetadata {
                 display: display,
@@ -182,7 +182,7 @@ pub struct NativeSurface {
 impl Drop for NativeSurface {
     fn drop(&mut self) {
         if self.will_leak {
-            fail!("You should have disposed of the pixmap properly with destroy()! This pixmap \
+            panic!("You should have disposed of the pixmap properly with destroy()! This pixmap \
                    will leak!");
         }
     }
@@ -241,12 +241,12 @@ impl NativeSurfaceMethods for NativeSurface {
 
             let glXBindTexImageEXT: extern "C" fn(*mut Display, glx::types::GLXDrawable, c_int, *mut c_int) =
                 mem::transmute(glx::GetProcAddress(mem::transmute(&"glXBindTexImageEXT\x00".as_bytes()[0])));
-            assert!(glXBindTexImageEXT as *mut c_void != ptr::mut_null());
+            assert!(glXBindTexImageEXT as *mut c_void != ptr::null_mut());
             let _bound = texture.bind();
             glXBindTexImageEXT(native_context.display,
                                mem::transmute(glx_pixmap),
                                glx::FRONT_EXT  as i32,
-                               ptr::mut_null());
+                               ptr::null_mut());
             assert_eq!(gl::GetError(), gl::NO_ERROR);
 
             // FIXME(pcwalton): Recycle these for speed?
@@ -291,7 +291,7 @@ impl NativeSurfaceMethods for NativeSurface {
                                      0);
 
             // Create the X graphics context.
-            let gc = XCreateGC(graphics_context.display, pixmap, 0, ptr::mut_null());
+            let gc = XCreateGC(graphics_context.display, pixmap, 0, ptr::null_mut());
 
             // Draw the image.
             let _ = XPutImage(graphics_context.display,

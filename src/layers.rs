@@ -218,7 +218,7 @@ pub struct LayerBufferSet {
 impl LayerBufferSet {
     /// Notes all buffer surfaces will leak if not destroyed via a call to `destroy`.
     pub fn mark_will_leak(&mut self) {
-        for buffer in self.buffers.mut_iter() {
+        for buffer in self.buffers.iter_mut() {
             buffer.native_surface.mark_will_leak()
         }
     }

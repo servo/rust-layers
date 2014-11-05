@@ -61,7 +61,7 @@ impl<T> Scene<T> {
                     layers_and_requests.push((layer.clone(), requests));
                 }
 
-                self.unused_buffers.push_all_move(layer.collect_unused_buffers());
+                self.unused_buffers.extend(layer.collect_unused_buffers().into_iter());
 
             }
             None => {},

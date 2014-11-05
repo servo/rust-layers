@@ -25,7 +25,7 @@ pub fn convert_rgb32_to_rgb24(buffer: &[u8]) -> Vec<u8> {
                 val
             }
             _ => {
-                fail!()
+                panic!()
             }
         }
     })

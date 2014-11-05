@@ -17,7 +17,8 @@ use geom::matrix::{Matrix4, identity};
 use geom::point::Point2D;
 use geom::rect::{Rect, TypedRect};
 use geom::size::{Size2D, TypedSize2D};
-use std::collections::hashmap::HashMap;
+use std::collections::HashMap;
+use std::collections::hash_map::{Occupied, Vacant};
 use std::iter::range_inclusive;
 use std::mem;
 use std::num::Zero;
@@ -211,7 +212,10 @@ impl TileGrid {
                                        current_content_age: ContentAge)
                                        -> Option<BufferRequest> {
         let tile_rect = self.get_rect_for_tile_index(tile_index, current_layer_size);
-        let tile = self.tiles.find_or_insert_with(tile_index, |_| Tile::new());
+        let tile = match self.tiles.entry(tile_index) {
+            Occupied(occupied) => occupied.into_mut(),
+            Vacant(vacant) => vacant.set(Tile::new()),
+        };
         if !tile.should_request_buffer(current_content_age) {
             return None;
         }
@@ -275,13 +279,13 @@ impl TileGrid {
     pub fn collect_buffers(&mut self) -> Vec<Box<LayerBuffer>> {
         let mut collected_buffers = Vec::new();
 
-        collected_buffers.push_all_move(self.take_unused_buffers());
+        collected_buffers.extend(self.take_unused_buffers().into_iter());
 
         // We need to replace the HashMap since it cannot be used again after move_iter().
         let mut tile_map = HashMap::new();
         mem::swap(&mut tile_map, &mut self.tiles);
 
-        for (_, mut tile) in tile_map.move_iter() {
+        for (_, mut tile) in tile_map.into_iter() {
             match tile.buffer.take() {
                 Some(buffer) => collected_buffers.push(buffer),
                 None => {},
@@ -292,7 +296,7 @@ impl TileGrid {
     }
 
     pub fn create_textures(&mut self, graphics_context: &NativeCompositingGraphicsContext) {
-        for (_, ref mut tile) in self.tiles.mut_iter() {
+        for (_, ref mut tile) in self.tiles.iter_mut() {
             tile.create_texture(graphics_context);
         }
     }
