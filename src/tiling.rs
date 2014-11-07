@@ -266,7 +266,7 @@ impl TileGrid {
             return;
         }
 
-        let replaced_buffer = self.tiles.get_mut(&index).replace_buffer(buffer);
+        let replaced_buffer = self.tiles.get_mut(&index).unwrap().replace_buffer(buffer);
         self.add_unused_buffer(replaced_buffer);
     }
 
