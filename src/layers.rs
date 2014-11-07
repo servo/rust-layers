@@ -14,7 +14,7 @@ use tiling::{Tile, TileGrid};
 use geom::matrix::{Matrix4, identity};
 use geom::scale_factor::ScaleFactor;
 use geom::size::{Size2D, TypedSize2D};
-use geom::point::{Point2D, TypedPoint2D};
+use geom::point::{TypedPoint2D};
 use geom::rect::{Rect, TypedRect};
 use platform::surface::{NativeSurfaceMethods, NativeSurface};
 use platform::surface::{NativeCompositingGraphicsContext, NativePaintingGraphicsContext};

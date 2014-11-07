@@ -13,15 +13,8 @@ use layers::LayerBuffer;
 
 use geom::size::Size2D;
 use gleam::gl;
-use gleam::gl::{GLenum, GLint, GLsizei, GLuint};
+use gleam::gl::{GLenum, GLint, GLuint};
 use std::num::Zero;
-use libc::c_void;
-
-#[cfg(not(target_os = "android"))]
-use gleam::gl::BGRA;
-
-#[cfg(target_os = "android")]
-use gleam::gl::BGRA_EXT as BGRA;
 
 pub enum Format {
     ARGB32Format,
@@ -31,13 +24,6 @@ pub enum Format {
 pub enum FilterMode {
     Nearest,
     Linear
-}
-
-/// Image data used when uploading to a texture.
-pub struct TextureImageData<'a> {
-    size: Size2D<uint>,
-    format: Format,
-    data: &'a [u8],
 }
 
 /// The texture target.

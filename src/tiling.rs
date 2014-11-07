@@ -199,7 +199,7 @@ impl TileGrid {
         }
 
         for tile_index in tile_indexes_to_take.iter() {
-            match self.tiles.pop(tile_index) {
+            match self.tiles.remove(tile_index) {
                 Some(ref mut tile) => self.add_unused_buffer(tile.buffer.take()),
                 None => {},
             }
