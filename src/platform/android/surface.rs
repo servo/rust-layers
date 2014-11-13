@@ -115,7 +115,7 @@ impl NativeSurfaceMethods for NativeSurface {
         match self.bitmap {
             Some(ref mut bitmap) => {
                 unsafe {
-                    bitmap.as_mut_slice().copy_memory(data);
+                    ptr::copy_memory(bitmap.as_mut_ptr(), data.as_ptr(), data.len());
                 }
             }
             None => {
