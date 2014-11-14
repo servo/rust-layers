@@ -19,6 +19,7 @@ use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use libc::c_void;
 use std::mem;
 use std::ptr;
+use std::slice::bytes::copy_memory;
 use std::vec::Vec;
 
 /// FIXME(Aydin Kim) :Currently, native surface is consist of 2 types of hybrid image buffer. EGLImageKHR is used to GPU rendering and vector is used to CPU rendering. EGL extension seems not provide simple way to accessing its bitmap directly. In the future, we need to find out the way to integrate them.
@@ -114,9 +115,7 @@ impl NativeSurfaceMethods for NativeSurface {
     fn upload(&mut self, _graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
         match self.bitmap {
             Some(ref mut bitmap) => {
-                unsafe {
-                    bitmap.as_mut_slice().copy_memory(data);
-                }
+                copy_memory(bitmap.as_mut_slice(), data);
             }
             None => {
                 debug!("Cannot upload the buffer(CPU rendering), there is no bitmap");
