@@ -538,7 +538,7 @@ impl Render for Tile {
               render_context: RenderContext,
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>,
-              mut clip_rect: Option<Rect<f32>>,
+              clip_rect: Option<Rect<f32>>,
               content_offset: Point2D<f32>) {
         if self.texture.is_zero() {
             return;
