@@ -302,8 +302,10 @@ impl RenderContext {
     pub fn new(compositing_context: NativeCompositingGraphicsContext,
                show_debug_borders: bool) -> RenderContext {
         gl::enable(gl::TEXTURE_2D);
+
+        // Each layer uses premultiplied alpha!
         gl::enable(gl::BLEND);
-        gl::blend_func(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+        gl::blend_func(gl::ONE, gl::ONE_MINUS_SRC_ALPHA);
 
         let texture_2d_program = TextureProgram::create_2d_program();
         let solid_color_program = SolidColorProgram::new();
