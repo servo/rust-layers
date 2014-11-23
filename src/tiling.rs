@@ -216,6 +216,11 @@ impl TileGrid {
             Occupied(occupied) => occupied.into_mut(),
             Vacant(vacant) => vacant.set(Tile::new()),
         };
+
+        if tile_rect.is_empty() {
+            return None;
+        }
+
         if !tile.should_request_buffer(current_content_age) {
             return None;
         }
