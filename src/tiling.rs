@@ -85,7 +85,7 @@ impl Tile {
 
                 // Make a new texture and bind the LayerBuffer's surface to it.
                 self.texture = Texture::new_with_buffer(buffer);
-                debug!("Tile: binding to native surface {:d}",
+                debug!("Tile: binding to native surface {}",
                        buffer.native_surface.get_id() as int);
                 buffer.native_surface.bind_to_texture(graphics_context, &self.texture, size);
 

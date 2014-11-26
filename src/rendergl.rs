@@ -102,7 +102,7 @@ impl ShaderProgram {
         gl::attach_shader(id, ShaderProgram::compile_shader(vertex_shader_source, gl::VERTEX_SHADER));
         gl::link_program(id);
         if gl::get_program_iv(id, gl::LINK_STATUS) == (0 as GLint) {
-            panic!("Failed to compile shader program: {:s}", gl::get_program_info_log(id));
+            panic!("Failed to compile shader program: {}", gl::get_program_info_log(id));
         }
 
         ShaderProgram {
@@ -115,7 +115,7 @@ impl ShaderProgram {
         gl::shader_source(id, [ source_string.as_bytes() ]);
         gl::compile_shader(id);
         if gl::get_shader_iv(id, gl::COMPILE_STATUS) == (0 as GLint) {
-            panic!("Failed to compile shader: {:s}", gl::get_shader_info_log(id));
+            panic!("Failed to compile shader: {}", gl::get_shader_info_log(id));
         }
 
         return id;
