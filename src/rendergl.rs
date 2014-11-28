@@ -11,8 +11,10 @@ use color::Color;
 use layers::Layer;
 use layers;
 use scene::Scene;
-use texturegl::{Linear, Nearest, VerticalFlip};
-use texturegl::{Texture, TextureTarget2D, TextureTargetRectangle};
+use texturegl::Texture;
+use texturegl::FilterMode::{Linear, Nearest};
+use texturegl::Flip::VerticalFlip;
+use texturegl::TextureTarget::{TextureTarget2D, TextureTargetRectangle};
 use tiling::Tile;
 use platform::surface::NativeCompositingGraphicsContext;
 
