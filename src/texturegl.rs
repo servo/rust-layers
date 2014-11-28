@@ -39,16 +39,16 @@ impl TextureTarget {
     #[cfg(not(target_os = "android"))]
     fn as_gl_target(self) -> GLenum {
         match self {
-            TextureTarget2D => gl::TEXTURE_2D,
-            TextureTargetRectangle => gl::TEXTURE_RECTANGLE_ARB,
+            TextureTarget::TextureTarget2D => gl::TEXTURE_2D,
+            TextureTarget::TextureTargetRectangle => gl::TEXTURE_RECTANGLE_ARB,
         }
     }
 
     #[cfg(target_os = "android")]
     fn as_gl_target(self) -> GLenum {
         match self {
-            TextureTarget2D => gl::TEXTURE_2D,
-            TextureTargetRectangle => panic!("android doesn't supported rectangle targets"),
+            TextureTarget::TextureTarget2D => gl::TEXTURE_2D,
+            TextureTarget::TextureTargetRectangle => panic!("android doesn't supported rectangle targets"),
         }
     }
 }
@@ -77,7 +77,7 @@ pub struct Texture {
 impl Drop for Texture {
     fn drop(&mut self) {
         if !self.weak {
-            gl::delete_textures([ self.id ])
+            gl::delete_textures([ self.id ].as_slice())
         }
     }
 }
@@ -94,9 +94,9 @@ impl Zero for Texture {
     fn zero() -> Texture {
         Texture {
             id: 0,
-            target: TextureTarget2D,
+            target: TextureTarget::TextureTarget2D,
             weak: true,
-            flip: NoFlip,
+            flip: Flip::NoFlip,
             size: Size2D(0u, 0u),
         }
     }
@@ -124,7 +124,7 @@ impl Texture {
             id: gl::gen_textures(1)[0],
             target: target,
             weak: false,
-            flip: NoFlip,
+            flip: Flip::NoFlip,
             size: size,
         };
         this.set_default_params();
@@ -153,17 +153,17 @@ impl Texture {
     #[cfg(target_os="android")]
     fn texture_flip_and_target(cpu_painting: bool) -> (Flip, TextureTarget) {
         let flip = if cpu_painting {
-            NoFlip
+            Flip::NoFlip
         } else {
-            VerticalFlip
+            Flip::VerticalFlip
         };
 
-        (flip, TextureTarget2D)
+        (flip, TextureTarget::TextureTarget2D)
     }
 
     #[cfg(target_os="linux")]
     fn texture_flip_and_target(_: bool) -> (Flip, TextureTarget) {
-        (NoFlip, TextureTarget2D)
+        (Flip::NoFlip, TextureTarget::TextureTarget2D)
     }
 
     /// Returns the raw OpenGL texture underlying this texture.
@@ -184,8 +184,8 @@ impl Texture {
     pub fn set_filter_mode(&self, mode: FilterMode) {
         let _bound_texture = self.bind();
         let gl_mode = match mode {
-            Nearest => gl::NEAREST,
-            Linear => gl::LINEAR,
+            FilterMode::Nearest => gl::NEAREST,
+            FilterMode::Linear => gl::LINEAR,
         } as GLint;
         gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_MAG_FILTER, gl_mode);
         gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_MIN_FILTER, gl_mode);

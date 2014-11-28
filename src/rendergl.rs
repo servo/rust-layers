@@ -11,8 +11,10 @@ use color::Color;
 use layers::Layer;
 use layers;
 use scene::Scene;
-use texturegl::{Linear, Nearest, VerticalFlip};
-use texturegl::{Texture, TextureTarget2D, TextureTargetRectangle};
+use texturegl::Texture;
+use texturegl::FilterMode::{Linear, Nearest};
+use texturegl::Flip::VerticalFlip;
+use texturegl::TextureTarget::{TextureTarget2D, TextureTargetRectangle};
 use tiling::Tile;
 use platform::surface::NativeCompositingGraphicsContext;
 
@@ -112,7 +114,7 @@ impl ShaderProgram {
 
     pub fn compile_shader(source_string: &str, shader_type: GLenum) -> GLuint {
         let id = gl::create_shader(shader_type);
-        gl::shader_source(id, [ source_string.as_bytes() ]);
+        gl::shader_source(id, [ source_string.as_bytes() ].as_slice());
         gl::compile_shader(id);
         if gl::get_shader_iv(id, gl::COMPILE_STATUS) == (0 as GLint) {
             panic!("Failed to compile shader: {}", gl::get_shader_info_log(id));
@@ -165,8 +167,8 @@ impl TextureProgram {
                                     buffers: &Buffers,
                                     unit_rect: Rect<f32>) {
         gl::uniform_1i(self.sampler_uniform, 0);
-        gl::uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array());
-        gl::uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array());
+        gl::uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array().as_slice());
+        gl::uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array().as_slice());
 
         let new_coords: [f32, ..8] = [
             unit_rect.min_x(), unit_rect.min_y(),
@@ -175,12 +177,12 @@ impl TextureProgram {
             unit_rect.max_x(), unit_rect.max_y(),
         ];
         gl::bind_buffer(gl::ARRAY_BUFFER, buffers.textured_quad_vertex_buffer);
-        gl::buffer_data(gl::ARRAY_BUFFER, new_coords, gl::STATIC_DRAW);
+        gl::buffer_data(gl::ARRAY_BUFFER, new_coords.as_slice(), gl::STATIC_DRAW);
         gl::vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
 
         gl::uniform_matrix_4fv(self.texture_space_transform_uniform,
                            false,
-                           texture_space_transform.to_array());
+                           texture_space_transform.to_array().as_slice());
     }
 
     fn enable_attribute_arrays(&self) {
@@ -233,8 +235,8 @@ impl SolidColorProgram {
                                            transform: &Matrix4<f32>,
                                            projection_matrix: &Matrix4<f32>,
                                            color: Color) {
-        gl::uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array());
-        gl::uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array());
+        gl::uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array().as_slice());
+        gl::uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array().as_slice());
         gl::uniform_4f(self.color_uniform,
                    color.r as GLfloat,
                    color.g as GLfloat,
@@ -244,7 +246,7 @@ impl SolidColorProgram {
         let texture_transform: Matrix4<f32> = identity();
         gl::uniform_matrix_4fv(self.texture_space_transform_uniform,
                            false,
-                           texture_transform.to_array());
+                           texture_transform.to_array().as_slice());
     }
 
     fn bind_uniforms_and_attributes_for_lines(&self,
@@ -272,7 +274,7 @@ impl SolidColorProgram {
             unit_rect.origin.x + unit_rect.size.width, unit_rect.origin.y + unit_rect.size.height,
         ];
         gl::bind_buffer(gl::ARRAY_BUFFER, buffers.textured_quad_vertex_buffer);
-        gl::buffer_data(gl::ARRAY_BUFFER, new_coords, gl::STATIC_DRAW);
+        gl::buffer_data(gl::ARRAY_BUFFER, new_coords.as_slice(), gl::STATIC_DRAW);
         gl::vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
     }
 
@@ -324,11 +326,11 @@ impl RenderContext {
     fn init_buffers() -> Buffers {
         let textured_quad_vertex_buffer = gl::gen_buffers(1)[0];
         gl::bind_buffer(gl::ARRAY_BUFFER, textured_quad_vertex_buffer);
-        gl::buffer_data(gl::ARRAY_BUFFER, TEXTURED_QUAD_VERTICES, gl::STATIC_DRAW);
+        gl::buffer_data(gl::ARRAY_BUFFER, TEXTURED_QUAD_VERTICES.as_slice(), gl::STATIC_DRAW);
 
         let line_quad_vertex_buffer = gl::gen_buffers(1)[0];
         gl::bind_buffer(gl::ARRAY_BUFFER, line_quad_vertex_buffer);
-        gl::buffer_data(gl::ARRAY_BUFFER, LINE_QUAD_VERTICES, gl::STATIC_DRAW);
+        gl::buffer_data(gl::ARRAY_BUFFER, LINE_QUAD_VERTICES.as_slice(), gl::STATIC_DRAW);
 
         Buffers {
             textured_quad_vertex_buffer: textured_quad_vertex_buffer,

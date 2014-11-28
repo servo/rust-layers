@@ -201,20 +201,20 @@ pub enum NativeSurface {
 impl Drop for NativeSurface {
     fn drop(&mut self) {
         match *self {
-            Windowed(ns) => {
+            NativeSurface::Windowed(ns) => {
                 if ns.will_leak {
                     panic!("You should have disposed of the pixmap properly with destroy()! This pixmap \
                            will leak!");
                 }
             }
-            Headless(_) => {}
+            NativeSurface::Headless(_) => {}
         }
     }
 }
 
 impl NativeSurface {
     pub fn from_pixmap(pixmap: Pixmap) -> NativeSurface {
-        Windowed(WindowNativeSurface {
+        NativeSurface::Windowed(WindowNativeSurface {
             pixmap: pixmap,
             will_leak: true,
         })
@@ -225,7 +225,7 @@ impl NativeSurfaceMethods for NativeSurface {
     fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>, _stride: i32)
            -> NativeSurface {
         if native_context.display == ptr::null_mut() {
-            return Headless(HeadlessNativeSurface {
+            return NativeSurface::Headless(HeadlessNativeSurface {
                 bytes: vec!(),
             });
         }
@@ -252,7 +252,7 @@ impl NativeSurfaceMethods for NativeSurface {
                        texture: &Texture,
                        size: Size2D<int>) {
         match *self {
-            Windowed(ref ns) => {
+            NativeSurface::Windowed(ref ns) => {
                 unsafe {
                     // Create the GLX pixmap.
                     //
@@ -285,7 +285,7 @@ impl NativeSurfaceMethods for NativeSurface {
                     glx::DestroyPixmap(glx_display, glx_pixmap);
                 }
             }
-            Headless(ref ns) => {
+            NativeSurface::Headless(ref ns) => {
                 let _bound = texture.bind();
                 gl::tex_image_2d(gl::TEXTURE_2D, 0, gl::RGBA as i32,
                                 size.width as i32, size.height as i32, 0,
@@ -297,7 +297,7 @@ impl NativeSurfaceMethods for NativeSurface {
     /// This may only be called on the painting side.
     fn upload(&mut self, graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
         match *self {
-            Windowed(ref ns) => {
+            NativeSurface::Windowed(ref ns) => {
                 unsafe {
                     // Ensure that we're running on the render task. Take the display.
                     let pixmap = ns.pixmap;
@@ -348,7 +348,7 @@ impl NativeSurfaceMethods for NativeSurface {
                                       height);
                 }
             }
-            Headless(ref mut ns) => {
+            NativeSurface::Headless(ref mut ns) => {
                 ns.bytes.push_all(data);
             }
         }
@@ -356,35 +356,35 @@ impl NativeSurfaceMethods for NativeSurface {
 
     fn get_id(&self) -> int {
         match *self {
-            Windowed(ref ns) => ns.pixmap as int,
-            Headless(_) => 0,
+            NativeSurface::Windowed(ref ns) => ns.pixmap as int,
+            NativeSurface::Headless(_) => 0,
         }
     }
 
     fn destroy(&mut self, graphics_context: &NativePaintingGraphicsContext) {
         match *self {
-            Windowed(ns) => {
+            NativeSurface::Windowed(ns) => {
                 unsafe {
                     assert!(ns.pixmap != 0);
                     XFreePixmap(graphics_context.display, ns.pixmap);
                     self.mark_wont_leak()
                 }
             }
-            Headless(_) => {},
+            NativeSurface::Headless(_) => {},
         }
     }
 
     fn mark_will_leak(&mut self) {
         match *self {
-            Windowed(ref mut ns) => ns.will_leak = true,
-            Headless(_) => {}
+            NativeSurface::Windowed(ref mut ns) => ns.will_leak = true,
+            NativeSurface::Headless(_) => {}
         }
     }
 
     fn mark_wont_leak(&mut self) {
         match *self {
-            Windowed(ref mut ns) => ns.will_leak = false,
-            Headless(_) => {}
+            NativeSurface::Windowed(ref mut ns) => ns.will_leak = false,
+            NativeSurface::Headless(_) => {}
         }
     }
 }
