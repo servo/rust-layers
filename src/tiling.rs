@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::iter::range_inclusive;
 use std::mem;
-use std::num::Zero;
+use std::num::{Float, FloatMath, Zero};
 
 pub struct Tile {
     /// The buffer displayed by this tile.

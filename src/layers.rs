@@ -19,7 +19,7 @@ use geom::rect::{Rect, TypedRect};
 use platform::surface::{NativeSurfaceMethods, NativeSurface};
 use platform::surface::{NativeCompositingGraphicsContext, NativePaintingGraphicsContext};
 use std::cell::{RefCell, RefMut};
-use std::num::Zero;
+use std::num::{Float, Zero};
 use std::rc::Rc;
 
 #[deriving(Clone, PartialEq, PartialOrd)]
