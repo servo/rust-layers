@@ -77,7 +77,7 @@ pub struct Texture {
 impl Drop for Texture {
     fn drop(&mut self) {
         if !self.weak {
-            gl::delete_textures([ self.id ])
+            gl::delete_textures([ self.id ].as_slice())
         }
     }
 }
