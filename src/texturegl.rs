@@ -142,12 +142,12 @@ impl Texture {
     #[cfg(target_os="macos")]
     fn texture_flip_and_target(cpu_painting: bool) -> (Flip, TextureTarget) {
         let flip = if cpu_painting {
-            NoFlip
+            Flip::NoFlip
         } else {
-            VerticalFlip
+            Flip::VerticalFlip
         };
 
-        (flip, TextureTargetRectangle)
+        (flip, TextureTarget::TextureTargetRectangle)
     }
 
     #[cfg(target_os="android")]
