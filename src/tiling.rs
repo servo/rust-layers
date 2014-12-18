@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::iter::range_inclusive;
 use std::mem;
-use std::num::{Float, FloatMath, Zero};
+use std::num::{Float, FloatMath};
 
 pub struct Tile {
     /// The buffer displayed by this tile.
@@ -45,7 +45,7 @@ impl Tile {
     fn new() -> Tile {
         Tile {
             buffer: None,
-            texture: Zero::zero(),
+            texture: Texture::zero(),
             transform: identity(),
             content_age_of_pending_buffer: None,
             bounds: None,
@@ -67,7 +67,7 @@ impl Tile {
 
         let old_buffer = self.buffer.take();
         self.buffer = Some(buffer);
-        self.texture = Zero::zero(); // The old texture is bound to the old buffer.
+        self.texture = Texture::zero(); // The old texture is bound to the old buffer.
         self.content_age_of_pending_buffer = None;
         return old_buffer;
     }

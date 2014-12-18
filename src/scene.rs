@@ -10,10 +10,10 @@
 use geom::rect::{Rect, TypedRect};
 use geom::scale_factor::ScaleFactor;
 use geom::size::TypedSize2D;
+use geom::point::Point2D;
 use geometry::{DevicePixel, LayerPixel};
 use layers::{BufferRequest, Layer, LayerBuffer};
 use std::mem;
-use std::num::Zero;
 use std::rc::Rc;
 
 pub struct Scene<T> {
@@ -130,7 +130,7 @@ impl<T> Scene<T> {
     pub fn set_root_layer_size(&self, new_size: TypedSize2D<DevicePixel, f32>) {
         match self.root {
             Some(ref root_layer) => {
-                *root_layer.bounds.borrow_mut() = Rect(Zero::zero(), new_size / self.scale);
+                *root_layer.bounds.borrow_mut() = Rect(Point2D::zero(), new_size / self.scale);
             },
             None => {},
         }

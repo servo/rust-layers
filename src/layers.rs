@@ -14,12 +14,12 @@ use tiling::{Tile, TileGrid};
 use geom::matrix::{Matrix4, identity};
 use geom::scale_factor::ScaleFactor;
 use geom::size::{Size2D, TypedSize2D};
-use geom::point::{TypedPoint2D};
+use geom::point::{Point2D, TypedPoint2D};
 use geom::rect::{Rect, TypedRect};
 use platform::surface::{NativeSurfaceMethods, NativeSurface};
 use platform::surface::{NativeCompositingGraphicsContext, NativePaintingGraphicsContext};
 use std::cell::{RefCell, RefMut};
-use std::num::{Float, Zero};
+use std::num::Float;
 use std::rc::Rc;
 
 #[deriving(Clone, PartialEq, PartialOrd)]
@@ -77,7 +77,7 @@ impl<T> Layer<T> {
             tile_grid: RefCell::new(TileGrid::new(tile_size)),
             content_age: RefCell::new(ContentAge::new()),
             masks_to_bounds: RefCell::new(false),
-            content_offset: RefCell::new(Zero::zero()),
+            content_offset: RefCell::new(Point2D::zero()),
             background_color: RefCell::new(background_color),
         }
     }

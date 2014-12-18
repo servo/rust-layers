@@ -14,7 +14,6 @@ use layers::LayerBuffer;
 use geom::size::Size2D;
 use gleam::gl;
 use gleam::gl::{GLenum, GLint, GLuint};
-use std::num::Zero;
 
 pub enum Format {
     ARGB32Format,
@@ -82,16 +81,8 @@ impl Drop for Texture {
     }
 }
 
-// This Trait is implemented because it is required
-// for Zero, but we should never call it on textures.
-impl Add<Texture, Texture> for Texture {
-    fn add(&self, _: &Texture) -> Texture {
-        panic!("Textures cannot be added.");
-    }
-}
-
-impl Zero for Texture {
-    fn zero() -> Texture {
+impl Texture {
+    pub fn zero() -> Texture {
         Texture {
             id: 0,
             target: TextureTarget::TextureTarget2D,
@@ -100,7 +91,7 @@ impl Zero for Texture {
             size: Size2D(0u, 0u),
         }
     }
-    fn is_zero(&self) -> bool {
+    pub fn is_zero(&self) -> bool {
         self.id == 0
     }
 }
