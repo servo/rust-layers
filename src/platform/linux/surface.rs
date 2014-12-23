@@ -28,7 +28,8 @@ use xlib::{XVisualInfo, ZPixmap};
 /// The display and visual info. This is needed in order to upload on the painting side. This
 /// holds a weak reference to the display and will not close it when done.
 ///
-/// FIXME(pcwalton): Mark nonsendable and noncopyable.
+/// FIXME(pcwalton): Mark nonsendable.
+#[allow(missing_copy_implementations)]
 pub struct NativePaintingGraphicsContext {
     display: *mut Display,
     visual_info: *mut XVisualInfo,
@@ -57,6 +58,7 @@ impl NativePaintingGraphicsContext {
 /// someday.
 ///
 /// FIXME(pcwalton): Mark nonsendable.
+#[deriving(Copy)]
 pub struct NativeCompositingGraphicsContext {
     display: *mut Display,
     framebuffer_configuration: Option<glx::types::GLXFBConfig>,
@@ -129,7 +131,7 @@ impl NativeCompositingGraphicsContext {
 }
 
 /// The X display.
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct NativeGraphicsMetadata {
     pub display: *mut Display,
 }
@@ -178,7 +180,7 @@ pub enum NativeSurfaceTransientData {
     RenderTaskTransientData(*mut Display, *mut XVisualInfo),
 }
 
-#[deriving(Decodable, Encodable)]
+#[deriving(Copy, Decodable, Encodable)]
 pub struct WindowNativeSurface {
     /// The pixmap.
     pixmap: Pixmap,

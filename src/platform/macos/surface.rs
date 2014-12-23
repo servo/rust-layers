@@ -34,7 +34,7 @@ use texturegl::Texture;
 local_data_key!(io_surface_repository: HashMap<IOSurfaceID,IOSurface>)
 
 /// The Mac native graphics metadata.
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct NativeGraphicsMetadata {
     pub pixel_format: CGLPixelFormatObj,
 }
@@ -77,7 +77,7 @@ impl NativeGraphicsMetadata {
 
 /// The Mac native graphics metadata descriptor, which encompasses the values needed to create a
 /// pixel format object.
-#[deriving(Clone, Decodable, Encodable)]
+#[deriving(Clone, Copy, Decodable, Encodable)]
 pub struct NativeGraphicsMetadataDescriptor {
     boolean_attributes: Vec<bool>,
     integer_attributes: Vec<GLint>,
