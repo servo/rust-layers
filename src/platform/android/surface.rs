@@ -45,6 +45,7 @@ impl Drop for NativePaintingGraphicsContext {
     fn drop(&mut self) {}
 }
 
+#[deriving(Copy)]
 pub struct NativeCompositingGraphicsContext;
 
 impl NativeCompositingGraphicsContext {
