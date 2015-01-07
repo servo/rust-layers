@@ -7,6 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[deriving(Copy)]
 pub struct Color {
     pub r: f32,
     pub g: f32,

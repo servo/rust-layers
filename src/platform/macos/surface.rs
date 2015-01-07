@@ -24,17 +24,19 @@ use cgl::{CGLChoosePixelFormat, CGLDescribePixelFormat, CGLPixelFormatAttribute}
 use cgl::{CGLPixelFormatObj, CORE_BOOLEAN_ATTRIBUTES, CORE_INTEGER_ATTRIBUTES};
 use cgl::{kCGLNoError};
 use gleam::gl::GLint;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ptr;
+use std::rc::Rc;
 use std::vec::Vec;
 
 use platform::surface::NativeSurfaceMethods;
 use texturegl::Texture;
 
-local_data_key!(io_surface_repository: HashMap<IOSurfaceID,IOSurface>)
+thread_local!(static io_surface_repository: Rc<RefCell<HashMap<IOSurfaceID,IOSurface>>> = Rc::new(RefCell::new(HashMap::new())))
 
 /// The Mac native graphics metadata.
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct NativeGraphicsMetadata {
     pub pixel_format: CGLPixelFormatObj,
 }
@@ -126,6 +128,7 @@ impl Drop for NativePaintingGraphicsContext {
     fn drop(&mut self) {}
 }
 
+#[deriving(Copy)]
 pub struct NativeCompositingGraphicsContext {
     _contents: (),
 }
@@ -151,14 +154,9 @@ impl NativeSurface {
 
         let mut io_surface = Some(io_surface);
 
-        let opt_repository = io_surface_repository.replace(None);
-        let mut repository = match opt_repository {
-            None => HashMap::new(),
-            Some(repository) => repository,
-        };
-
-        repository.insert(id, io_surface.take().unwrap());
-        io_surface_repository.replace(Some(repository));
+        io_surface_repository.with(|ref r| {
+            r.borrow_mut().insert(id, io_surface.take().unwrap())
+        });
 
         NativeSurface {
             io_surface_id: Some(id),
@@ -186,7 +184,7 @@ impl NativeSurfaceMethods for NativeSurface {
             let is_global_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceIsGlobal);
             let is_global_value = CFBoolean::true_value();
 
-            let surface = io_surface::new(&CFDictionary::from_CFType_pairs([
+            let surface = io_surface::new(&CFDictionary::from_CFType_pairs(&[
                 (width_key.as_CFType(), width_value.as_CFType()),
                 (height_key.as_CFType(), height_value.as_CFType()),
                 (bytes_per_row_key.as_CFType(), bytes_per_row_value.as_CFType()),
@@ -220,11 +218,9 @@ impl NativeSurfaceMethods for NativeSurface {
     }
 
     fn destroy(&mut self, _: &NativePaintingGraphicsContext) {
-        // There is no mutable borrow of items in local data.
-        let opt_repository = io_surface_repository.replace(None);
-        let mut repo = opt_repository.unwrap();
-        repo.remove(&self.io_surface_id.unwrap());
-        io_surface_repository.replace(Some(repo));
+        io_surface_repository.with(|ref r| {
+            r.borrow_mut().remove(&self.io_surface_id.unwrap())
+        });
         self.io_surface_id = None;
         self.mark_wont_leak()
     }

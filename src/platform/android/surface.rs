@@ -24,7 +24,7 @@ use std::vec::Vec;
 
 /// FIXME(Aydin Kim) :Currently, native surface is consist of 2 types of hybrid image buffer. EGLImageKHR is used to GPU rendering and vector is used to CPU rendering. EGL extension seems not provide simple way to accessing its bitmap directly. In the future, we need to find out the way to integrate them.
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct NativeGraphicsMetadata {
     pub display: EGLDisplay,
 }
@@ -45,6 +45,7 @@ impl Drop for NativePaintingGraphicsContext {
     fn drop(&mut self) {}
 }
 
+#[deriving(Copy)]
 pub struct NativeCompositingGraphicsContext;
 
 impl NativeCompositingGraphicsContext {

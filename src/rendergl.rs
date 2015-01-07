@@ -88,11 +88,13 @@ static TILE_DEBUG_BORDER_THICKNESS: uint = 1;
 static LAYER_DEBUG_BORDER_COLOR: Color = Color { r: 1., g: 0.5, b: 0., a: 1.0 };
 static LAYER_DEBUG_BORDER_THICKNESS: uint = 2;
 
+#[deriving(Copy)]
 struct Buffers {
     textured_quad_vertex_buffer: GLuint,
     line_quad_vertex_buffer: GLuint,
 }
 
+#[deriving(Copy)]
 struct ShaderProgram {
     id: GLuint,
 }
@@ -132,6 +134,7 @@ impl ShaderProgram {
     }
 }
 
+#[deriving(Copy)]
 struct TextureProgram {
     program: ShaderProgram,
     vertex_position_attr: c_int,
@@ -209,6 +212,7 @@ impl TextureProgram {
     }
 }
 
+#[deriving(Copy)]
 struct SolidColorProgram {
     program: ShaderProgram,
     vertex_position_attr: c_int,
@@ -287,6 +291,7 @@ impl SolidColorProgram {
     }
 }
 
+#[deriving(Copy)]
 pub struct RenderContext {
     texture_2d_program: TextureProgram,
     texture_rectangle_program: Option<TextureProgram>,
