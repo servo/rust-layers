@@ -13,13 +13,11 @@ use geom::size::TypedSize2D;
 use geom::point::Point2D;
 use geometry::{DevicePixel, LayerPixel};
 use layers::{BufferRequest, Layer, LayerBuffer};
-use std::mem;
 use std::rc::Rc;
 
 pub struct Scene<T> {
     pub root: Option<Rc<Layer<T>>>,
     pub viewport: TypedRect<DevicePixel, f32>,
-    pub unused_buffers: Vec<Box<LayerBuffer>>,
 
     /// The scene scale, to allow for zooming and high-resolution painting.
     pub scale: ScaleFactor<LayerPixel, DevicePixel, f32>,
@@ -30,16 +28,17 @@ impl<T> Scene<T> {
         Scene {
             root: None,
             viewport: viewport,
-            unused_buffers: Vec::new(),
             scale: ScaleFactor(1.0),
         }
     }
 
     pub fn get_buffer_requests_for_layer(&mut self,
                                          layer: Rc<Layer<T>>,
+                                         dirty_rect: TypedRect<LayerPixel, f32>,
                                          layers_and_requests: &mut Vec<(Rc<Layer<T>>,
                                                                         Vec<BufferRequest>)>,
-                                         dirty_rect: TypedRect<LayerPixel, f32>) {
+                                         unused_buffers: &mut Vec<(Rc<Layer<T>>,
+                                                                        Vec<Box<LayerBuffer>>)>) {
         // We need to consider the intersection of the dirty rect with the final position
         // of the layer onscreen. The layer will be translated by the content rect, so we
         // simply do the reverse to the dirty rect.
@@ -58,8 +57,7 @@ impl<T> Scene<T> {
                     layers_and_requests.push((layer.clone(), requests));
                 }
 
-                self.unused_buffers.extend(layer.collect_unused_buffers().into_iter());
-
+                unused_buffers.push((layer.clone(), layer.collect_unused_buffers()));
             }
             None => {},
         }
@@ -87,29 +85,24 @@ impl<T> Scene<T> {
         dirty_rect_in_children = dirty_rect_in_children.translate(&-layer_bounds.origin);
         for kid in layer.children().iter() {
             self.get_buffer_requests_for_layer(kid.clone(),
+                                               dirty_rect_in_children,
                                                layers_and_requests,
-                                               dirty_rect_in_children);
+                                               unused_buffers);
         }
     }
 
     pub fn get_buffer_requests(&mut self,
                                requests: &mut Vec<(Rc<Layer<T>>, Vec<BufferRequest>)>,
-                               window_rect: TypedRect<DevicePixel, f32>) {
+                               unused_buffers: &mut Vec<(Rc<Layer<T>>, Vec<Box<LayerBuffer>>)>) {
         let root_layer = match self.root {
             Some(ref root_layer) => root_layer.clone(),
             None => return,
         };
 
-        let scale = self.scale; // Necessary to avoid a double borrow.
         self.get_buffer_requests_for_layer(root_layer.clone(),
+                                           *root_layer.bounds.borrow(),
                                            requests,
-                                           window_rect / scale);
-    }
-
-    pub fn collect_unused_buffers(&mut self) -> Vec<Box<LayerBuffer>> {
-        let mut unused_buffers = Vec::new();
-        mem::swap(&mut unused_buffers, &mut self.unused_buffers);
-        return unused_buffers;
+                                           unused_buffers);
     }
 
     pub fn mark_layer_contents_as_changed_recursively_for_layer(&self, layer: Rc<Layer<T>>) {
