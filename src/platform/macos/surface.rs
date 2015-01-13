@@ -10,6 +10,9 @@
 //! Mac OS-specific implementation of cross-process surfaces. This uses `IOSurface`, introduced
 //! in Mac OS X 10.6 Snow Leopard.
 
+use texturegl::Texture;
+
+use azure::AzSkiaGrGLSharedSurfaceRef;
 use core_foundation::base::TCFType;
 use core_foundation::boolean::CFBoolean;
 use core_foundation::dictionary::CFDictionary;
@@ -26,12 +29,10 @@ use cgl::{kCGLNoError};
 use gleam::gl::GLint;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::mem;
 use std::ptr;
 use std::rc::Rc;
 use std::vec::Vec;
-
-use platform::surface::NativeSurfaceMethods;
-use texturegl::Texture;
 
 thread_local!(static io_surface_repository: Rc<RefCell<HashMap<IOSurfaceID,IOSurface>>> = Rc::new(RefCell::new(HashMap::new())))
 
@@ -142,13 +143,13 @@ impl NativeCompositingGraphicsContext {
 }
 
 #[deriving(Decodable, Encodable)]
-pub struct NativeSurface {
+pub struct IOSurfaceNativeSurface {
     io_surface_id: Option<IOSurfaceID>,
     will_leak: bool,
 }
 
-impl NativeSurface {
-    pub fn from_io_surface(io_surface: IOSurface) -> NativeSurface {
+impl IOSurfaceNativeSurface {
+    pub fn from_io_surface(io_surface: IOSurface) -> IOSurfaceNativeSurface {
         // Take the surface by ID (so that we can send it cross-process) and consume its reference.
         let id = io_surface.get_id();
 
@@ -158,15 +159,25 @@ impl NativeSurface {
             r.borrow_mut().insert(id, io_surface.take().unwrap())
         });
 
-        NativeSurface {
+        IOSurfaceNativeSurface {
             io_surface_id: Some(id),
             will_leak: true,
         }
     }
-}
 
-impl NativeSurfaceMethods for NativeSurface {
-    fn new(_: &NativePaintingGraphicsContext, size: Size2D<i32>, stride: i32) -> NativeSurface {
+    pub fn from_azure_surface(surface: AzSkiaGrGLSharedSurfaceRef) -> IOSurfaceNativeSurface {
+        unsafe {
+            let io_surface = IOSurface {
+                obj: mem::transmute(surface),
+            };
+            IOSurfaceNativeSurface::from_io_surface(io_surface)
+        }
+    }
+
+    pub fn new(_: &NativePaintingGraphicsContext,
+               size: Size2D<i32>,
+               stride: i32)
+               -> IOSurfaceNativeSurface {
         unsafe {
             let width_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceWidth);
             let width_value: CFNumber = FromPrimitive::from_i32(size.width).unwrap();
@@ -192,32 +203,32 @@ impl NativeSurfaceMethods for NativeSurface {
                 (is_global_key.as_CFType(), is_global_value.as_CFType()),
             ]));
 
-            NativeSurface::from_io_surface(surface)
+            IOSurfaceNativeSurface::from_io_surface(surface)
         }
     }
 
-    fn bind_to_texture(&self,
-                       _: &NativeCompositingGraphicsContext,
-                       texture: &Texture,
-                       size: Size2D<int>) {
+    pub fn bind_to_texture(&self,
+                           _: &NativeCompositingGraphicsContext,
+                           texture: &Texture,
+                           size: Size2D<int>) {
         let _bound_texture = texture.bind();
         let io_surface = io_surface::lookup(self.io_surface_id.unwrap());
         io_surface.bind_to_gl_texture(size)
     }
 
-    fn upload(&mut self, _: &NativePaintingGraphicsContext, data: &[u8]) {
+    pub fn upload(&mut self, _: &NativePaintingGraphicsContext, data: &[u8]) {
         let io_surface = io_surface::lookup(self.io_surface_id.unwrap());
         io_surface.upload(data)
     }
 
-    fn get_id(&self) -> int {
+    pub fn get_id(&self) -> int {
         match self.io_surface_id {
             None => 0,
             Some(id) => id as int,
         }
     }
 
-    fn destroy(&mut self, _: &NativePaintingGraphicsContext) {
+    pub fn destroy(&mut self, _: &NativePaintingGraphicsContext) {
         io_surface_repository.with(|ref r| {
             r.borrow_mut().remove(&self.io_surface_id.unwrap())
         });
@@ -225,11 +236,11 @@ impl NativeSurfaceMethods for NativeSurface {
         self.mark_wont_leak()
     }
 
-    fn mark_will_leak(&mut self) {
+    pub fn mark_will_leak(&mut self) {
         self.will_leak = true
     }
 
-    fn mark_wont_leak(&mut self) {
+    pub fn mark_wont_leak(&mut self) {
         self.will_leak = false
     }
 }

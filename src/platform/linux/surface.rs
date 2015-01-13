@@ -11,9 +11,9 @@
 
 #![allow(non_snake_case)]
 
-use platform::surface::NativeSurfaceMethods;
 use texturegl::Texture;
 
+use azure::AzSkiaGrGLSharedSurfaceRef;
 use geom::size::Size2D;
 use libc::{c_char, c_int, c_uint, c_void};
 use glx;
@@ -31,7 +31,7 @@ use xlib::{XVisualInfo, ZPixmap};
 /// FIXME(pcwalton): Mark nonsendable.
 #[allow(missing_copy_implementations)]
 pub struct NativePaintingGraphicsContext {
-    display: *mut Display,
+    pub display: *mut Display,
     visual_info: *mut XVisualInfo,
 }
 
@@ -174,14 +174,8 @@ impl NativeGraphicsMetadataDescriptor {
     }
 }
 
-#[deriving(PartialEq)]
-pub enum NativeSurfaceTransientData {
-    NoTransientData,
-    RenderTaskTransientData(*mut Display, *mut XVisualInfo),
-}
-
 #[deriving(Copy, Decodable, Encodable)]
-pub struct WindowNativeSurface {
+pub struct PixmapNativeSurface {
     /// The pixmap.
     pixmap: Pixmap,
 
@@ -189,49 +183,31 @@ pub struct WindowNativeSurface {
     will_leak: bool,
 }
 
-#[deriving(Decodable, Encodable)]
-pub struct HeadlessNativeSurface {
-    bytes: Vec<u8>,
-}
-
-#[deriving(Decodable, Encodable)]
-pub enum NativeSurface {
-    Windowed(WindowNativeSurface),
-    Headless(HeadlessNativeSurface),
-}
-
-impl Drop for NativeSurface {
+impl Drop for PixmapNativeSurface {
     fn drop(&mut self) {
-        match *self {
-            NativeSurface::Windowed(ns) => {
-                if ns.will_leak {
-                    panic!("You should have disposed of the pixmap properly with destroy()! This pixmap \
-                           will leak!");
-                }
-            }
-            NativeSurface::Headless(_) => {}
+        if self.will_leak {
+            panic!("You should have disposed of the pixmap properly with destroy()! This pixmap \
+                   will leak!");
         }
     }
 }
 
-impl NativeSurface {
-    pub fn from_pixmap(pixmap: Pixmap) -> NativeSurface {
-        NativeSurface::Windowed(WindowNativeSurface {
+impl PixmapNativeSurface {
+    fn from_pixmap(pixmap: Pixmap) -> PixmapNativeSurface {
+        PixmapNativeSurface {
             pixmap: pixmap,
             will_leak: true,
-        })
-    }
-}
-
-impl NativeSurfaceMethods for NativeSurface {
-    fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>, _stride: i32)
-           -> NativeSurface {
-        if native_context.display == ptr::null_mut() {
-            return NativeSurface::Headless(HeadlessNativeSurface {
-                bytes: vec!(),
-            });
         }
+    }
 
+    pub fn from_azure_surface(surface: AzSkiaGrGLSharedSurfaceRef) -> PixmapNativeSurface {
+        unsafe {
+            PixmapNativeSurface::from_pixmap(mem::transmute(surface))
+        }
+    }
+
+    pub fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>, _stride: i32)
+           -> PixmapNativeSurface {
         unsafe {
             // Create the pixmap.
             let screen = XDefaultScreen(native_context.display);
@@ -244,150 +220,118 @@ impl NativeSurfaceMethods for NativeSurface {
                                        size.width as c_uint,
                                        size.height as c_uint,
                                        32);
-            NativeSurface::from_pixmap(pixmap)
+            PixmapNativeSurface::from_pixmap(pixmap)
         }
     }
 
     /// This may only be called on the compositor side.
-    fn bind_to_texture(&self,
-                       native_context: &NativeCompositingGraphicsContext,
-                       texture: &Texture,
-                       size: Size2D<int>) {
-        match *self {
-            NativeSurface::Windowed(ref ns) => {
-                unsafe {
-                    // Create the GLX pixmap.
-                    //
-                    // FIXME(pcwalton): RAII for exception safety?
-                    let pixmap_attributes = [
-                        glx::TEXTURE_TARGET_EXT as i32, glx::TEXTURE_2D_EXT as i32,
-                        glx::TEXTURE_FORMAT_EXT as i32, glx::TEXTURE_FORMAT_RGBA_EXT as i32,
-                        0
-                    ];
+    pub fn bind_to_texture(&self,
+                           native_context: &NativeCompositingGraphicsContext,
+                           texture: &Texture,
+                           size: Size2D<int>) {
+        // Create the GLX pixmap.
+        //
+        // FIXME(pcwalton): RAII for exception safety?
+        unsafe {
+            let pixmap_attributes = [
+                glx::TEXTURE_TARGET_EXT as i32, glx::TEXTURE_2D_EXT as i32,
+                glx::TEXTURE_FORMAT_EXT as i32, glx::TEXTURE_FORMAT_RGBA_EXT as i32,
+                0
+            ];
 
-                    let glx_display = mem::transmute(native_context.display);
+            let glx_display = mem::transmute(native_context.display);
 
-                    let glx_pixmap = glx::CreatePixmap(glx_display,
-                                                     native_context.framebuffer_configuration.expect(
-                                                         "GLX 1.3 should have a framebuffer_configuration"),
-                                                     ns.pixmap,
-                                                     pixmap_attributes.as_ptr());
+            let glx_pixmap = glx::CreatePixmap(glx_display,
+                                             native_context.framebuffer_configuration.expect(
+                                                 "GLX 1.3 should have a framebuffer_configuration"),
+                                             self.pixmap,
+                                             pixmap_attributes.as_ptr());
 
-                    let glXBindTexImageEXT: extern "C" fn(*mut Display, glx::types::GLXDrawable, c_int, *mut c_int) =
-                        mem::transmute(glx::GetProcAddress(mem::transmute(&"glXBindTexImageEXT\x00".as_bytes()[0])));
-                    assert!(glXBindTexImageEXT as *mut c_void != ptr::null_mut());
-                    let _bound = texture.bind();
-                    glXBindTexImageEXT(native_context.display,
-                                       mem::transmute(glx_pixmap),
-                                       glx::FRONT_EXT  as i32,
-                                       ptr::null_mut());
-                    assert_eq!(gl::GetError(), gl::NO_ERROR);
+            let glXBindTexImageEXT: extern "C" fn(*mut Display, glx::types::GLXDrawable, c_int, *mut c_int) =
+                mem::transmute(glx::GetProcAddress(mem::transmute(&"glXBindTexImageEXT\x00".as_bytes()[0])));
+            assert!(glXBindTexImageEXT as *mut c_void != ptr::null_mut());
+            let _bound = texture.bind();
+            glXBindTexImageEXT(native_context.display,
+                               mem::transmute(glx_pixmap),
+                               glx::FRONT_EXT  as i32,
+                               ptr::null_mut());
+            assert_eq!(gl::GetError(), gl::NO_ERROR);
 
-                    // FIXME(pcwalton): Recycle these for speed?
-                    glx::DestroyPixmap(glx_display, glx_pixmap);
-                }
-            }
-            NativeSurface::Headless(ref ns) => {
-                let _bound = texture.bind();
-                gl::tex_image_2d(gl::TEXTURE_2D, 0, gl::RGBA as i32,
-                                size.width as i32, size.height as i32, 0,
-                                gl::BGRA, gl::UNSIGNED_BYTE, Some(ns.bytes.as_slice()));
-            }
+            // FIXME(pcwalton): Recycle these for speed?
+            glx::DestroyPixmap(glx_display, glx_pixmap);
         }
     }
 
     /// This may only be called on the painting side.
-    fn upload(&mut self, graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
-        match *self {
-            NativeSurface::Windowed(ref ns) => {
-                unsafe {
-                    // Ensure that we're running on the render task. Take the display.
-                    let pixmap = ns.pixmap;
+    pub fn upload(&mut self, graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
+        unsafe {
+            // Ensure that we're running on the render task. Take the display.
+            let pixmap = self.pixmap;
 
-                    // Figure out the width, height, and depth of the pixmap.
-                    let mut root_window = 0;
-                    let mut x = 0;
-                    let mut y = 0;
-                    let mut width = 0;
-                    let mut height = 0;
-                    let mut border_width = 0;
-                    let mut depth = 0;
-                    let _ = XGetGeometry(graphics_context.display,
-                                         mem::transmute(pixmap),
-                                         &mut root_window,
-                                         &mut x,
-                                         &mut y,
-                                         &mut width,
-                                         &mut height,
-                                         &mut border_width,
-                                         &mut depth);
+            // Figure out the width, height, and depth of the pixmap.
+            let mut root_window = 0;
+            let mut x = 0;
+            let mut y = 0;
+            let mut width = 0;
+            let mut height = 0;
+            let mut border_width = 0;
+            let mut depth = 0;
+            let _ = XGetGeometry(graphics_context.display,
+                                 mem::transmute(pixmap),
+                                 &mut root_window,
+                                 &mut x,
+                                 &mut y,
+                                 &mut width,
+                                 &mut height,
+                                 &mut border_width,
+                                 &mut depth);
 
-                    // Create the image.
-                    let image = XCreateImage(graphics_context.display,
-                                             (*graphics_context.visual_info).visual,
-                                             depth,
-                                             ZPixmap,
-                                             0,
-                                             mem::transmute(&data[0]),
-                                             width as c_uint,
-                                             height as c_uint,
-                                             32,
-                                             0);
+            // Create the image.
+            let image = XCreateImage(graphics_context.display,
+                                     (*graphics_context.visual_info).visual,
+                                     depth,
+                                     ZPixmap,
+                                     0,
+                                     mem::transmute(&data[0]),
+                                     width as c_uint,
+                                     height as c_uint,
+                                     32,
+                                     0);
 
-                    // Create the X graphics context.
-                    let gc = XCreateGC(graphics_context.display, pixmap, 0, ptr::null_mut());
+            // Create the X graphics context.
+            let gc = XCreateGC(graphics_context.display, pixmap, 0, ptr::null_mut());
 
-                    // Draw the image.
-                    let _ = XPutImage(graphics_context.display,
-                                      pixmap,
-                                      gc,
-                                      image,
-                                      0,
-                                      0,
-                                      0,
-                                      0,
-                                      width,
-                                      height);
-                }
-            }
-            NativeSurface::Headless(ref mut ns) => {
-                ns.bytes.push_all(data);
-            }
+            // Draw the image.
+            let _ = XPutImage(graphics_context.display,
+                              pixmap,
+                              gc,
+                              image,
+                              0,
+                              0,
+                              0,
+                              0,
+                              width,
+                              height);
         }
     }
 
-    fn get_id(&self) -> int {
-        match *self {
-            NativeSurface::Windowed(ref ns) => ns.pixmap as int,
-            NativeSurface::Headless(_) => 0,
+    pub fn get_id(&self) -> int {
+        self.pixmap as int
+    }
+
+    pub fn destroy(&mut self, graphics_context: &NativePaintingGraphicsContext) {
+        unsafe {
+            assert!(self.pixmap != 0);
+            XFreePixmap(graphics_context.display, self.pixmap);
+            self.mark_wont_leak()
         }
     }
 
-    fn destroy(&mut self, graphics_context: &NativePaintingGraphicsContext) {
-        match *self {
-            NativeSurface::Windowed(ns) => {
-                unsafe {
-                    assert!(ns.pixmap != 0);
-                    XFreePixmap(graphics_context.display, ns.pixmap);
-                    self.mark_wont_leak()
-                }
-            }
-            NativeSurface::Headless(_) => {},
-        }
+    pub fn mark_will_leak(&mut self) {
+        self.will_leak = true;
     }
 
-    fn mark_will_leak(&mut self) {
-        match *self {
-            NativeSurface::Windowed(ref mut ns) => ns.will_leak = true,
-            NativeSurface::Headless(_) => {}
-        }
-    }
-
-    fn mark_wont_leak(&mut self) {
-        match *self {
-            NativeSurface::Windowed(ref mut ns) => ns.will_leak = false,
-            NativeSurface::Headless(_) => {}
-        }
+    pub fn mark_wont_leak(&mut self) {
+        self.will_leak = false;
     }
 }
-

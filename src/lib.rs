@@ -11,9 +11,11 @@
 #![crate_type = "rlib"]
 
 #![feature(phase)]
+#![feature(macro_rules)]
 
 #![allow(raw_pointer_deriving)]
 
+extern crate azure;
 extern crate geom;
 extern crate libc;
 #[phase(plugin, link)]

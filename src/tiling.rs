@@ -9,7 +9,7 @@
 
 use geometry::{DevicePixel, LayerPixel};
 use layers::{BufferRequest, ContentAge, LayerBuffer};
-use platform::surface::{NativeCompositingGraphicsContext, NativeSurfaceMethods};
+use platform::surface::NativeCompositingGraphicsContext;
 use texturegl::Texture;
 
 use geom::length::Length;
