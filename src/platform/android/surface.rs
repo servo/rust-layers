@@ -9,16 +9,15 @@
 
 //! Implementation of cross-process surfaces for Android. This uses EGL surface.
 
-use platform::surface::NativeSurfaceMethods;
 use texturegl::Texture;
 
+use azure::AzSkiaGrGLSharedSurfaceRef;
 use geom::size::Size2D;
 use gleam::gl::{egl_image_target_texture2d_oes, TEXTURE_2D, TexImage2D, BGRA_EXT, UNSIGNED_BYTE};
 use egl::egl::EGLDisplay;
 use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use libc::c_void;
 use std::mem;
-use std::ptr;
 use std::slice::bytes::copy_memory;
 use std::vec::Vec;
 
@@ -54,33 +53,37 @@ impl NativeCompositingGraphicsContext {
     }
 }
 
-pub struct NativeSurface {
+pub struct EGLImageNativeSurface {
     image: Option<EGLImageKHR>, // For GPU rendering
     bitmap: Option<Vec<u8>>, // For CPU rendering
     will_leak: bool,
 }
 
-impl NativeSurface {
-    pub fn from_image_khr(image_khr: EGLImageKHR) -> NativeSurface {
+impl EGLImageNativeSurface {
+    pub fn from_image_khr(image_khr: EGLImageKHR) -> EGLImageNativeSurface {
         let mut _image: Option<EGLImageKHR> = None;
         if image_khr != ptr::null_mut() {
             _image = Some(image_khr);
         }
-        NativeSurface {
+        EGLImageNativeSurface {
             image : _image,
             bitmap: None,
             will_leak: true,
         }
     }
-}
 
-impl NativeSurfaceMethods for NativeSurface {
+    pub fn from_azure_surface(surface: AzSkiaGrGLSharedSurfaceRef) -> EGLImageNativeSurface {
+        unsafe {
+            EGLImageNativeSurface::from_image_khr(mem::transmute(surface))
+        }
+    }
+
     /// This may only be called on the case of CPU rendering.
-    fn new(_native_context: &NativePaintingGraphicsContext, size: Size2D<i32>, _stride: i32) -> NativeSurface {
+    pub fn new(_: &NativePaintingGraphicsContext, size: Size2D<i32>, _stride: i32) -> EGLImageNativeSurface {
         let len = size.width * size.height * 4;
         let bitmap: Vec<u8> = Vec::from_elem(len as uint, 0 as u8);
 
-        NativeSurface {
+        EGLImageNativeSurface {
             image: None,
             bitmap: Some(bitmap),
             will_leak : true,
@@ -88,10 +91,10 @@ impl NativeSurfaceMethods for NativeSurface {
     }
 
     /// This may only be called on the compositor side.
-    fn bind_to_texture(&self,
-                       _native_context: &NativeCompositingGraphicsContext,
-                       texture: &Texture,
-                       _size: Size2D<int>) {
+    pub fn bind_to_texture(&self,
+                           _: &NativeCompositingGraphicsContext,
+                           texture: &Texture,
+                           _: Size2D<int>) {
         let _bound = texture.bind();
         match self.image {
             None => match self.bitmap {
@@ -113,7 +116,7 @@ impl NativeSurfaceMethods for NativeSurface {
     }
 
     /// This may only be called on the painting side.
-    fn upload(&mut self, _graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
+    pub fn upload(&mut self, _: &NativePaintingGraphicsContext, data: &[u8]) {
         match self.bitmap {
             Some(ref mut bitmap) => {
                 copy_memory(bitmap.as_mut_slice(), data);
@@ -124,14 +127,14 @@ impl NativeSurfaceMethods for NativeSurface {
         }
     }
 
-    fn get_id(&self) -> int {
+    pub fn get_id(&self) -> int {
         match self.image {
             None => 0,
             Some(image_khr) => image_khr as int,
         }
     }
 
-    fn destroy(&mut self, graphics_context: &NativePaintingGraphicsContext) {
+    pub fn destroy(&mut self, graphics_context: &NativePaintingGraphicsContext) {
         match self.image {
             None => {},
             Some(image_khr) => {
@@ -142,10 +145,11 @@ impl NativeSurfaceMethods for NativeSurface {
         self.mark_wont_leak()
     }
 
-    fn mark_will_leak(&mut self) {
+    pub fn mark_will_leak(&mut self) {
         self.will_leak = true
     }
-    fn mark_wont_leak(&mut self) {
+
+    pub fn mark_wont_leak(&mut self) {
         self.will_leak = false
     }
 }

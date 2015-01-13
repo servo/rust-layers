@@ -12,59 +12,157 @@
 
 use texturegl::Texture;
 
+use azure::AzSkiaGrGLSharedSurfaceRef;
 use geom::size::Size2D;
+use gleam::gl;
+use std::ptr;
 
 #[cfg(target_os="macos")]
-pub use platform::macos::surface::NativePaintingGraphicsContext;
-#[cfg(target_os="macos")]
-pub use platform::macos::surface::NativeCompositingGraphicsContext;
-#[cfg(target_os="macos")]
-pub use platform::macos::surface::NativeGraphicsMetadata;
-#[cfg(target_os="macos")]
-pub use platform::macos::surface::NativeGraphicsMetadataDescriptor;
-#[cfg(target_os="macos")]
-pub use platform::macos::surface::NativeSurface;
-#[cfg(target_os="linux")]
-pub use platform::linux::surface::NativePaintingGraphicsContext;
-#[cfg(target_os="linux")]
-pub use platform::linux::surface::NativeCompositingGraphicsContext;
-#[cfg(target_os="linux")]
-pub use platform::linux::surface::NativeGraphicsMetadata;
-#[cfg(target_os="linux")]
-pub use platform::linux::surface::NativeGraphicsMetadataDescriptor;
-#[cfg(target_os="linux")]
-pub use platform::linux::surface::NativeSurface;
-#[cfg(target_os="android")]
-pub use platform::android::surface::NativePaintingGraphicsContext;
-#[cfg(target_os="android")]
-pub use platform::android::surface::NativeCompositingGraphicsContext;
-#[cfg(target_os="android")]
-pub use platform::android::surface::NativeGraphicsMetadata;
-#[cfg(target_os="android")]
-pub use platform::android::surface::NativeSurface;
+pub use platform::macos::surface::{NativeCompositingGraphicsContext,
+                                   NativeGraphicsMetadata,
+                                   NativePaintingGraphicsContext,
+                                   IOSurfaceNativeSurface};
 
-pub trait NativeSurfaceMethods {
+#[cfg(target_os="linux")]
+pub use platform::linux::surface::{NativeCompositingGraphicsContext,
+                                   NativeGraphicsMetadata,
+                                   NativePaintingGraphicsContext,
+                                   PixmapNativeSurface};
+
+#[cfg(target_os="android")]
+pub use platform::android::surface::{NativeCompositingGraphicsContext,
+                                     NativeGraphicsMetadata,
+                                     NativePaintingGraphicsContext,
+                                     EGLImageNativeSurface};
+
+pub enum NativeSurface {
+    MemoryBuffer(MemoryBufferNativeSurface),
+#[cfg(target_os="linux")]
+    Pixmap(PixmapNativeSurface),
+#[cfg(target_os="macos")]
+    IOSurface(IOSurfaceNativeSurface),
+#[cfg(target_os="android")]
+    EGLImage(EGLImageNativeSurface),
+}
+
+#[cfg(target_os="linux")]
+impl NativeSurface {
+    pub fn from_azure_surface(surface: AzSkiaGrGLSharedSurfaceRef) -> NativeSurface {
+        return NativeSurface::Pixmap(PixmapNativeSurface::from_azure_surface(surface));
+    }
+
     /// Creates a new native surface with uninitialized data.
-    fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>, stride: i32) -> Self;
+    pub fn new(native_context: &NativePaintingGraphicsContext,
+               size: Size2D<i32>,
+               stride: i32)
+               -> NativeSurface {
+        if native_context.display == ptr::null_mut() {
+            NativeSurface::MemoryBuffer(MemoryBufferNativeSurface::new(native_context, size, stride))
+        } else {
+            NativeSurface::Pixmap(PixmapNativeSurface::new(native_context, size, stride))
+        }
+   }
+}
 
+#[cfg(target_os="macos")]
+impl NativeSurface {
+    pub fn from_azure_surface(surface: AzSkiaGrGLSharedSurfaceRef) -> NativeSurface {
+        NativeSurface::IOSurface(IOSurfaceNativeSurface::from_azure_surface(surface))
+    }
+
+    /// Creates a new native surface with uninitialized data.
+    pub fn new(native_context: &NativePaintingGraphicsContext,
+               size: Size2D<i32>,
+               stride: i32)
+               -> NativeSurface {
+        NativeSurface::IOSurface(IOSurfaceNativeSurface::new(native_context, size, stride))
+   }
+}
+
+#[cfg(target_os="android")]
+impl NativeSurface {
+    pub fn from_azure_surface(surface: AzSkiaGrGLSharedSurfaceRef) -> NativeSurface {
+        NativeSurface::EGLImage(EGLImageNativeSurface::from_azure_surface(surface))
+    }
+
+    /// Creates a new native surface with uninitialized data.
+    pub fn new(native_context: &NativePaintingGraphicsContext,
+               size: Size2D<i32>,
+               stride: i32)
+               -> NativeSurface {
+        NativeSurface::EGLImage(EGLImageNativeSurface::new(native_context, size, stride))
+   }
+}
+
+macro_rules! native_surface_method_with_mutability {
+    ($self_:ident, $function_name:ident, $surface:ident, $pattern:pat, $($argument:ident),*) => {
+        match *$self_ {
+            NativeSurface::MemoryBuffer($pattern) =>
+                $surface.$function_name($($argument), *),
+            #[cfg(target_os="linux")]
+            NativeSurface::Pixmap($pattern) =>
+                $surface.$function_name($($argument), *),
+            #[cfg(target_os="macos")]
+            NativeSurface::IOSurface($pattern) =>
+                $surface.$function_name($($argument), *),
+            #[cfg(target_os="android")]
+            NativeSurface::EGLImage($pattern) =>
+                $surface.$function_name($($argument), *),
+        }
+    };
+}
+
+macro_rules! native_surface_method_mut {
+    ($self_:ident $function_name:ident $($argument:ident),*) => {
+        native_surface_method_with_mutability!($self_,
+                                               $function_name,
+                                               surface,
+                                               ref mut surface,
+                                               $($argument),
+                                               *)
+    };
+}
+
+macro_rules! native_surface_method {
+    ($self_:ident $function_name:ident $($argument:ident),*) => {
+        native_surface_method_with_mutability!($self_,
+                                               $function_name,
+                                               surface,
+                                               ref surface,
+                                               $($argument),
+                                               *)
+    };
+}
+
+impl NativeSurface {
     /// Binds the surface to a GPU texture. Compositing task only.
-    fn bind_to_texture(&self,
-                       native_context: &NativeCompositingGraphicsContext,
-                       texture: &Texture,
-                       size: Size2D<int>);
+    pub fn bind_to_texture(&self,
+                           native_context: &NativeCompositingGraphicsContext,
+                           texture: &Texture,
+                           size: Size2D<int>) {
+        native_surface_method!(self bind_to_texture native_context, texture, size)
+    }
 
     /// Uploads pixel data to the surface. Painting task only.
-    fn upload(&mut self, native_context: &NativePaintingGraphicsContext, data: &[u8]);
+    pub fn upload(&mut self, native_context: &NativePaintingGraphicsContext, data: &[u8]) {
+        native_surface_method_mut!(self upload native_context, data)
+    }
 
     /// Returns an opaque ID identifying the surface for debugging.
-    fn get_id(&self) -> int;
+    pub fn get_id(&self) -> int {
+        native_surface_method!(self get_id)
+    }
 
     /// Destroys the surface. After this, it is an error to use the surface. Painting task only.
-    fn destroy(&mut self, graphics_context: &NativePaintingGraphicsContext);
+    pub fn destroy(&mut self, graphics_context: &NativePaintingGraphicsContext) {
+        native_surface_method_mut!(self destroy graphics_context)
+    }
 
     /// Records that the surface will leak if destroyed. This is done by the compositor immediately
     /// after receiving the surface.
-    fn mark_will_leak(&mut self);
+    pub fn mark_will_leak(&mut self) {
+        native_surface_method_mut!(self mark_will_leak)
+    }
 
     /// Marks the surface as not leaking. The painting task and the compositing task call this when
     /// they are certain that the surface will not leak. For example:
@@ -82,6 +180,53 @@ pub trait NativeSurfaceMethods {
     ///    destroyed.
     ///
     /// This helps debug leaks. For performance this may want to become a no-op in the future.
-    fn mark_wont_leak(&mut self);
+    pub fn mark_wont_leak(&mut self) {
+        native_surface_method_mut!(self mark_wont_leak)
+    }
+}
+
+#[deriving(Decodable, Encodable)]
+pub struct MemoryBufferNativeSurface {
+    bytes: Vec<u8>,
+}
+
+impl MemoryBufferNativeSurface {
+    pub fn new(_: &NativePaintingGraphicsContext, _: Size2D<i32>, _: i32) -> MemoryBufferNativeSurface {
+        MemoryBufferNativeSurface{
+            bytes: vec!(),
+        }
+    }
+
+    /// This may only be called on the compositor side.
+    pub fn bind_to_texture(&self, _: &NativeCompositingGraphicsContext, texture: &Texture, size: Size2D<int>) {
+        let _bound = texture.bind();
+        gl::tex_image_2d(gl::TEXTURE_2D,
+                         0,
+                         gl::RGBA as i32,
+                         size.width as i32,
+                         size.height as i32,
+                         0,
+                         gl::BGRA,
+                         gl::UNSIGNED_BYTE,
+                         Some(self.bytes.as_slice()));
+    }
+
+    /// This may only be called on the painting side.
+    pub fn upload(&mut self, _: &NativePaintingGraphicsContext, data: &[u8]) {
+        self.bytes.push_all(data);
+    }
+
+    pub fn get_id(&self) -> int {
+        0
+    }
+
+    pub fn destroy(&mut self, _: &NativePaintingGraphicsContext) {
+    }
+
+    pub fn mark_will_leak(&mut self) {
+    }
+
+    pub fn mark_wont_leak(&mut self) {
+    }
 }
 

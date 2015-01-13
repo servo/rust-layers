@@ -34,3 +34,7 @@ git = "https://github.com/servo/rust-cgl"
 
 [dependencies.gleam]
 git = "https://github.com/servo/gleam"
+
+[dependencies.azure]
+git = "https://github.com/servo/rust-azure"
+
