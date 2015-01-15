@@ -14,8 +14,10 @@ use texturegl::Texture;
 
 use azure::AzSkiaGrGLSharedSurfaceRef;
 use geom::size::Size2D;
-use gleam::gl;
 use std::ptr;
+
+#[cfg(not(target_os="android"))]
+use gleam::gl;
 
 #[cfg(target_os="macos")]
 pub use platform::macos::surface::{NativeCompositingGraphicsContext,
@@ -198,6 +200,7 @@ impl MemoryBufferNativeSurface {
     }
 
     /// This may only be called on the compositor side.
+    #[cfg(not(target_os="android"))]
     pub fn bind_to_texture(&self, _: &NativeCompositingGraphicsContext, texture: &Texture, size: Size2D<int>) {
         let _bound = texture.bind();
         gl::tex_image_2d(gl::TEXTURE_2D,
@@ -209,6 +212,11 @@ impl MemoryBufferNativeSurface {
                          gl::BGRA,
                          gl::UNSIGNED_BYTE,
                          Some(self.bytes.as_slice()));
+    }
+
+    #[cfg(target_os="android")]
+    pub fn bind_to_texture(&self, _: &NativeCompositingGraphicsContext, _: &Texture, _: Size2D<int>) {
+        panic!("Binding a memory surface to a texture is not yet supported on Android.");
     }
 
     /// This may only be called on the painting side.
