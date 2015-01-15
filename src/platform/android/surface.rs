@@ -11,12 +11,12 @@
 
 use texturegl::Texture;
 
-use azure::AzSkiaGrGLSharedSurfaceRef;
 use geom::size::Size2D;
 use gleam::gl::{egl_image_target_texture2d_oes, TEXTURE_2D, TexImage2D, BGRA, UNSIGNED_BYTE};
 use egl::egl::EGLDisplay;
 use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use libc::c_void;
+use skia::{SkiaSkNativeSharedGLContextRef, SkiaSkNativeSharedGLContextStealSurface};
 use std::iter::repeat;
 use std::mem;
 use std::ptr;
@@ -77,8 +77,10 @@ impl EGLImageNativeSurface {
         }
     }
 
-    pub fn from_azure_surface(surface: AzSkiaGrGLSharedSurfaceRef) -> EGLImageNativeSurface {
+    pub fn from_skia_shared_gl_context(context: SkiaSkNativeSharedGLContextRef)
+                                       -> EGLImageNativeSurface {
         unsafe {
+            let surface = SkiaSkNativeSharedGLContextStealSurface(context);
             EGLImageNativeSurface::from_image_khr(mem::transmute(surface))
         }
     }

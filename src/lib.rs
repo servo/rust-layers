@@ -20,6 +20,7 @@ extern crate libc;
 extern crate log;
 extern crate "serialize" as rustc_serialize;
 extern crate gleam;
+extern crate skia;
 
 #[cfg(target_os="macos")]
 extern crate core_foundation;

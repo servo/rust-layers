@@ -12,8 +12,8 @@
 
 use texturegl::Texture;
 
-use azure::AzSkiaGrGLSharedSurfaceRef;
 use geom::size::Size2D;
+use azure::azure_hl::DrawTargetBacking;
 use std::ptr;
 
 #[cfg(not(target_os="android"))]
@@ -49,10 +49,6 @@ pub enum NativeSurface {
 
 #[cfg(target_os="linux")]
 impl NativeSurface {
-    pub fn from_azure_surface(surface: AzSkiaGrGLSharedSurfaceRef) -> NativeSurface {
-        return NativeSurface::Pixmap(PixmapNativeSurface::from_azure_surface(surface));
-    }
-
     /// Creates a new native surface with uninitialized data.
     pub fn new(native_context: &NativePaintingGraphicsContext,
                size: Size2D<i32>,
@@ -68,10 +64,6 @@ impl NativeSurface {
 
 #[cfg(target_os="macos")]
 impl NativeSurface {
-    pub fn from_azure_surface(surface: AzSkiaGrGLSharedSurfaceRef) -> NativeSurface {
-        NativeSurface::IOSurface(IOSurfaceNativeSurface::from_azure_surface(surface))
-    }
-
     /// Creates a new native surface with uninitialized data.
     pub fn new(native_context: &NativePaintingGraphicsContext,
                size: Size2D<i32>,
@@ -83,10 +75,6 @@ impl NativeSurface {
 
 #[cfg(target_os="android")]
 impl NativeSurface {
-    pub fn from_azure_surface(surface: AzSkiaGrGLSharedSurfaceRef) -> NativeSurface {
-        NativeSurface::EGLImage(EGLImageNativeSurface::from_azure_surface(surface))
-    }
-
     /// Creates a new native surface with uninitialized data.
     pub fn new(native_context: &NativePaintingGraphicsContext,
                size: Size2D<i32>,
@@ -137,6 +125,22 @@ macro_rules! native_surface_method {
 }
 
 impl NativeSurface {
+    pub fn from_draw_target_backing(backing: DrawTargetBacking) -> NativeSurface {
+        match backing {
+            #[cfg(target_os="macos")]
+            DrawTargetBacking::SkiaContext(context) =>
+                NativeSurface::IOSurface(IOSurfaceNativeSurface::from_skia_shared_gl_context(context)),
+            #[cfg(target_os="linux")]
+            DrawTargetBacking::SkiaContext(context) =>
+                NativeSurface::Pixmap(PixmapNativeSurface::from_skia_shared_gl_context(context)),
+            #[cfg(target_os="android")]
+            DrawTargetBacking::SkiaContext(context) =>
+                NativeSurface::EGLImage(EGLImageNativeSurface::from_skia_shared_gl_context(context)),
+            _ => panic!("Cannot yet construct native surface from non-GL DrawTarget."),
+        }
+    }
+
+
     /// Binds the surface to a GPU texture. Compositing task only.
     pub fn bind_to_texture(&self,
                            native_context: &NativeCompositingGraphicsContext,

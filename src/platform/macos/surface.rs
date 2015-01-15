@@ -12,7 +12,6 @@
 
 use texturegl::Texture;
 
-use azure::AzSkiaGrGLSharedSurfaceRef;
 use core_foundation::base::TCFType;
 use core_foundation::boolean::CFBoolean;
 use core_foundation::dictionary::CFDictionary;
@@ -26,6 +25,7 @@ use cgl::{CGLChoosePixelFormat, CGLDescribePixelFormat, CGLPixelFormatAttribute}
 use cgl::{CGLPixelFormatObj, CORE_BOOLEAN_ATTRIBUTES, CORE_INTEGER_ATTRIBUTES};
 use cgl::{kCGLNoError};
 use gleam::gl::GLint;
+use skia::{SkiaSkNativeSharedGLContextRef, SkiaSkNativeSharedGLContextStealSurface};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem;
@@ -166,8 +166,10 @@ impl IOSurfaceNativeSurface {
         }
     }
 
-    pub fn from_azure_surface(surface: AzSkiaGrGLSharedSurfaceRef) -> IOSurfaceNativeSurface {
+    pub fn from_skia_shared_gl_context(context: SkiaSkNativeSharedGLContextRef)
+                                       -> IOSurfaceNativeSurface {
         unsafe {
+            let surface = SkiaSkNativeSharedGLContextStealSurface(context);
             let io_surface = IOSurface {
                 obj: mem::transmute(surface),
             };
