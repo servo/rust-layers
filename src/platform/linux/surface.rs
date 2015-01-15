@@ -243,7 +243,7 @@ impl PixmapNativeSurface {
     pub fn bind_to_texture(&self,
                            native_context: &NativeCompositingGraphicsContext,
                            texture: &Texture,
-                           size: Size2D<int>) {
+                           _: Size2D<int>) {
         // Create the GLX pixmap.
         //
         // FIXME(pcwalton): RAII for exception safety?
