@@ -18,6 +18,7 @@ use egl::egl::EGLDisplay;
 use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use libc::c_void;
 use std::mem;
+use std::ptr;
 use std::slice::bytes::copy_memory;
 use std::vec::Vec;
 
@@ -94,14 +95,14 @@ impl EGLImageNativeSurface {
     pub fn bind_to_texture(&self,
                            _: &NativeCompositingGraphicsContext,
                            texture: &Texture,
-                           _: Size2D<int>) {
+                           size: Size2D<int>) {
         let _bound = texture.bind();
         match self.image {
             None => match self.bitmap {
                 Some(ref bitmap) => {
                     let data = bitmap.as_ptr() as *const c_void;
                     unsafe {
-                        TexImage2D(TEXTURE_2D, 0, BGRA_EXT as i32, _size.width as i32, _size.height as i32,
+                        TexImage2D(TEXTURE_2D, 0, BGRA_EXT as i32, size.width as i32, size.height as i32,
                                    0, BGRA_EXT as u32, UNSIGNED_BYTE, data);
                     }
                 }
