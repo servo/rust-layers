@@ -9,9 +9,11 @@
 
 // Miscellaneous utilities.
 
+use std::iter::repeat;
+
 pub fn convert_rgb32_to_rgb24(buffer: &[u8]) -> Vec<u8> {
     let mut i = 0;
-    Vec::from_fn(buffer.len() * 3 / 4, |j| {
+    repeat(buffer.len() * 3 / 4).map(|j| {
         match j % 3 {
             0 => {
                 buffer[i + 2]
@@ -28,6 +30,6 @@ pub fn convert_rgb32_to_rgb24(buffer: &[u8]) -> Vec<u8> {
                 panic!()
             }
         }
-    })
+    }).collect()
 }
 

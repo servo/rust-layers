@@ -18,10 +18,10 @@ use geom::point::Point2D;
 use geom::rect::{Rect, TypedRect};
 use geom::size::{Size2D, TypedSize2D};
 use std::collections::HashMap;
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::Entry;
 use std::iter::range_inclusive;
 use std::mem;
-use std::num::{Float, FloatMath};
+use std::num::Float;
 
 pub struct Tile {
     /// The buffer displayed by this tile.
@@ -213,8 +213,8 @@ impl TileGrid {
                                        -> Option<BufferRequest> {
         let tile_rect = self.get_rect_for_tile_index(tile_index, current_layer_size);
         let tile = match self.tiles.entry(tile_index) {
-            Occupied(occupied) => occupied.into_mut(),
-            Vacant(vacant) => vacant.set(Tile::new()),
+            Entry::Occupied(occupied) => occupied.into_mut(),
+            Entry::Vacant(vacant) => vacant.insert(Tile::new()),
         };
 
         if tile_rect.is_empty() {
@@ -275,7 +275,7 @@ impl TileGrid {
         self.add_unused_buffer(replaced_buffer);
     }
 
-    pub fn do_for_all_tiles(&self, f: |&Tile|) {
+    pub fn do_for_all_tiles<F: Fn(&Tile)>(&self, f: F) {
         for tile in self.tiles.values() {
             f(tile);
         }
