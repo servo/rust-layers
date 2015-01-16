@@ -91,30 +91,45 @@ impl NativeCompositingGraphicsContext {
             let mut number_of_configs = 0;
             let configs = glx::ChooseFBConfig(glx_display, screen,
                                             fbconfig_attributes.as_ptr(), &mut number_of_configs);
-            let glXGetClientString: extern "C" fn(*mut Display, c_int) -> *const c_char =
-                mem::transmute(glx::GetProcAddress(mem::transmute(&"glXGetClientString\x00".as_bytes()[0])));
-            assert!(glXGetClientString as *mut c_void != ptr::null_mut());
-            let glx_cli_vendor_c_str = CString::new(glx::GetClientString(glx_display, glx::VENDOR as i32), false);
-            let glx_cli_vendor = match glx_cli_vendor_c_str.as_str() { Some(s) => s,
-                                                                       None => panic!("Can't get glx client vendor.") };
-            if glx_cli_vendor.to_ascii().eq_ignore_case("NVIDIA".to_ascii()) ||
-               glx_cli_vendor.to_ascii().eq_ignore_case("ATI".to_ascii()) {
-                // NVidia (and AMD/ATI) drivers have RGBA configurations that use 24-bit XVisual, not capable of
-                // representing an alpha-channel in Pixmap form, so we look for the configuration
-                // with a full set of 32 bits.
+            if number_of_configs == 0 {
+                panic!("Unable to locate a GLX FB configuration that supports RGBA.");
+            }
+
+            if NativeCompositingGraphicsContext::need_to_find_32_bit_depth_visual(display) {
                 for i in range(0, number_of_configs as int) {
                     let config = *configs.offset(i);
-                    let visual_info : *mut XVisualInfo = mem::transmute(glx::GetVisualFromFBConfig(glx_display, config));
+                    let visual_info : *mut XVisualInfo =
+                        mem::transmute(glx::GetVisualFromFBConfig(glx_display, config));
                     if (*visual_info).depth == 32 {
                         return (visual_info, Some(config))
                     }
                 }
-            } else if number_of_configs != 0 {
-                let fbconfig = *configs.offset(0);
-                let vi = glx::GetVisualFromFBConfig(glx_display, fbconfig);
-                return (mem::transmute(vi), Some(fbconfig));
             }
-            panic!("Unable to locate a GLX FB configuration that supports RGBA.");
+
+            let config = *configs.offset(0);
+            let visual = glx::GetVisualFromFBConfig(glx_display, config);
+            return (mem::transmute(visual), Some(config));
+        }
+    }
+
+    fn need_to_find_32_bit_depth_visual(display: *mut Display) -> bool {
+        unsafe {
+            let glXGetClientString: extern "C" fn(*mut Display, c_int) -> *const c_char =
+                mem::transmute(glx::GetProcAddress(mem::transmute(&"glXGetClientString\x00".as_bytes()[0])));
+            assert!(glXGetClientString as *mut c_void != ptr::null_mut());
+
+            let glx_display = mem::transmute(display);
+            let glx_cli_vendor_c_str =
+                CString::new(glx::GetClientString(glx_display, glx::VENDOR as i32), false);
+            let glx_cli_vendor = match glx_cli_vendor_c_str.as_str() {
+                Some(string) => string.to_ascii().to_lowercase(),
+                None => panic!("Can't get glx client vendor.")
+            };
+
+            // NVidia (and AMD/ATI) drivers have RGBA configurations that use 24-bit XVisual, not capable of
+            // representing an alpha-channel in Pixmap form, so we look for the configuration
+            // with a full set of 32 bits.
+            glx_cli_vendor == "nvidia".to_ascii() || glx_cli_vendor == "ati".to_ascii()
         }
     }
 
@@ -228,7 +243,7 @@ impl PixmapNativeSurface {
     pub fn bind_to_texture(&self,
                            native_context: &NativeCompositingGraphicsContext,
                            texture: &Texture,
-                           size: Size2D<int>) {
+                           _: Size2D<int>) {
         // Create the GLX pixmap.
         //
         // FIXME(pcwalton): RAII for exception safety?
