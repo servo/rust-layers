@@ -115,7 +115,7 @@ macro_rules! native_surface_method_with_mutability {
 }
 
 macro_rules! native_surface_method_mut {
-    ($self_:ident $function_name:ident $($argument:ident),*) => {
+    ($self_:ident $function_name:ident ($($argument:ident),*)) => {
         native_surface_method_with_mutability!($self_,
                                                $function_name,
                                                surface,
@@ -126,7 +126,7 @@ macro_rules! native_surface_method_mut {
 }
 
 macro_rules! native_surface_method {
-    ($self_:ident $function_name:ident $($argument:ident),*) => {
+    ($self_:ident $function_name:ident ($($argument:ident),*)) => {
         native_surface_method_with_mutability!($self_,
                                                $function_name,
                                                surface,
@@ -142,28 +142,28 @@ impl NativeSurface {
                            native_context: &NativeCompositingGraphicsContext,
                            texture: &Texture,
                            size: Size2D<int>) {
-        native_surface_method!(self bind_to_texture native_context, texture, size)
+        native_surface_method!(self bind_to_texture (native_context, texture, size))
     }
 
     /// Uploads pixel data to the surface. Painting task only.
     pub fn upload(&mut self, native_context: &NativePaintingGraphicsContext, data: &[u8]) {
-        native_surface_method_mut!(self upload native_context, data)
+        native_surface_method_mut!(self upload (native_context, data))
     }
 
     /// Returns an opaque ID identifying the surface for debugging.
     pub fn get_id(&self) -> int {
-        native_surface_method!(self get_id)
+        native_surface_method!(self get_id ())
     }
 
     /// Destroys the surface. After this, it is an error to use the surface. Painting task only.
     pub fn destroy(&mut self, graphics_context: &NativePaintingGraphicsContext) {
-        native_surface_method_mut!(self destroy graphics_context)
+        native_surface_method_mut!(self destroy (graphics_context))
     }
 
     /// Records that the surface will leak if destroyed. This is done by the compositor immediately
     /// after receiving the surface.
     pub fn mark_will_leak(&mut self) {
-        native_surface_method_mut!(self mark_will_leak)
+        native_surface_method_mut!(self mark_will_leak ())
     }
 
     /// Marks the surface as not leaking. The painting task and the compositing task call this when
@@ -183,11 +183,11 @@ impl NativeSurface {
     ///
     /// This helps debug leaks. For performance this may want to become a no-op in the future.
     pub fn mark_wont_leak(&mut self) {
-        native_surface_method_mut!(self mark_wont_leak)
+        native_surface_method_mut!(self mark_wont_leak ())
     }
 }
 
-#[deriving(Decodable, Encodable)]
+#[derive(RustcDecodable, RustcEncodable)]
 pub struct MemoryBufferNativeSurface {
     bytes: Vec<u8>,
 }
