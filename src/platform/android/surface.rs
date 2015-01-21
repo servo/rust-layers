@@ -13,10 +13,11 @@ use texturegl::Texture;
 
 use azure::AzSkiaGrGLSharedSurfaceRef;
 use geom::size::Size2D;
-use gleam::gl::{egl_image_target_texture2d_oes, TEXTURE_2D, TexImage2D, BGRA_EXT, UNSIGNED_BYTE};
+use gleam::gl::{egl_image_target_texture2d_oes, TEXTURE_2D, TexImage2D, BGRA, UNSIGNED_BYTE};
 use egl::egl::EGLDisplay;
 use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use libc::c_void;
+use std::iter::repeat;
 use std::mem;
 use std::ptr;
 use std::slice::bytes::copy_memory;
@@ -82,7 +83,7 @@ impl EGLImageNativeSurface {
     /// This may only be called on the case of CPU rendering.
     pub fn new(_: &NativePaintingGraphicsContext, size: Size2D<i32>, _stride: i32) -> EGLImageNativeSurface {
         let len = size.width * size.height * 4;
-        let bitmap: Vec<u8> = Vec::from_elem(len as uint, 0 as u8);
+        let bitmap: Vec<u8> = repeat(0).take(len as usize).collect();
 
         EGLImageNativeSurface {
             image: None,
@@ -95,15 +96,15 @@ impl EGLImageNativeSurface {
     pub fn bind_to_texture(&self,
                            _: &NativeCompositingGraphicsContext,
                            texture: &Texture,
-                           size: Size2D<int>) {
+                           size: Size2D<isize>) {
         let _bound = texture.bind();
         match self.image {
             None => match self.bitmap {
                 Some(ref bitmap) => {
                     let data = bitmap.as_ptr() as *const c_void;
                     unsafe {
-                        TexImage2D(TEXTURE_2D, 0, BGRA_EXT as i32, size.width as i32, size.height as i32,
-                                   0, BGRA_EXT as u32, UNSIGNED_BYTE, data);
+                        TexImage2D(TEXTURE_2D, 0, BGRA as i32, size.width as i32, size.height as i32,
+                                   0, BGRA as u32, UNSIGNED_BYTE, data);
                     }
                 }
                 None => {
