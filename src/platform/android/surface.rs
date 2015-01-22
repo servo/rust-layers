@@ -61,6 +61,8 @@ pub struct EGLImageNativeSurface {
     will_leak: bool,
 }
 
+unsafe impl Send for EGLImageNativeSurface {}
+
 impl EGLImageNativeSurface {
     pub fn from_image_khr(image_khr: EGLImageKHR) -> EGLImageNativeSurface {
         let mut _image: Option<EGLImageKHR> = None;
