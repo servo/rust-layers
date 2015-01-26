@@ -22,7 +22,7 @@ use std::cell::{RefCell, RefMut};
 use std::num::Float;
 use std::rc::Rc;
 
-#[deriving(Clone, Copy, PartialEq, PartialOrd)]
+#[deriving(Clone, Copy, PartialEq, PartialOrd, Decodable, Encodable)]
 pub struct ContentAge {
     age: uint,
 }
@@ -130,7 +130,7 @@ impl<T> Layer<T> {
 }
 
 /// A request from the compositor to the renderer for tiles that need to be (re)displayed.
-#[deriving(Clone, Copy)]
+#[deriving(Clone, Copy, Decodable, Encodable)]
 pub struct BufferRequest {
     // The rect in pixels that will be drawn to the screen
     pub screen_rect: Rect<uint>,
