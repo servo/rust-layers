@@ -29,6 +29,7 @@ use std::vec::Vec;
 pub struct NativeGraphicsMetadata {
     pub display: EGLDisplay,
 }
+unsafe impl Send for NativeGraphicsMetadata {}
 
 pub struct NativePaintingGraphicsContext{
     display : EGLDisplay,

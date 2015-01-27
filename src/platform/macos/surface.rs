@@ -41,6 +41,7 @@ thread_local!(static io_surface_repository: Rc<RefCell<HashMap<IOSurfaceID,IOSur
 pub struct NativeGraphicsMetadata {
     pub pixel_format: CGLPixelFormatObj,
 }
+unsafe impl Send for NativeGraphicsMetadata {}
 
 impl NativeGraphicsMetadata {
     /// Creates a native graphics metadatum from a CGL pixel format.

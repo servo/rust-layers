@@ -139,6 +139,7 @@ impl NativeCompositingGraphicsContext {
 pub struct NativeGraphicsMetadata {
     pub display: *mut Display,
 }
+unsafe impl Send for NativeGraphicsMetadata {}
 
 impl NativeGraphicsMetadata {
     /// Creates graphics metadata from a metadata descriptor.
