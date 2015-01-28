@@ -18,13 +18,13 @@ use geom::size::Size2D;
 use libc::{c_char, c_int, c_uint, c_void};
 use glx;
 use gleam::gl;
-use std::ascii::AsciiExt;
+use std::ascii::{AsciiExt, OwnedAsciiExt};
 use std::ffi::{CString, c_str_to_bytes};
 use std::mem;
 use std::ptr;
 use std::str;
 use xlib::{Display, Pixmap, XCreateGC, XCreateImage, XCreatePixmap, XDefaultScreen};
-use xlib::{XDisplayString, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage, XRootWindow};
+use xlib::{XDisplayString, XFree, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage, XRootWindow};
 use xlib::{XVisualInfo, ZPixmap};
 
 /// The display and visual info. This is needed in order to upload on the painting side. This
@@ -78,8 +78,6 @@ impl NativeCompositingGraphicsContext {
         }
 
         unsafe {
-            let glx_display = mem::transmute(display);
-
             let fbconfig_attributes = [
                 glx::DOUBLEBUFFER as i32, 0,
                 glx::DRAWABLE_TYPE as i32, glx::PIXMAP_BIT as i32 | glx::WINDOW_BIT as i32,
@@ -91,34 +89,64 @@ impl NativeCompositingGraphicsContext {
 
             let screen = XDefaultScreen(display);
             let mut number_of_configs = 0;
-            let configs = glx::ChooseFBConfig(glx_display, screen,
-                                            fbconfig_attributes.as_ptr(), &mut number_of_configs);
+            let configs = glx::ChooseFBConfig(mem::transmute(display),
+                                              screen,
+                                              fbconfig_attributes.as_ptr(),
+                                              &mut number_of_configs);
+            NativeCompositingGraphicsContext::get_compatible_configuration(display,
+                                                                           configs,
+                                                                           number_of_configs)
+        }
+    }
+
+    fn get_compatible_configuration(display: *mut Display,
+                                    configs: *mut glx::types::GLXFBConfig,
+                                    number_of_configs: i32)
+                                    -> (*mut XVisualInfo, Option<glx::types::GLXFBConfig>) {
+        unsafe {
+            if number_of_configs == 0 {
+                panic!("glx::ChooseFBConfig returned no configurations.");
+            }
+
+            if !NativeCompositingGraphicsContext::need_to_find_32_bit_depth_visual(display) {
+                let config = *configs.offset(0);
+                let visual = glx::GetVisualFromFBConfig(mem::transmute(display), config);
+                return (mem::transmute(visual), Some(config));
+            }
+
+            // NVidia (and AMD/ATI) drivers have RGBA configurations that use 24-bit
+            // XVisual, not capable of representing an alpha-channel in Pixmap form,
+            // so we look for the configuration with a full set of 32 bits.
+            for i in range(0, number_of_configs as int) {
+                let config = *configs.offset(i);
+                let visual: *mut XVisualInfo =
+                    mem::transmute(glx::GetVisualFromFBConfig(mem::transmute(display), config));
+                if (*visual).depth == 32 {
+                    return (mem::transmute(visual), Some(config));
+                }
+                XFree(mem::transmute(visual));
+            }
+
+            panic!("Could not find 32-bit visual.");
+        }
+    }
+
+    fn need_to_find_32_bit_depth_visual(display: *mut Display) -> bool {
+        unsafe {
             let glXGetClientString: extern "C" fn(*mut Display, c_int) -> *const c_char =
                 mem::transmute(glx::GetProcAddress(mem::transmute(&"glXGetClientString\x00".as_bytes()[0])));
             assert!(glXGetClientString as *mut c_void != ptr::null_mut());
-            let glx_cli_vendor_c_str = glx::GetClientString(glx_display, glx::VENDOR as i32);
-            let glx_cli_vendor =
-                str::from_utf8(c_str_to_bytes(&glx_cli_vendor_c_str))
-                    .ok()
-                    .expect("Can't get glx client vendor.");
-            if glx_cli_vendor.eq_ignore_ascii_case("NVIDIA") ||
-               glx_cli_vendor.eq_ignore_ascii_case("ATI") {
-                // NVidia (and AMD/ATI) drivers have RGBA configurations that use 24-bit XVisual, not capable of
-                // representing an alpha-channel in Pixmap form, so we look for the configuration
-                // with a full set of 32 bits.
-                for i in range(0, number_of_configs as int) {
-                    let config = *configs.offset(i);
-                    let visual_info : *mut XVisualInfo = mem::transmute(glx::GetVisualFromFBConfig(glx_display, config));
-                    if (*visual_info).depth == 32 {
-                        return (visual_info, Some(config))
-                    }
-                }
-            } else if number_of_configs != 0 {
-                let fbconfig = *configs.offset(0);
-                let vi = glx::GetVisualFromFBConfig(glx_display, fbconfig);
-                return (mem::transmute(vi), Some(fbconfig));
+
+            let glx_vendor = glx::GetClientString(mem::transmute(display), glx::VENDOR as i32);
+            if glx_vendor == ptr::null() {
+                panic!("Could not determine GLX vendor.");
             }
-            panic!("Unable to locate a GLX FB configuration that supports RGBA.");
+            let glx_vendor =
+                str::from_utf8(c_str_to_bytes(&glx_vendor))
+                    .ok()
+                    .expect("GLX client vendor string not in UTF-8 format.");
+            let glx_vendor = String::from_str(glx_vendor).into_ascii_lowercase();
+            glx_vendor.contains("nvidia") || glx_vendor.contains("ati")
         }
     }
 
