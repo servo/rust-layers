@@ -15,20 +15,20 @@ use geom::size::Size2D;
 use gleam::gl;
 use gleam::gl::{GLenum, GLint, GLuint};
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Format {
     ARGB32Format,
     RGB24Format
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum FilterMode {
     Nearest,
     Linear
 }
 
 /// The texture target.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum TextureTarget {
     /// TEXTURE_2D.
     TextureTarget2D,
@@ -196,7 +196,7 @@ impl Texture {
 }
 
 /// Whether a texture should be flipped.
-#[deriving(PartialEq, Copy)]
+#[derive(PartialEq, Copy)]
 pub enum Flip {
     /// The texture should not be flipped.
     NoFlip,

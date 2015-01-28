@@ -18,9 +18,11 @@ use geom::size::Size2D;
 use libc::{c_char, c_int, c_uint, c_void};
 use glx;
 use gleam::gl;
-use std::c_str::CString;
+use std::ascii::AsciiExt;
+use std::ffi::{CString, c_str_to_bytes};
 use std::mem;
 use std::ptr;
+use std::str;
 use xlib::{Display, Pixmap, XCreateGC, XCreateImage, XCreatePixmap, XDefaultScreen};
 use xlib::{XDisplayString, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage, XRootWindow};
 use xlib::{XVisualInfo, ZPixmap};
@@ -58,7 +60,7 @@ impl NativePaintingGraphicsContext {
 /// someday.
 ///
 /// FIXME(pcwalton): Mark nonsendable.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct NativeCompositingGraphicsContext {
     display: *mut Display,
     framebuffer_configuration: Option<glx::types::GLXFBConfig>,
@@ -94,11 +96,13 @@ impl NativeCompositingGraphicsContext {
             let glXGetClientString: extern "C" fn(*mut Display, c_int) -> *const c_char =
                 mem::transmute(glx::GetProcAddress(mem::transmute(&"glXGetClientString\x00".as_bytes()[0])));
             assert!(glXGetClientString as *mut c_void != ptr::null_mut());
-            let glx_cli_vendor_c_str = CString::new(glx::GetClientString(glx_display, glx::VENDOR as i32), false);
-            let glx_cli_vendor = match glx_cli_vendor_c_str.as_str() { Some(s) => s,
-                                                                       None => panic!("Can't get glx client vendor.") };
-            if glx_cli_vendor.to_ascii().eq_ignore_case("NVIDIA".to_ascii()) ||
-               glx_cli_vendor.to_ascii().eq_ignore_case("ATI".to_ascii()) {
+            let glx_cli_vendor_c_str = glx::GetClientString(glx_display, glx::VENDOR as i32);
+            let glx_cli_vendor =
+                str::from_utf8(c_str_to_bytes(&glx_cli_vendor_c_str))
+                    .ok()
+                    .expect("Can't get glx client vendor.");
+            if glx_cli_vendor.eq_ignore_ascii_case("NVIDIA") ||
+               glx_cli_vendor.eq_ignore_ascii_case("ATI") {
                 // NVidia (and AMD/ATI) drivers have RGBA configurations that use 24-bit XVisual, not capable of
                 // representing an alpha-channel in Pixmap form, so we look for the configuration
                 // with a full set of 32 bits.
@@ -131,10 +135,11 @@ impl NativeCompositingGraphicsContext {
 }
 
 /// The X display.
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct NativeGraphicsMetadata {
     pub display: *mut Display,
 }
+unsafe impl Send for NativeGraphicsMetadata {}
 
 impl NativeGraphicsMetadata {
     /// Creates graphics metadata from a metadata descriptor.
@@ -145,7 +150,8 @@ impl NativeGraphicsMetadata {
         // the X Pixmap will not be sharable across them. Using this
         // method breaks that assumption.
         unsafe {
-            let display = XOpenDisplay(descriptor.display.to_c_str().as_mut_ptr());
+            let mut c_str = CString::from_slice(descriptor.display.as_bytes());
+            let display = XOpenDisplay(c_str.as_ptr() as *mut _);
             if display.is_null() {
                 panic!("XOpenDisplay() failed!");
             }
@@ -157,7 +163,7 @@ impl NativeGraphicsMetadata {
 }
 
 /// A sendable form of the X display string.
-#[deriving(Clone, Decodable, Encodable)]
+#[derive(Clone, RustcDecodable, RustcEncodable)]
 pub struct NativeGraphicsMetadataDescriptor {
     display: String,
 }
@@ -166,15 +172,16 @@ impl NativeGraphicsMetadataDescriptor {
     /// Creates a metadata descriptor from metadata.
     pub fn from_metadata(metadata: NativeGraphicsMetadata) -> NativeGraphicsMetadataDescriptor {
         unsafe {
-            let c_str = CString::new(XDisplayString(metadata.display) as *const i8, false);
+            let c_str = XDisplayString(metadata.display) as *const _;
+            let bytes = c_str_to_bytes(&c_str);
             NativeGraphicsMetadataDescriptor {
-                display: c_str.as_str().unwrap().to_string(),
+                display: str::from_utf8(bytes).unwrap().to_string(),
             }
         }
     }
 }
 
-#[deriving(Copy, Decodable, Encodable)]
+#[derive(RustcDecodable, RustcEncodable)]
 pub struct PixmapNativeSurface {
     /// The pixmap.
     pixmap: Pixmap,

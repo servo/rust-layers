@@ -22,7 +22,7 @@ use std::cell::{RefCell, RefMut};
 use std::num::Float;
 use std::rc::Rc;
 
-#[deriving(Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct ContentAge {
     age: uint,
 }
@@ -124,13 +124,13 @@ impl<T> Layer<T> {
         self.tile_grid.borrow_mut().create_textures(graphics_context);
     }
 
-    pub fn do_for_all_tiles(&self, f: |&Tile|) {
+    pub fn do_for_all_tiles<F: Fn(&Tile)>(&self, f: F) {
         self.tile_grid.borrow().do_for_all_tiles(f);
     }
 }
 
 /// A request from the compositor to the renderer for tiles that need to be (re)displayed.
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct BufferRequest {
     // The rect in pixels that will be drawn to the screen
     pub screen_rect: Rect<uint>,

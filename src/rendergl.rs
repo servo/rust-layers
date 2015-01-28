@@ -26,7 +26,6 @@ use libc::c_int;
 use gleam::gl;
 use gleam::gl::{GLenum, GLfloat, GLint, GLsizei, GLuint};
 use std::fmt;
-use std::num::Zero;
 use std::rc::Rc;
 
 static FRAGMENT_SHADER_SOURCE: &'static str = "
@@ -68,14 +67,14 @@ static VERTEX_SHADER_SOURCE: &'static str = "
     }
 ";
 
-static TEXTURED_QUAD_VERTICES: [f32, ..8] = [
+static TEXTURED_QUAD_VERTICES: [f32; 8] = [
     0.0, 0.0,
     0.0, 1.0,
     1.0, 0.0,
     1.0, 1.0,
 ];
 
-static LINE_QUAD_VERTICES: [f32, ..10] = [
+static LINE_QUAD_VERTICES: [f32; 10] = [
     0.0, 0.0,
     0.0, 1.0,
     1.0, 1.0,
@@ -88,13 +87,13 @@ static TILE_DEBUG_BORDER_THICKNESS: uint = 1;
 static LAYER_DEBUG_BORDER_COLOR: Color = Color { r: 1., g: 0.5, b: 0., a: 1.0 };
 static LAYER_DEBUG_BORDER_THICKNESS: uint = 2;
 
-#[deriving(Copy)]
+#[derive(Copy)]
 struct Buffers {
     textured_quad_vertex_buffer: GLuint,
     line_quad_vertex_buffer: GLuint,
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 struct ShaderProgram {
     id: GLuint,
 }
@@ -134,7 +133,7 @@ impl ShaderProgram {
     }
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 struct TextureProgram {
     program: ShaderProgram,
     vertex_position_attr: c_int,
@@ -147,11 +146,10 @@ struct TextureProgram {
 impl TextureProgram {
     fn new(sampler_function: &str, sampler_type: &str) -> TextureProgram {
         let fragment_shader_source
-             = format_args!(fmt::format,
-                            "#define samplerFunction {}\n#define samplerType {}\n{}",
-                            sampler_function,
-                            sampler_type,
-                            FRAGMENT_SHADER_SOURCE);
+             = fmt::format(format_args!("#define samplerFunction {}\n#define samplerType {}\n{}",
+                                        sampler_function,
+                                        sampler_type,
+                                        FRAGMENT_SHADER_SOURCE));
         let program = ShaderProgram::new(VERTEX_SHADER_SOURCE, fragment_shader_source.as_slice());
         TextureProgram {
             program: program,
@@ -173,7 +171,7 @@ impl TextureProgram {
         gl::uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array().as_slice());
         gl::uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array().as_slice());
 
-        let new_coords: [f32, ..8] = [
+        let new_coords: [f32; 8] = [
             unit_rect.min_x(), unit_rect.min_y(),
             unit_rect.min_x(), unit_rect.max_y(),
             unit_rect.max_x(), unit_rect.min_y(),
@@ -212,7 +210,7 @@ impl TextureProgram {
     }
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 struct SolidColorProgram {
     program: ShaderProgram,
     vertex_position_attr: c_int,
@@ -271,7 +269,7 @@ impl SolidColorProgram {
                                              unit_rect: Rect<f32>) {
         self.bind_uniforms_and_attributes_common(transform, projection_matrix, color);
 
-        let new_coords: [f32, ..8] = [
+        let new_coords: [f32; 8] = [
             unit_rect.origin.x, unit_rect.origin.y,
             unit_rect.origin.x, unit_rect.origin.y + unit_rect.size.height,
             unit_rect.origin.x + unit_rect.size.width, unit_rect.origin.y,
@@ -291,7 +289,7 @@ impl SolidColorProgram {
     }
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct RenderContext {
     texture_2d_program: TextureProgram,
     texture_rectangle_program: Option<TextureProgram>,

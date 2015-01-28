@@ -18,7 +18,6 @@ use core_foundation::boolean::CFBoolean;
 use core_foundation::dictionary::CFDictionary;
 use core_foundation::number::CFNumber;
 use core_foundation::string::CFString;
-use serialize::{Decoder, Encodable, Encoder};
 use geom::size::Size2D;
 use io_surface::{kIOSurfaceBytesPerElement, kIOSurfaceBytesPerRow, kIOSurfaceHeight};
 use io_surface::{kIOSurfaceIsGlobal, kIOSurfaceWidth, IOSurface, IOSurfaceID};
@@ -30,17 +29,19 @@ use gleam::gl::GLint;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem;
+use std::num::FromPrimitive;
 use std::ptr;
 use std::rc::Rc;
 use std::vec::Vec;
 
-thread_local!(static io_surface_repository: Rc<RefCell<HashMap<IOSurfaceID,IOSurface>>> = Rc::new(RefCell::new(HashMap::new())))
+thread_local!(static io_surface_repository: Rc<RefCell<HashMap<IOSurfaceID,IOSurface>>> = Rc::new(RefCell::new(HashMap::new())));
 
 /// The Mac native graphics metadata.
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct NativeGraphicsMetadata {
     pub pixel_format: CGLPixelFormatObj,
 }
+unsafe impl Send for NativeGraphicsMetadata {}
 
 impl NativeGraphicsMetadata {
     /// Creates a native graphics metadatum from a CGL pixel format.
@@ -80,7 +81,7 @@ impl NativeGraphicsMetadata {
 
 /// The Mac native graphics metadata descriptor, which encompasses the values needed to create a
 /// pixel format object.
-#[deriving(Clone, Decodable, Encodable)]
+#[derive(Clone, RustcDecodable, RustcEncodable)]
 pub struct NativeGraphicsMetadataDescriptor {
     boolean_attributes: Vec<bool>,
     integer_attributes: Vec<GLint>,
@@ -129,7 +130,7 @@ impl Drop for NativePaintingGraphicsContext {
     fn drop(&mut self) {}
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct NativeCompositingGraphicsContext {
     _contents: (),
 }
@@ -142,7 +143,7 @@ impl NativeCompositingGraphicsContext {
     }
 }
 
-#[deriving(Decodable, Encodable)]
+#[derive(RustcDecodable, RustcEncodable)]
 pub struct IOSurfaceNativeSurface {
     io_surface_id: Option<IOSurfaceID>,
     will_leak: bool,
