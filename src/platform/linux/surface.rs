@@ -13,11 +13,11 @@
 
 use texturegl::Texture;
 
-use azure::AzSkiaGrGLSharedSurfaceRef;
 use geom::size::Size2D;
 use libc::{c_char, c_int, c_uint, c_void};
 use glx;
 use gleam::gl;
+use skia::{SkiaSkNativeSharedGLContextRef, SkiaSkNativeSharedGLContextStealSurface};
 use std::ascii::{AsciiExt, OwnedAsciiExt};
 use std::ffi::{CString, c_str_to_bytes};
 use std::mem;
@@ -235,8 +235,10 @@ impl PixmapNativeSurface {
         }
     }
 
-    pub fn from_azure_surface(surface: AzSkiaGrGLSharedSurfaceRef) -> PixmapNativeSurface {
+    pub fn from_skia_shared_gl_context(context: SkiaSkNativeSharedGLContextRef)
+                                       -> PixmapNativeSurface {
         unsafe {
+            let surface = SkiaSkNativeSharedGLContextStealSurface(context);
             PixmapNativeSurface::from_pixmap(mem::transmute(surface))
         }
     }
