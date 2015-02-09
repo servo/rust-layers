@@ -12,7 +12,7 @@
 use texturegl::Texture;
 
 use geom::size::Size2D;
-use gleam::gl::{egl_image_target_texture2d_oes, TEXTURE_2D, TexImage2D, BGRA, UNSIGNED_BYTE};
+use gleam::gl::{egl_image_target_texture2d_oes, TEXTURE_2D, TexImage2D, BGRA_EXT, UNSIGNED_BYTE};
 use egl::egl::EGLDisplay;
 use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use libc::c_void;
@@ -108,8 +108,8 @@ impl EGLImageNativeSurface {
                 Some(ref bitmap) => {
                     let data = bitmap.as_ptr() as *const c_void;
                     unsafe {
-                        TexImage2D(TEXTURE_2D, 0, BGRA as i32, size.width as i32, size.height as i32,
-                                   0, BGRA as u32, UNSIGNED_BYTE, data);
+                        TexImage2D(TEXTURE_2D, 0, BGRA_EXT as i32, size.width as i32, size.height as i32,
+                                   0, BGRA_EXT as u32, UNSIGNED_BYTE, data);
                     }
                 }
                 None => {
