@@ -117,7 +117,7 @@ impl NativeCompositingGraphicsContext {
             // NVidia (and AMD/ATI) drivers have RGBA configurations that use 24-bit
             // XVisual, not capable of representing an alpha-channel in Pixmap form,
             // so we look for the configuration with a full set of 32 bits.
-            for i in range(0, number_of_configs as int) {
+            for i in 0..number_of_configs as isize {
                 let config = *configs.offset(i);
                 let visual: *mut XVisualInfo =
                     mem::transmute(glx::GetVisualFromFBConfig(mem::transmute(display), config));
