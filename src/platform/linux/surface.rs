@@ -89,7 +89,7 @@ impl NativeCompositingGraphicsContext {
 
             let screen = XDefaultScreen(display);
             let mut number_of_configs = 0;
-            let configs = glx::ChooseFBConfig(mem::transmute(display),
+            let configs = glx::ChooseFBConfig(display,
                                               screen,
                                               fbconfig_attributes.as_ptr(),
                                               &mut number_of_configs);
@@ -110,8 +110,8 @@ impl NativeCompositingGraphicsContext {
 
             if !NativeCompositingGraphicsContext::need_to_find_32_bit_depth_visual(display) {
                 let config = *configs.offset(0);
-                let visual = glx::GetVisualFromFBConfig(mem::transmute(display), config);
-                return (mem::transmute(visual), Some(config));
+                let visual = glx::GetVisualFromFBConfig(display, config);
+                return (visual, Some(config));
             }
 
             // NVidia (and AMD/ATI) drivers have RGBA configurations that use 24-bit
@@ -120,11 +120,11 @@ impl NativeCompositingGraphicsContext {
             for i in 0..number_of_configs as isize {
                 let config = *configs.offset(i);
                 let visual: *mut XVisualInfo =
-                    mem::transmute(glx::GetVisualFromFBConfig(mem::transmute(display), config));
+                    glx::GetVisualFromFBConfig(display, config);
                 if (*visual).depth == 32 {
-                    return (mem::transmute(visual), Some(config));
+                    return (visual, Some(config));
                 }
-                XFree(mem::transmute(visual));
+                XFree(visual as *mut _);
             }
 
             panic!("Could not find 32-bit visual.");
@@ -134,10 +134,10 @@ impl NativeCompositingGraphicsContext {
     fn need_to_find_32_bit_depth_visual(display: *mut Display) -> bool {
         unsafe {
             let glXGetClientString: extern "C" fn(*mut Display, c_int) -> *const c_char =
-                mem::transmute(glx::GetProcAddress(mem::transmute(&"glXGetClientString\x00".as_bytes()[0])));
+                mem::transmute(glx::GetProcAddress("glXGetClientString\x00".as_ptr() as *const _));
             assert!(glXGetClientString as *mut c_void != ptr::null_mut());
 
-            let glx_vendor = glx::GetClientString(mem::transmute(display), glx::VENDOR as i32);
+            let glx_vendor = glx::GetClientString(display, glx::VENDOR as i32);
             if glx_vendor == ptr::null() {
                 panic!("Could not determine GLX vendor.");
             }
@@ -276,7 +276,7 @@ impl PixmapNativeSurface {
                 0
             ];
 
-            let glx_display = mem::transmute(native_context.display);
+            let glx_display = native_context.display;
 
             let glx_pixmap = glx::CreatePixmap(glx_display,
                                              native_context.framebuffer_configuration.expect(
@@ -285,7 +285,7 @@ impl PixmapNativeSurface {
                                              pixmap_attributes.as_ptr());
 
             let glXBindTexImageEXT: extern "C" fn(*mut Display, glx::types::GLXDrawable, c_int, *mut c_int) =
-                mem::transmute(glx::GetProcAddress(mem::transmute(&"glXBindTexImageEXT\x00".as_bytes()[0])));
+                mem::transmute(glx::GetProcAddress("glXBindTexImageEXT\x00".as_ptr() as *const _));
             assert!(glXBindTexImageEXT as *mut c_void != ptr::null_mut());
             let _bound = texture.bind();
             glXBindTexImageEXT(native_context.display,
@@ -328,7 +328,7 @@ impl PixmapNativeSurface {
                                      depth,
                                      ZPixmap,
                                      0,
-                                     mem::transmute(&data[0]),
+                                     data.as_ptr() as *mut c_char,
                                      width as c_uint,
                                      height as c_uint,
                                      32,
