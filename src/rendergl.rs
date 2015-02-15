@@ -586,6 +586,9 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
     gl::viewport(v.origin.x as GLint, v.origin.y as GLint,
                  v.size.width as GLsizei, v.size.height as GLsizei);
 
+    gl::clear_color(1.0, 1.0, 1.0, 1.0);
+    gl::clear(gl::COLOR_BUFFER_BIT);
+
     // Set up the initial modelview matrix.
     let transform = identity().scale(scene.scale.get(), scene.scale.get(), 1.0);
 
