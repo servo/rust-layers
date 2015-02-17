@@ -4,6 +4,9 @@ name = "layers"
 version = "0.1.0"
 authors = ["The Servo Project Developers"]
 
+[dependencies]
+libc = "*"
+
 [dependencies.geom]
 
 git = "https://github.com/servo/rust-geom"
