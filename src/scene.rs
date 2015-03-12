@@ -28,7 +28,7 @@ impl<T> Scene<T> {
         Scene {
             root: None,
             viewport: viewport,
-            scale: ScaleFactor(1.0),
+            scale: ScaleFactor::new(1.0),
         }
     }
 

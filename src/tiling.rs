@@ -137,7 +137,7 @@ impl TileGrid {
     pub fn new(tile_size: uint) -> TileGrid {
         TileGrid {
             tiles: HashMap::new(),
-            tile_size: Length(tile_size),
+            tile_size: Length::new(tile_size),
             unused_buffers: Vec::new(),
         }
     }
