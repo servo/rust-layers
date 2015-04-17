@@ -35,9 +35,11 @@ static FRAGMENT_SHADER_SOURCE: &'static str = "
 
     varying vec2 vTextureCoord;
     uniform samplerType uSampler;
+    uniform float uOpacity;
 
     void main(void) {
-        gl_FragColor = samplerFunction(uSampler, vTextureCoord);
+        vec4 lFragColor = uOpacity * samplerFunction(uSampler, vTextureCoord);
+        gl_FragColor = lFragColor;
     }
 ";
 
@@ -141,6 +143,7 @@ struct TextureProgram {
     projection_uniform: c_int,
     sampler_uniform: c_int,
     texture_space_transform_uniform: c_int,
+    opacity_uniform: c_int,
 }
 
 impl TextureProgram {
@@ -158,6 +161,7 @@ impl TextureProgram {
             projection_uniform: program.get_uniform_location("uPMatrix"),
             sampler_uniform: program.get_uniform_location("uSampler"),
             texture_space_transform_uniform: program.get_uniform_location("uTextureSpaceTransform"),
+            opacity_uniform: program.get_uniform_location("uOpacity"),
         }
     }
 
@@ -166,7 +170,8 @@ impl TextureProgram {
                                     projection_matrix: &Matrix4<f32>,
                                     texture_space_transform: &Matrix4<f32>,
                                     buffers: &Buffers,
-                                    unit_rect: Rect<f32>) {
+                                    unit_rect: Rect<f32>,
+                                    opacity: f32) {
         gl::uniform_1i(self.sampler_uniform, 0);
         gl::uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array().as_slice());
         gl::uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array().as_slice());
@@ -184,6 +189,8 @@ impl TextureProgram {
         gl::uniform_matrix_4fv(self.texture_space_transform_uniform,
                            false,
                            texture_space_transform.to_array().as_slice());
+
+        gl::uniform_1f(self.opacity_uniform, opacity);
     }
 
     fn enable_attribute_arrays(&self) {
@@ -346,7 +353,8 @@ pub fn bind_and_render_quad(render_context: RenderContext,
                             texture: &Texture,
                             transform: &Matrix4<f32>,
                             scene_size: Size2D<f32>,
-                            unit_rect: Rect<f32>) {
+                            unit_rect: Rect<f32>,
+                            opacity: f32) {
     let mut texture_coordinates_need_to_be_scaled_by_size = false;
     let program = match texture.target {
         TextureTarget2D => render_context.texture_2d_program,
@@ -399,7 +407,8 @@ pub fn bind_and_render_quad(render_context: RenderContext,
                                          &projection_matrix,
                                          &texture_transform,
                                          &render_context.buffers,
-                                         unit_rect);
+                                         unit_rect,
+                                         opacity);
 
     // Draw!
     gl::draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
@@ -469,7 +478,8 @@ pub trait Render {
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>,
               mut clip_rect: Option<Rect<f32>>,
-              content_offset: Point2D<f32>);
+              content_offset: Point2D<f32>,
+              opacity: f32);
 }
 
 impl<T> Render for layers::Layer<T> {
@@ -478,11 +488,13 @@ impl<T> Render for layers::Layer<T> {
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>,
               mut clip_rect: Option<Rect<f32>>,
-              _: Point2D<f32>) {
+              _: Point2D<f32>,
+              _: f32) {
         let bounds = self.bounds.borrow().to_untyped();
         let cumulative_transform = transform.translate(bounds.origin.x, bounds.origin.y, 0.0);
         let tile_transform = cumulative_transform.mul(&*self.transform.borrow());
         let content_offset = self.content_offset.borrow().to_untyped();
+        let opacity = *self.opacity.borrow();
 
         if self.background_color.borrow().a != 0.0 {
             let background_transform = tile_transform.scale(bounds.size.width,
@@ -499,7 +511,12 @@ impl<T> Render for layers::Layer<T> {
 
         self.create_textures(&render_context.compositing_context);
         self.do_for_all_tiles(|tile: &Tile| {
-            tile.render(render_context, tile_transform, scene_size, clip_rect, content_offset)
+            tile.render(render_context,
+                        tile_transform,
+                        scene_size,
+                        clip_rect,
+                        content_offset,
+                        opacity)
         });
 
         if render_context.show_debug_borders {
@@ -534,7 +551,8 @@ impl<T> Render for layers::Layer<T> {
                          cumulative_transform,
                          scene_size,
                          clip_rect,
-                         Point2D(0., 0.))
+                         Point2D(0., 0.),
+                         opacity)
         }
 
     }
@@ -546,7 +564,8 @@ impl Render for Tile {
               transform: Matrix4<f32>,
               scene_size: Size2D<f32>,
               clip_rect: Option<Rect<f32>>,
-              content_offset: Point2D<f32>) {
+              content_offset: Point2D<f32>,
+              opacity: f32) {
         if self.texture.is_zero() {
             return;
         }
@@ -566,7 +585,8 @@ impl Render for Tile {
                              &self.texture,
                              &transform,
                              scene_size,
-                             quad_unit_rect);
+                             quad_unit_rect,
+                             opacity);
 
         if render_context.show_debug_borders {
             bind_and_render_quad_lines(render_context,
@@ -593,6 +613,10 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
     let transform = identity().scale(scene.scale.get(), scene.scale.get(), 1.0);
 
     // Render the root layer.
-    root_layer.render(render_context, transform, scene.viewport.size.to_untyped(), None,
-                      Point2D(0., 0.));
+    root_layer.render(render_context,
+                      transform,
+                      scene.viewport.size.to_untyped(),
+                      None,
+                      Point2D(0., 0.),
+                      1.0);
 }
