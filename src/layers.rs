@@ -60,12 +60,16 @@ pub struct Layer<T> {
 
     /// The background color for this layer.
     pub background_color: RefCell<Color>,
+
+    /// The opacity of this layer, from 0.0 (fully transparent) to 1.0 (fully opaque).
+    pub opacity: RefCell<f32>,
 }
 
 impl<T> Layer<T> {
     pub fn new(bounds: TypedRect<LayerPixel, f32>,
                tile_size: uint,
                background_color: Color,
+               opacity: f32,
                data: T)
                -> Layer<T> {
         Layer {
@@ -79,6 +83,7 @@ impl<T> Layer<T> {
             masks_to_bounds: RefCell::new(false),
             content_offset: RefCell::new(Point2D::zero()),
             background_color: RefCell::new(background_color),
+            opacity: RefCell::new(opacity),
         }
     }
 
