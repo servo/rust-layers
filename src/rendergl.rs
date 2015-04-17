@@ -187,8 +187,8 @@ impl TextureProgram {
         gl::vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
 
         gl::uniform_matrix_4fv(self.texture_space_transform_uniform,
-                           false,
-                           texture_space_transform.to_array().as_slice());
+                               false,
+                               texture_space_transform.to_array().as_slice());
 
         gl::uniform_1f(self.opacity_uniform, opacity);
     }
