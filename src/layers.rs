@@ -90,6 +90,10 @@ impl<T> Layer<T> {
         self.children().push(new_child);
     }
 
+    pub fn remove_child_at_index(&self, index: usize) {
+        self.children().remove(index);
+    }
+
     pub fn get_buffer_requests(&self,
                                rect_in_layer: TypedRect<LayerPixel, f32>,
                                scale: ScaleFactor<LayerPixel, DevicePixel, f32>)
