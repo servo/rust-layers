@@ -40,7 +40,6 @@ git = "https://github.com/servo/gleam"
 
 [dependencies.skia]
 git = "https://github.com/servo/skia"
-branch = "upstream-2014-06-16"
 
 [dependencies.azure]
 git = "https://github.com/servo/rust-azure"
