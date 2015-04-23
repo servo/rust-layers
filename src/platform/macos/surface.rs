@@ -213,7 +213,7 @@ impl IOSurfaceNativeSurface {
     pub fn bind_to_texture(&self,
                            _: &NativeCompositingGraphicsContext,
                            texture: &Texture,
-                           size: Size2D<int>) {
+                           size: Size2D<isize>) {
         let _bound_texture = texture.bind();
         let io_surface = io_surface::lookup(self.io_surface_id.unwrap());
         io_surface.bind_to_gl_texture(size)
@@ -224,10 +224,10 @@ impl IOSurfaceNativeSurface {
         io_surface.upload(data)
     }
 
-    pub fn get_id(&self) -> int {
+    pub fn get_id(&self) -> isize {
         match self.io_surface_id {
             None => 0,
-            Some(id) => id as int,
+            Some(id) => id as isize,
         }
     }
 

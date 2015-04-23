@@ -134,10 +134,10 @@ impl EGLImageNativeSurface {
         }
     }
 
-    pub fn get_id(&self) -> int {
+    pub fn get_id(&self) -> isize {
         match self.image {
             None => 0,
-            Some(image_khr) => image_khr as int,
+            Some(image_khr) => image_khr as isize,
         }
     }
 

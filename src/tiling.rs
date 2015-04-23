@@ -21,7 +21,6 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::iter::range_inclusive;
 use std::mem;
-use std::num::Float;
 
 pub struct Tile {
     /// The buffer displayed by this tile.
@@ -75,8 +74,8 @@ impl Tile {
     fn create_texture(&mut self, graphics_context: &NativeCompositingGraphicsContext) {
         match self.buffer {
             Some(ref buffer) => {
-                let size = Size2D(buffer.screen_pos.size.width as int,
-                                  buffer.screen_pos.size.height as int);
+                let size = Size2D(buffer.screen_pos.size.width as isize,
+                                  buffer.screen_pos.size.height as isize);
 
                 // If we already have a texture it should still be valid.
                 if !self.texture.is_zero() {
@@ -86,7 +85,7 @@ impl Tile {
                 // Make a new texture and bind the LayerBuffer's surface to it.
                 self.texture = Texture::new_with_buffer(buffer);
                 debug!("Tile: binding to native surface {}",
-                       buffer.native_surface.get_id() as int);
+                       buffer.native_surface.get_id() as isize);
                 buffer.native_surface.bind_to_texture(graphics_context, &self.texture, size);
 
                 // Set the layer's transform.
@@ -119,22 +118,22 @@ impl Tile {
 }
 
 pub struct TileGrid {
-    pub tiles: HashMap<Point2D<uint>, Tile>,
+    pub tiles: HashMap<Point2D<usize>, Tile>,
 
     /// The size of tiles in this grid in device pixels.
-    tile_size: Length<DevicePixel, uint>,
+    tile_size: Length<DevicePixel, usize>,
 
     // Buffers that are currently unused.
     unused_buffers: Vec<Box<LayerBuffer>>,
 }
 
-pub fn rect_uint_as_rect_f32(rect: Rect<uint>) -> Rect<f32> {
+pub fn rect_uint_as_rect_f32(rect: Rect<usize>) -> Rect<f32> {
     Rect(Point2D(rect.origin.x as f32, rect.origin.y as f32),
          Size2D(rect.size.width as f32, rect.size.height as f32))
 }
 
 impl TileGrid {
-    pub fn new(tile_size: uint) -> TileGrid {
+    pub fn new(tile_size: usize) -> TileGrid {
         TileGrid {
             tiles: HashMap::new(),
             tile_size: Length::new(tile_size),
@@ -144,21 +143,21 @@ impl TileGrid {
 
     pub fn get_tile_index_range_for_rect(&self,
                                          rect: TypedRect<DevicePixel, f32>)
-                                         -> (Point2D<uint>, Point2D<uint>) {
+                                         -> (Point2D<usize>, Point2D<usize>) {
         let rect = rect.to_untyped();
 
         // NB: Even in the case of an empty rect, the semantics of Rust floating-point-to-integer
         // casts mean this will corrently round to zero.
-        (Point2D((rect.origin.x / self.tile_size.get() as f32) as uint,
-                 (rect.origin.y / self.tile_size.get() as f32) as uint),
-         Point2D(((rect.origin.x + rect.size.width - 1.0) / self.tile_size.get() as f32) as uint,
-                 ((rect.origin.y + rect.size.height - 1.0) / self.tile_size.get() as f32) as uint))
+        (Point2D((rect.origin.x / self.tile_size.get() as f32) as usize,
+                 (rect.origin.y / self.tile_size.get() as f32) as usize),
+         Point2D(((rect.origin.x + rect.size.width - 1.0) / self.tile_size.get() as f32) as usize,
+                 ((rect.origin.y + rect.size.height - 1.0) / self.tile_size.get() as f32) as usize))
     }
 
     pub fn get_rect_for_tile_index(&self,
-                                   tile_index: Point2D<uint>,
+                                   tile_index: Point2D<usize>,
                                    current_layer_size: TypedSize2D<DevicePixel, f32>)
-                                   -> TypedRect<DevicePixel, uint> {
+                                   -> TypedRect<DevicePixel, usize> {
 
         let origin = Point2D(self.tile_size.get() * tile_index.x,
                              self.tile_size.get() * tile_index.y);
@@ -169,7 +168,7 @@ impl TileGrid {
                           tile_size.min(current_layer_size.height.get() - origin.y as f32));
 
         // Round up to texture pixels.
-        let size = Size2D(size.width.ceil() as uint, size.height.ceil() as uint);
+        let size = Size2D(size.width.ceil() as usize, size.height.ceil() as usize);
 
         Rect::from_untyped(&Rect(origin, size))
     }
@@ -207,7 +206,7 @@ impl TileGrid {
     }
 
     pub fn get_buffer_request_for_tile(&mut self,
-                                       tile_index: Point2D<uint>,
+                                       tile_index: Point2D<usize>,
                                        current_layer_size: TypedSize2D<DevicePixel, f32>,
                                        current_content_age: ContentAge)
                                        -> Option<BufferRequest> {
@@ -256,11 +255,11 @@ impl TileGrid {
         return buffer_requests;
     }
 
-    pub fn get_tile_index_for_point(&self, point: Point2D<uint>) -> Point2D<uint> {
+    pub fn get_tile_index_for_point(&self, point: Point2D<usize>) -> Point2D<usize> {
         assert!(point.x % self.tile_size.get() == 0);
         assert!(point.y % self.tile_size.get() == 0);
-        Point2D((point.x / self.tile_size.get()) as uint,
-                (point.y / self.tile_size.get()) as uint)
+        Point2D((point.x / self.tile_size.get()) as usize,
+                (point.y / self.tile_size.get()) as usize)
     }
 
     pub fn add_buffer(&mut self, buffer: Box<LayerBuffer>) {

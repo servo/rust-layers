@@ -18,8 +18,8 @@ use libc::{c_char, c_int, c_uint, c_void};
 use glx;
 use gleam::gl;
 use skia::{SkiaSkNativeSharedGLContextRef, SkiaSkNativeSharedGLContextStealSurface};
-use std::ascii::{AsciiExt, OwnedAsciiExt};
-use std::ffi::{CString, c_str_to_bytes};
+use std::ascii::OwnedAsciiExt;
+use std::ffi::{CString, CStr};
 use std::mem;
 use std::ptr;
 use std::str;
@@ -60,7 +60,7 @@ impl NativePaintingGraphicsContext {
 /// someday.
 ///
 /// FIXME(pcwalton): Mark nonsendable.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct NativeCompositingGraphicsContext {
     display: *mut Display,
     framebuffer_configuration: Option<glx::types::GLXFBConfig>,
@@ -142,7 +142,7 @@ impl NativeCompositingGraphicsContext {
                 panic!("Could not determine GLX vendor.");
             }
             let glx_vendor =
-                str::from_utf8(c_str_to_bytes(&glx_vendor))
+                str::from_utf8(CStr::from_ptr(glx_vendor).to_bytes())
                     .ok()
                     .expect("GLX client vendor string not in UTF-8 format.");
             let glx_vendor = String::from_str(glx_vendor).into_ascii_lowercase();
@@ -178,7 +178,7 @@ impl NativeGraphicsMetadata {
         // the X Pixmap will not be sharable across them. Using this
         // method breaks that assumption.
         unsafe {
-            let mut c_str = CString::from_slice(descriptor.display.as_bytes());
+            let c_str = CString::new(descriptor.display.as_bytes()).unwrap();
             let display = XOpenDisplay(c_str.as_ptr() as *mut _);
             if display.is_null() {
                 panic!("XOpenDisplay() failed!");
@@ -201,7 +201,7 @@ impl NativeGraphicsMetadataDescriptor {
     pub fn from_metadata(metadata: NativeGraphicsMetadata) -> NativeGraphicsMetadataDescriptor {
         unsafe {
             let c_str = XDisplayString(metadata.display) as *const _;
-            let bytes = c_str_to_bytes(&c_str);
+            let bytes = CStr::from_ptr(c_str).to_bytes();
             NativeGraphicsMetadataDescriptor {
                 display: str::from_utf8(bytes).unwrap().to_string(),
             }
@@ -265,7 +265,7 @@ impl PixmapNativeSurface {
     pub fn bind_to_texture(&self,
                            native_context: &NativeCompositingGraphicsContext,
                            texture: &Texture,
-                           size: Size2D<int>) {
+                           size: Size2D<isize>) {
         // Create the GLX pixmap.
         //
         // FIXME(pcwalton): RAII for exception safety?
@@ -352,8 +352,8 @@ impl PixmapNativeSurface {
         }
     }
 
-    pub fn get_id(&self) -> int {
-        self.pixmap as int
+    pub fn get_id(&self) -> isize {
+        self.pixmap as isize
     }
 
     pub fn destroy(&mut self, graphics_context: &NativePaintingGraphicsContext) {
