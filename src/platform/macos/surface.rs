@@ -29,7 +29,6 @@ use skia::{SkiaSkNativeSharedGLContextRef, SkiaSkNativeSharedGLContextStealSurfa
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem;
-use std::num::FromPrimitive;
 use std::ptr;
 use std::rc::Rc;
 use std::vec::Vec;
@@ -130,7 +129,7 @@ impl Drop for NativePaintingGraphicsContext {
     fn drop(&mut self) {}
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct NativeCompositingGraphicsContext {
     _contents: (),
 }
@@ -183,17 +182,17 @@ impl IOSurfaceNativeSurface {
                -> IOSurfaceNativeSurface {
         unsafe {
             let width_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceWidth);
-            let width_value: CFNumber = FromPrimitive::from_i32(size.width).unwrap();
+            let width_value: CFNumber = CFNumber::from_i32(size.width);
 
             let height_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceHeight);
-            let height_value: CFNumber = FromPrimitive::from_i32(size.height).unwrap();
+            let height_value: CFNumber = CFNumber::from_i32(size.height);
 
             let bytes_per_row_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceBytesPerRow);
-            let bytes_per_row_value: CFNumber = FromPrimitive::from_i32(stride).unwrap();
+            let bytes_per_row_value: CFNumber = CFNumber::from_i32(stride);
 
             let bytes_per_elem_key: CFString =
                 TCFType::wrap_under_get_rule(kIOSurfaceBytesPerElement);
-            let bytes_per_elem_value: CFNumber = FromPrimitive::from_i32(4).unwrap();
+            let bytes_per_elem_value: CFNumber = CFNumber::from_i32(4);
 
             let is_global_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceIsGlobal);
             let is_global_value = CFBoolean::true_value();
@@ -213,10 +212,10 @@ impl IOSurfaceNativeSurface {
     pub fn bind_to_texture(&self,
                            _: &NativeCompositingGraphicsContext,
                            texture: &Texture,
-                           size: Size2D<int>) {
+                           size: Size2D<isize>) {
         let _bound_texture = texture.bind();
         let io_surface = io_surface::lookup(self.io_surface_id.unwrap());
-        io_surface.bind_to_gl_texture(size)
+        io_surface.bind_to_gl_texture(Size2D(size.width as i32, size.height as i32))
     }
 
     pub fn upload(&mut self, _: &NativePaintingGraphicsContext, data: &[u8]) {
@@ -224,10 +223,10 @@ impl IOSurfaceNativeSurface {
         io_surface.upload(data)
     }
 
-    pub fn get_id(&self) -> int {
+    pub fn get_id(&self) -> isize {
         match self.io_surface_id {
             None => 0,
-            Some(id) => id as int,
+            Some(id) => id as isize,
         }
     }
 

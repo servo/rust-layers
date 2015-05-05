@@ -85,17 +85,17 @@ static LINE_QUAD_VERTICES: [f32; 10] = [
 ];
 
 static TILE_DEBUG_BORDER_COLOR: Color = Color { r: 0., g: 1., b: 1., a: 1.0 };
-static TILE_DEBUG_BORDER_THICKNESS: uint = 1;
+static TILE_DEBUG_BORDER_THICKNESS: usize = 1;
 static LAYER_DEBUG_BORDER_COLOR: Color = Color { r: 1., g: 0.5, b: 0., a: 1.0 };
-static LAYER_DEBUG_BORDER_THICKNESS: uint = 2;
+static LAYER_DEBUG_BORDER_THICKNESS: usize = 2;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Buffers {
     textured_quad_vertex_buffer: GLuint,
     line_quad_vertex_buffer: GLuint,
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct ShaderProgram {
     id: GLuint,
 }
@@ -117,7 +117,7 @@ impl ShaderProgram {
 
     pub fn compile_shader(source_string: &str, shader_type: GLenum) -> GLuint {
         let id = gl::create_shader(shader_type);
-        gl::shader_source(id, [ source_string.as_bytes() ].as_slice());
+        gl::shader_source(id, &[ source_string.as_bytes() ]);
         gl::compile_shader(id);
         if gl::get_shader_iv(id, gl::COMPILE_STATUS) == (0 as GLint) {
             panic!("Failed to compile shader: {}", gl::get_shader_info_log(id));
@@ -135,7 +135,7 @@ impl ShaderProgram {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct TextureProgram {
     program: ShaderProgram,
     vertex_position_attr: c_int,
@@ -153,7 +153,7 @@ impl TextureProgram {
                                         sampler_function,
                                         sampler_type,
                                         FRAGMENT_SHADER_SOURCE));
-        let program = ShaderProgram::new(VERTEX_SHADER_SOURCE, fragment_shader_source.as_slice());
+        let program = ShaderProgram::new(VERTEX_SHADER_SOURCE, &fragment_shader_source);
         TextureProgram {
             program: program,
             vertex_position_attr: program.get_attribute_location("aVertexPosition"),
@@ -173,8 +173,8 @@ impl TextureProgram {
                                     unit_rect: Rect<f32>,
                                     opacity: f32) {
         gl::uniform_1i(self.sampler_uniform, 0);
-        gl::uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array().as_slice());
-        gl::uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array().as_slice());
+        gl::uniform_matrix_4fv(self.modelview_uniform, false, &transform.to_array());
+        gl::uniform_matrix_4fv(self.projection_uniform, false, &projection_matrix.to_array());
 
         let new_coords: [f32; 8] = [
             unit_rect.min_x(), unit_rect.min_y(),
@@ -183,12 +183,12 @@ impl TextureProgram {
             unit_rect.max_x(), unit_rect.max_y(),
         ];
         gl::bind_buffer(gl::ARRAY_BUFFER, buffers.textured_quad_vertex_buffer);
-        gl::buffer_data(gl::ARRAY_BUFFER, new_coords.as_slice(), gl::STATIC_DRAW);
+        gl::buffer_data(gl::ARRAY_BUFFER, &new_coords, gl::STATIC_DRAW);
         gl::vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
 
         gl::uniform_matrix_4fv(self.texture_space_transform_uniform,
                                false,
-                               texture_space_transform.to_array().as_slice());
+                               &texture_space_transform.to_array());
 
         gl::uniform_1f(self.opacity_uniform, opacity);
     }
@@ -217,7 +217,7 @@ impl TextureProgram {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct SolidColorProgram {
     program: ShaderProgram,
     vertex_position_attr: c_int,
@@ -244,8 +244,8 @@ impl SolidColorProgram {
                                            transform: &Matrix4<f32>,
                                            projection_matrix: &Matrix4<f32>,
                                            color: Color) {
-        gl::uniform_matrix_4fv(self.modelview_uniform, false, transform.to_array().as_slice());
-        gl::uniform_matrix_4fv(self.projection_uniform, false, projection_matrix.to_array().as_slice());
+        gl::uniform_matrix_4fv(self.modelview_uniform, false, &transform.to_array());
+        gl::uniform_matrix_4fv(self.projection_uniform, false, &projection_matrix.to_array());
         gl::uniform_4f(self.color_uniform,
                    color.r as GLfloat,
                    color.g as GLfloat,
@@ -255,7 +255,7 @@ impl SolidColorProgram {
         let texture_transform: Matrix4<f32> = identity();
         gl::uniform_matrix_4fv(self.texture_space_transform_uniform,
                            false,
-                           texture_transform.to_array().as_slice());
+                           &texture_transform.to_array());
     }
 
     fn bind_uniforms_and_attributes_for_lines(&self,
@@ -283,7 +283,7 @@ impl SolidColorProgram {
             unit_rect.origin.x + unit_rect.size.width, unit_rect.origin.y + unit_rect.size.height,
         ];
         gl::bind_buffer(gl::ARRAY_BUFFER, buffers.textured_quad_vertex_buffer);
-        gl::buffer_data(gl::ARRAY_BUFFER, new_coords.as_slice(), gl::STATIC_DRAW);
+        gl::buffer_data(gl::ARRAY_BUFFER, &new_coords, gl::STATIC_DRAW);
         gl::vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
     }
 
@@ -296,7 +296,7 @@ impl SolidColorProgram {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct RenderContext {
     texture_2d_program: TextureProgram,
     texture_rectangle_program: Option<TextureProgram>,
@@ -336,11 +336,11 @@ impl RenderContext {
     fn init_buffers() -> Buffers {
         let textured_quad_vertex_buffer = gl::gen_buffers(1)[0];
         gl::bind_buffer(gl::ARRAY_BUFFER, textured_quad_vertex_buffer);
-        gl::buffer_data(gl::ARRAY_BUFFER, TEXTURED_QUAD_VERTICES.as_slice(), gl::STATIC_DRAW);
+        gl::buffer_data(gl::ARRAY_BUFFER, &TEXTURED_QUAD_VERTICES, gl::STATIC_DRAW);
 
         let line_quad_vertex_buffer = gl::gen_buffers(1)[0];
         gl::bind_buffer(gl::ARRAY_BUFFER, line_quad_vertex_buffer);
-        gl::buffer_data(gl::ARRAY_BUFFER, LINE_QUAD_VERTICES.as_slice(), gl::STATIC_DRAW);
+        gl::buffer_data(gl::ARRAY_BUFFER, &LINE_QUAD_VERTICES, gl::STATIC_DRAW);
 
         Buffers {
             textured_quad_vertex_buffer: textured_quad_vertex_buffer,
@@ -373,8 +373,8 @@ pub fn bind_and_render_quad(render_context: RenderContext,
 
     // FIXME: This should technically check that the transform
     // matrix only contains scale in these components.
-    let has_scale = transform.m11 as uint != texture.size.width ||
-                    transform.m22 as uint != texture.size.height;
+    let has_scale = transform.m11 as usize != texture.size.width ||
+                    transform.m22 as usize != texture.size.height;
     let filter_mode = if has_scale {
         Linear
     } else {
@@ -421,7 +421,7 @@ pub fn bind_and_render_quad_lines(render_context: RenderContext,
                                   transform: &Matrix4<f32>,
                                   scene_size: Size2D<f32>,
                                   color: Color,
-                                  line_thickness: uint) {
+                                  line_thickness: usize) {
     let solid_color_program = render_context.solid_color_program;
     solid_color_program.enable_attribute_arrays();
     gl::use_program(solid_color_program.program.id);

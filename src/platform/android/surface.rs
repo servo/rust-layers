@@ -20,7 +20,6 @@ use skia::{SkiaSkNativeSharedGLContextRef, SkiaSkNativeSharedGLContextStealSurfa
 use std::iter::repeat;
 use std::mem;
 use std::ptr;
-use std::slice::bytes::copy_memory;
 use std::vec::Vec;
 
 /// FIXME(Aydin Kim) :Currently, native surface is consist of 2 types of hybrid image buffer. EGLImageKHR is used to GPU rendering and vector is used to CPU rendering. EGL extension seems not provide simple way to accessing its bitmap directly. In the future, we need to find out the way to integrate them.
@@ -47,7 +46,7 @@ impl Drop for NativePaintingGraphicsContext {
     fn drop(&mut self) {}
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct NativeCompositingGraphicsContext;
 
 impl NativeCompositingGraphicsContext {
@@ -126,7 +125,8 @@ impl EGLImageNativeSurface {
     pub fn upload(&mut self, _: &NativePaintingGraphicsContext, data: &[u8]) {
         match self.bitmap {
             Some(ref mut bitmap) => {
-                copy_memory(bitmap.as_mut_slice(), data);
+                bitmap.clear();
+                bitmap.push_all(data);
             }
             None => {
                 debug!("Cannot upload the buffer(CPU rendering), there is no bitmap");
@@ -134,10 +134,10 @@ impl EGLImageNativeSurface {
         }
     }
 
-    pub fn get_id(&self) -> int {
+    pub fn get_id(&self) -> isize {
         match self.image {
             None => 0,
-            Some(image_khr) => image_khr as int,
+            Some(image_khr) => image_khr as isize,
         }
     }
 

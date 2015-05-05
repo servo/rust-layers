@@ -6,6 +6,8 @@ authors = ["The Servo Project Developers"]
 
 [dependencies]
 libc = "*"
+rustc-serialize = "*"
+log = "*"
 
 [dependencies.geom]
 

@@ -12,14 +12,14 @@
 /// One hardware pixel.
 ///
 /// This unit corresponds to the smallest addressable element of the display hardware.
-#[derive(Copy, RustcEncodable)]
+#[derive(Copy, Clone, RustcEncodable)]
 pub enum DevicePixel {}
 
 /// One pixel in layer coordinate space.
 ///
 /// This unit corresponds to a "pixel" in layer coordinate space, which after scaling and
 /// transformation becomes a device pixel.
-#[derive(Copy, RustcEncodable)]
+#[derive(Copy, Clone, RustcEncodable)]
 pub enum LayerPixel {}
 
 

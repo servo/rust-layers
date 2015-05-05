@@ -15,20 +15,20 @@ use geom::size::Size2D;
 use gleam::gl;
 use gleam::gl::{GLenum, GLint, GLuint};
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum Format {
     ARGB32Format,
     RGB24Format
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum FilterMode {
     Nearest,
     Linear
 }
 
 /// The texture target.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum TextureTarget {
     /// TEXTURE_2D.
     TextureTarget2D,
@@ -73,13 +73,13 @@ pub struct Texture {
     pub flip: Flip,
 
     // The size of this texture in device pixels.
-    pub size: Size2D<uint>
+    pub size: Size2D<usize>
 }
 
 impl Drop for Texture {
     fn drop(&mut self) {
         if !self.weak {
-            gl::delete_textures([ self.id ].as_slice())
+            gl::delete_textures(&[ self.id ])
         }
     }
 }
@@ -91,7 +91,7 @@ impl Texture {
             target: TextureTarget::TextureTarget2D,
             weak: true,
             flip: Flip::NoFlip,
-            size: Size2D(0u, 0u),
+            size: Size2D(0, 0),
         }
     }
     pub fn is_zero(&self) -> bool {
@@ -113,7 +113,7 @@ impl Drop for BoundTexture {
 
 impl Texture {
     /// Creates a new blank texture.
-    pub fn new(target: TextureTarget, size: Size2D<uint>) -> Texture {
+    pub fn new(target: TextureTarget, size: Size2D<usize>) -> Texture {
         let this = Texture {
             id: gl::gen_textures(1)[0],
             target: target,
@@ -196,7 +196,7 @@ impl Texture {
 }
 
 /// Whether a texture should be flipped.
-#[derive(PartialEq, Copy)]
+#[derive(PartialEq, Copy, Clone)]
 pub enum Flip {
     /// The texture should not be flipped.
     NoFlip,

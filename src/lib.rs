@@ -10,15 +10,15 @@
 #![crate_name = "layers"]
 #![crate_type = "rlib"]
 
-#![allow(raw_pointer_deriving)]
-#![feature(int_uint)]
+#![allow(raw_pointer_derive)]
+#![feature(collections, std_misc, core)]
 
 extern crate azure;
 extern crate geom;
 extern crate libc;
 #[macro_use]
 extern crate log;
-extern crate "serialize" as rustc_serialize;
+extern crate rustc_serialize;
 extern crate gleam;
 extern crate skia;
 

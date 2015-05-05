@@ -145,7 +145,7 @@ impl NativeSurface {
     pub fn bind_to_texture(&self,
                            native_context: &NativeCompositingGraphicsContext,
                            texture: &Texture,
-                           size: Size2D<int>) {
+                           size: Size2D<isize>) {
         native_surface_method!(self bind_to_texture (native_context, texture, size))
     }
 
@@ -155,7 +155,7 @@ impl NativeSurface {
     }
 
     /// Returns an opaque ID identifying the surface for debugging.
-    pub fn get_id(&self) -> int {
+    pub fn get_id(&self) -> isize {
         native_surface_method!(self get_id ())
     }
 
@@ -205,7 +205,7 @@ impl MemoryBufferNativeSurface {
 
     /// This may only be called on the compositor side.
     #[cfg(not(target_os="android"))]
-    pub fn bind_to_texture(&self, _: &NativeCompositingGraphicsContext, texture: &Texture, size: Size2D<int>) {
+    pub fn bind_to_texture(&self, _: &NativeCompositingGraphicsContext, texture: &Texture, size: Size2D<isize>) {
         let _bound = texture.bind();
         gl::tex_image_2d(gl::TEXTURE_2D,
                          0,
@@ -215,11 +215,11 @@ impl MemoryBufferNativeSurface {
                          0,
                          gl::BGRA,
                          gl::UNSIGNED_BYTE,
-                         Some(self.bytes.as_slice()));
+                         Some(&self.bytes));
     }
 
     #[cfg(target_os="android")]
-    pub fn bind_to_texture(&self, _: &NativeCompositingGraphicsContext, _: &Texture, _: Size2D<int>) {
+    pub fn bind_to_texture(&self, _: &NativeCompositingGraphicsContext, _: &Texture, _: Size2D<isize>) {
         panic!("Binding a memory surface to a texture is not yet supported on Android.");
     }
 
@@ -229,7 +229,7 @@ impl MemoryBufferNativeSurface {
         self.bytes.push_all(data);
     }
 
-    pub fn get_id(&self) -> int {
+    pub fn get_id(&self) -> isize {
         0
     }
 

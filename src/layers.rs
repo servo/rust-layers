@@ -19,12 +19,11 @@ use geom::rect::{Rect, TypedRect};
 use platform::surface::{NativeCompositingGraphicsContext, NativePaintingGraphicsContext};
 use platform::surface::NativeSurface;
 use std::cell::{RefCell, RefMut};
-use std::num::Float;
 use std::rc::Rc;
 
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct ContentAge {
-    age: uint,
+    age: usize,
 }
 
 impl ContentAge {
@@ -42,7 +41,7 @@ impl ContentAge {
 pub struct Layer<T> {
     pub children: RefCell<Vec<Rc<Layer<T>>>>,
     pub transform: RefCell<Matrix4<f32>>,
-    pub tile_size: uint,
+    pub tile_size: usize,
     pub extra_data: RefCell<T>,
     tile_grid: RefCell<TileGrid>,
 
@@ -67,7 +66,7 @@ pub struct Layer<T> {
 
 impl<T> Layer<T> {
     pub fn new(bounds: TypedRect<LayerPixel, f32>,
-               tile_size: uint,
+               tile_size: usize,
                background_color: Color,
                opacity: f32,
                data: T)
@@ -142,7 +141,7 @@ impl<T> Layer<T> {
 #[derive(Clone, Copy)]
 pub struct BufferRequest {
     // The rect in pixels that will be drawn to the screen
-    pub screen_rect: Rect<uint>,
+    pub screen_rect: Rect<usize>,
 
     // The rect in page coordinates that this tile represents
     pub page_rect: Rect<f32>,
@@ -152,7 +151,7 @@ pub struct BufferRequest {
 }
 
 impl BufferRequest {
-    pub fn new(screen_rect: Rect<uint>,
+    pub fn new(screen_rect: Rect<usize>,
                page_rect: Rect<f32>,
                content_age: ContentAge)
                -> BufferRequest {
@@ -173,13 +172,13 @@ pub struct LayerBuffer {
     pub rect: Rect<f32>,
 
     /// The rect in pixels that will be drawn to the screen.
-    pub screen_pos: Rect<uint>,
+    pub screen_pos: Rect<usize>,
 
     /// The scale at which this tile is rendered
     pub resolution: f32,
 
     /// NB: stride is in pixels, like OpenGL GL_UNPACK_ROW_LENGTH.
-    pub stride: uint,
+    pub stride: usize,
 
     /// Whether or not this buffer was painted with the CPU rasterization.
     pub painted_with_cpu: bool,
@@ -190,7 +189,7 @@ pub struct LayerBuffer {
 
 impl LayerBuffer {
     /// Returns the amount of memory used by the tile
-    pub fn get_mem(&self) -> uint {
+    pub fn get_mem(&self) -> usize {
         // This works for now, but in the future we may want a better heuristic
         self.screen_pos.size.width * self.screen_pos.size.height
     }
@@ -201,7 +200,7 @@ impl LayerBuffer {
     }
 
     /// Returns the Size2D of the tile
-    pub fn get_size_2d(&self) -> Size2D<uint> {
+    pub fn get_size_2d(&self) -> Size2D<usize> {
         self.screen_pos.size
     }
 
