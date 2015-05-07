@@ -39,7 +39,7 @@ pub enum TextureTarget {
 impl TextureTarget {
 
     #[cfg(not(target_os = "android"))]
-    fn as_gl_target(self) -> GLenum {
+    pub fn as_gl_target(self) -> GLenum {
         match self {
             TextureTarget::TextureTarget2D => gl::TEXTURE_2D,
             TextureTarget::TextureTargetRectangle => gl::TEXTURE_RECTANGLE_ARB,
@@ -47,7 +47,7 @@ impl TextureTarget {
     }
 
     #[cfg(target_os = "android")]
-    fn as_gl_target(self) -> GLenum {
+    pub fn as_gl_target(self) -> GLenum {
         match self {
             TextureTarget::TextureTarget2D => gl::TEXTURE_2D,
             TextureTarget::TextureTargetRectangle => panic!("android doesn't supported rectangle targets"),
@@ -134,7 +134,7 @@ impl Texture {
 
     // Returns whether the layer should be vertically flipped.
     #[cfg(target_os="macos")]
-    fn texture_flip_and_target(cpu_painting: bool) -> (Flip, TextureTarget) {
+    pub fn texture_flip_and_target(cpu_painting: bool) -> (Flip, TextureTarget) {
         let flip = if cpu_painting {
             Flip::NoFlip
         } else {
@@ -145,7 +145,7 @@ impl Texture {
     }
 
     #[cfg(target_os="android")]
-    fn texture_flip_and_target(cpu_painting: bool) -> (Flip, TextureTarget) {
+    pub fn texture_flip_and_target(cpu_painting: bool) -> (Flip, TextureTarget) {
         let flip = if cpu_painting {
             Flip::NoFlip
         } else {
@@ -156,7 +156,7 @@ impl Texture {
     }
 
     #[cfg(target_os="linux")]
-    fn texture_flip_and_target(_: bool) -> (Flip, TextureTarget) {
+    pub fn texture_flip_and_target(_: bool) -> (Flip, TextureTarget) {
         (Flip::NoFlip, TextureTarget::TextureTarget2D)
     }
 
