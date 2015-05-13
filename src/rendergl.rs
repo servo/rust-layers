@@ -205,13 +205,13 @@ impl TextureProgram {
         TextureProgram::new("texture2D", "sampler2D")
     }
 
-    #[cfg(not(target_os="android"))]
+    #[cfg(target_os="macos")]
     fn create_rectangle_program_if_necessary() -> Option<TextureProgram> {
         gl::enable(gl::TEXTURE_RECTANGLE_ARB);
         Some(TextureProgram::new("texture2DRect", "sampler2DRect"))
     }
 
-    #[cfg(target_os="android")]
+    #[cfg(not(target_os="macos"))]
     fn create_rectangle_program_if_necessary() -> Option<TextureProgram> {
         None
     }
