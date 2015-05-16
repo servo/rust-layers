@@ -23,9 +23,9 @@ use std::ffi::{CString, CStr};
 use std::mem;
 use std::ptr;
 use std::str;
-use xlib::{Display, Pixmap, XCreateGC, XCreateImage, XCreatePixmap, XDefaultScreen};
-use xlib::{XDisplayString, XFree, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage, XRootWindow};
-use xlib::{XVisualInfo, ZPixmap};
+use x11::xlib::{Display, Pixmap, XCreateGC, XCreateImage, XCreatePixmap, XDefaultScreen};
+use x11::xlib::{XDisplayString, XFree, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage};
+use x11::xlib::{XRootWindow, XVisualInfo, ZPixmap};
 
 /// The display and visual info. This is needed in order to upload on the painting side. This
 /// holds a weak reference to the display and will not close it when done.
