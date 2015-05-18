@@ -142,7 +142,7 @@ impl NativeCompositingGraphicsContext {
     }
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Clone, RustcDecodable, RustcEncodable)]
 pub struct IOSurfaceNativeSurface {
     io_surface_id: Option<IOSurfaceID>,
     will_leak: bool,

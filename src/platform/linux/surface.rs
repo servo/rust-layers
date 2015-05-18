@@ -209,7 +209,7 @@ impl NativeGraphicsMetadataDescriptor {
     }
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Clone, RustcDecodable, RustcEncodable)]
 pub struct PixmapNativeSurface {
     /// The pixmap.
     pixmap: Pixmap,

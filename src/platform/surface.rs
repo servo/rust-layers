@@ -37,6 +37,7 @@ pub use platform::android::surface::{NativeCompositingGraphicsContext,
                                      NativePaintingGraphicsContext,
                                      EGLImageNativeSurface};
 
+#[derive(Clone)]
 pub enum NativeSurface {
     MemoryBuffer(MemoryBufferNativeSurface),
 #[cfg(target_os="linux")]
@@ -191,7 +192,7 @@ impl NativeSurface {
     }
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Clone, RustcDecodable, RustcEncodable)]
 pub struct MemoryBufferNativeSurface {
     bytes: Vec<u8>,
 }

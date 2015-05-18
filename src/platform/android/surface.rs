@@ -55,6 +55,7 @@ impl NativeCompositingGraphicsContext {
     }
 }
 
+#[derive(Clone)]
 pub struct EGLImageNativeSurface {
     image: Option<EGLImageKHR>, // For GPU rendering
     bitmap: Option<Vec<u8>>, // For CPU rendering
