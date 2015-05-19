@@ -292,7 +292,6 @@ impl PixmapNativeSurface {
                                mem::transmute(glx_pixmap),
                                glx::FRONT_EXT  as i32,
                                ptr::null_mut());
-            assert_eq!(gl::GetError(), gl::NO_ERROR);
 
             // FIXME(pcwalton): Recycle these for speed?
             glx::DestroyPixmap(glx_display, glx_pixmap);
