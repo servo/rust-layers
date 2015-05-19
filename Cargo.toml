@@ -21,9 +21,10 @@ git = "https://github.com/servo/rust-core-foundation"
 
 git = "https://github.com/servo/rust-io-surface"
 
-[dependencies.xlib]
+[dependencies.x11]
 
-git = "https://github.com/servo/rust-xlib"
+version = "1.0.1"
+features = ["xlib"]
 
 [dependencies.egl]
 

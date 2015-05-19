@@ -32,7 +32,7 @@ extern crate collections;
 extern crate cgl;
 
 #[cfg(target_os="linux")]
-extern crate xlib;
+extern crate x11;
 #[cfg(target_os="linux")]
 extern crate glx;
 
