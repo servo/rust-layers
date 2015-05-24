@@ -23,6 +23,7 @@ use std::ffi::{CString, CStr};
 use std::mem;
 use std::ptr;
 use std::str;
+use x11;
 use x11::xlib::{Display, Pixmap, XCreateGC, XCreateImage, XCreatePixmap, XDefaultScreen};
 use x11::xlib::{XDisplayString, XFree, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage};
 use x11::xlib::{XRootWindow, XVisualInfo, ZPixmap};
@@ -134,10 +135,9 @@ impl NativeCompositingGraphicsContext {
     fn need_to_find_32_bit_depth_visual(display: *mut Display) -> bool {
         unsafe {
             let glXGetClientString: extern "C" fn(*mut Display, c_int) -> *const c_char =
-                mem::transmute(glx::GetProcAddress("glXGetClientString\x00".as_ptr() as *const _));
-            assert!(glXGetClientString as *mut c_void != ptr::null_mut());
+                mem::transmute(x11::glx::glXGetProcAddress("glXGetClientString\x00".as_ptr() as *const _).unwrap());
 
-            let glx_vendor = glx::GetClientString(display, glx::VENDOR as i32);
+            let glx_vendor = x11::glx::glXGetClientString(display, glx::VENDOR as i32);
             if glx_vendor == ptr::null() {
                 panic!("Could not determine GLX vendor.");
             }
@@ -278,15 +278,14 @@ impl PixmapNativeSurface {
 
             let glx_display = native_context.display;
 
-            let glx_pixmap = glx::CreatePixmap(glx_display,
+            let glx_pixmap = x11::glx::glXCreatePixmap(glx_display,
                                              native_context.framebuffer_configuration.expect(
-                                                 "GLX 1.3 should have a framebuffer_configuration"),
+                                                 "GLX 1.3 should have a framebuffer_configuration") as x11::glx::GLXFBConfig,
                                              self.pixmap,
                                              pixmap_attributes.as_ptr());
 
             let glXBindTexImageEXT: extern "C" fn(*mut Display, glx::types::GLXDrawable, c_int, *mut c_int) =
-                mem::transmute(glx::GetProcAddress("glXBindTexImageEXT\x00".as_ptr() as *const _));
-            assert!(glXBindTexImageEXT as *mut c_void != ptr::null_mut());
+                mem::transmute(x11::glx::glXGetProcAddress("glXBindTexImageEXT\x00".as_ptr() as *const _).unwrap());
             let _bound = texture.bind();
             glXBindTexImageEXT(native_context.display,
                                mem::transmute(glx_pixmap),
@@ -294,7 +293,7 @@ impl PixmapNativeSurface {
                                ptr::null_mut());
 
             // FIXME(pcwalton): Recycle these for speed?
-            glx::DestroyPixmap(glx_display, glx_pixmap);
+            x11::glx::glXDestroyPixmap(glx_display, glx_pixmap);
         }
     }
 
