@@ -111,6 +111,8 @@ impl NativeCompositingGraphicsContext {
             if !NativeCompositingGraphicsContext::need_to_find_32_bit_depth_visual(display) {
                 let config = *configs.offset(0);
                 let visual = glx::GetVisualFromFBConfig(mem::transmute(display), config);
+
+                XFree(configs as *mut c_void);
                 return (mem::transmute(visual), Some(config));
             }
 
@@ -122,11 +124,13 @@ impl NativeCompositingGraphicsContext {
                 let visual: *mut XVisualInfo =
                     mem::transmute(glx::GetVisualFromFBConfig(mem::transmute(display), config));
                 if (*visual).depth == 32 {
-                    return (mem::transmute(visual), Some(config));
+                    XFree(configs as *mut c_void);
+                    return (visual, Some(config));
                 }
-                XFree(mem::transmute(visual));
+                XFree(visual as *mut c_void);
             }
 
+            XFree(configs as *mut c_void);
             panic!("Could not find 32-bit visual.");
         }
     }
