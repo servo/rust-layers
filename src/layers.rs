@@ -151,9 +151,7 @@ pub struct BufferRequest {
 }
 
 impl BufferRequest {
-    pub fn new(screen_rect: Rect<usize>,
-               page_rect: Rect<f32>,
-               content_age: ContentAge)
+    pub fn new(screen_rect: Rect<usize>, page_rect: Rect<f32>, content_age: ContentAge)
                -> BufferRequest {
         BufferRequest {
             screen_rect: screen_rect,
