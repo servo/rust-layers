@@ -98,12 +98,16 @@ impl<T> Layer<T> {
         self.children().remove(index);
     }
 
+    /// Returns buffer requests inside the given dirty rect, and simultaneously throws out tiles
+    /// outside the given viewport rect.
     pub fn get_buffer_requests(&self,
                                rect_in_layer: TypedRect<LayerPixel, f32>,
+                               viewport_in_layer: TypedRect<LayerPixel, f32>,
                                scale: ScaleFactor<LayerPixel, DevicePixel, f32>)
                                -> Vec<BufferRequest> {
         let mut tile_grid = self.tile_grid.borrow_mut();
         return tile_grid.get_buffer_requests_in_rect(rect_in_layer * scale,
+                                                     viewport_in_layer * scale,
                                                      self.bounds.borrow().size * scale,
                                                      *self.content_age.borrow());
     }
