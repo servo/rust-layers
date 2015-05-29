@@ -35,6 +35,7 @@ impl<T> Scene<T> {
     pub fn get_buffer_requests_for_layer(&mut self,
                                          layer: Rc<Layer<T>>,
                                          dirty_rect: TypedRect<LayerPixel, f32>,
+                                         viewport_rect: TypedRect<LayerPixel, f32>,
                                          layers_and_requests: &mut Vec<(Rc<Layer<T>>,
                                                                         Vec<BufferRequest>)>,
                                          unused_buffers: &mut Vec<(Rc<Layer<T>>,
@@ -45,6 +46,7 @@ impl<T> Scene<T> {
         let layer_bounds = *layer.bounds.borrow();
         let content_offset = *layer.content_offset.borrow();
         let dirty_rect_adjusted_for_content_offset = dirty_rect.translate(&-content_offset);
+        let viewport_rect_adjusted_for_content_offset = viewport_rect.translate(&-content_offset);
 
         match dirty_rect_adjusted_for_content_offset.intersection(&layer_bounds) {
             Some(mut intersected_rect) => {
@@ -52,7 +54,11 @@ impl<T> Scene<T> {
                 // to this layer's origin, so move our intersected rect into the coordinate space
                 // of this layer.
                 intersected_rect = intersected_rect.translate(&-layer_bounds.origin);
-                let requests = layer.get_buffer_requests(intersected_rect, self.scale);
+                let viewport_rect =
+                    viewport_rect_adjusted_for_content_offset.translate(&-layer_bounds.origin);
+                let requests = layer.get_buffer_requests(intersected_rect,
+                                                         viewport_rect,
+                                                         self.scale);
                 if !requests.is_empty() {
                     layers_and_requests.push((layer.clone(), requests));
                 }
@@ -83,9 +89,11 @@ impl<T> Scene<T> {
         }
 
         dirty_rect_in_children = dirty_rect_in_children.translate(&-layer_bounds.origin);
+        let viewport_rect_in_children = viewport_rect.translate(&-layer_bounds.origin);
         for kid in layer.children().iter() {
             self.get_buffer_requests_for_layer(kid.clone(),
                                                dirty_rect_in_children,
+                                               viewport_rect_in_children,
                                                layers_and_requests,
                                                unused_buffers);
         }
@@ -100,6 +108,7 @@ impl<T> Scene<T> {
         };
 
         self.get_buffer_requests_for_layer(root_layer.clone(),
+                                           *root_layer.bounds.borrow(),
                                            *root_layer.bounds.borrow(),
                                            requests,
                                            unused_buffers);

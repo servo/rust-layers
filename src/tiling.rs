@@ -186,6 +186,25 @@ impl TileGrid {
         }
     }
 
+    pub fn mark_tiles_outside_of_rect_as_unused(&mut self,
+                                                rect: TypedRect<DevicePixel, f32>,
+                                                current_layer_size: TypedSize2D<DevicePixel, f32>) {
+        let mut tile_indexes_to_take = Vec::new();
+        for tile_index in self.tiles.keys() {
+            let tile_rect = self.get_rect_for_tile_index(*tile_index, current_layer_size);
+            if !tile_rect.as_f32().intersects(&rect) {
+                tile_indexes_to_take.push(tile_index.clone());
+            }
+        }
+
+        for tile_index in tile_indexes_to_take.iter() {
+            match self.tiles.remove(tile_index) {
+                Some(ref mut tile) => self.add_unused_buffer(tile.buffer.take()),
+                None => {},
+            }
+        }
+    }
+
     pub fn get_buffer_request_for_tile(&mut self,
                                        tile_index: Point2D<usize>,
                                        current_layer_size: TypedSize2D<DevicePixel, f32>,
@@ -212,8 +231,11 @@ impl TileGrid {
                                        current_content_age));
     }
 
+    /// Returns buffer requests inside the given dirty rect, and simultaneously throws out tiles
+    /// outside the given viewport rect.
     pub fn get_buffer_requests_in_rect(&mut self,
                                        rect_in_layer: TypedRect<DevicePixel, f32>,
+                                       viewport_in_layer: TypedRect<DevicePixel, f32>,
                                        current_layer_size: TypedSize2D<DevicePixel, f32>,
                                        current_content_age: ContentAge)
                                        -> Vec<BufferRequest> {
@@ -232,6 +254,7 @@ impl TileGrid {
             }
         }
 
+        self.mark_tiles_outside_of_rect_as_unused(viewport_in_layer, current_layer_size);
         return buffer_requests;
     }
 
