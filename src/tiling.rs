@@ -11,6 +11,7 @@ use geometry::{DevicePixel, LayerPixel};
 use layers::{BufferRequest, ContentAge, LayerBuffer};
 use platform::surface::NativeCompositingGraphicsContext;
 use texturegl::Texture;
+use util::project_rect_to_screen;
 
 use euclid::length::Length;
 use euclid::matrix::Matrix4;
@@ -19,7 +20,6 @@ use euclid::rect::{Rect, TypedRect};
 use euclid::size::{Size2D, TypedSize2D};
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::iter::range_inclusive;
 use std::mem;
 
 pub struct Tile {
@@ -33,9 +33,6 @@ pub struct Tile {
     /// A handle to the GPU texture.
     pub texture: Texture,
 
-    /// The transformation applied to this tiles texture.
-    pub transform: Matrix4,
-
     /// The tile boundaries in the parent layer coordinates.
     pub bounds: Option<TypedRect<LayerPixel,f32>>,
 }
@@ -45,7 +42,6 @@ impl Tile {
         Tile {
             buffer: None,
             texture: Texture::zero(),
-            transform: Matrix4::identity(),
             content_age_of_pending_buffer: None,
             bounds: None,
         }
@@ -88,11 +84,8 @@ impl Tile {
                        buffer.native_surface.get_id() as isize);
                 buffer.native_surface.bind_to_texture(graphics_context, &self.texture, size);
 
-                // Set the layer's transform.
-                let rect = buffer.rect;
-                let transform = Matrix4::identity().translate(rect.origin.x, rect.origin.y, 0.0);
-                self.transform = transform.scale(rect.size.width, rect.size.height, 1.0);
-                self.bounds = Some(Rect::from_untyped(&rect));
+                // Set the layer's rect.
+                self.bounds = Some(Rect::from_untyped(&buffer.rect));
             },
             None => {},
         }
@@ -141,19 +134,6 @@ impl TileGrid {
         }
     }
 
-    pub fn get_tile_index_range_for_rect(&self,
-                                         rect: TypedRect<DevicePixel, f32>)
-                                         -> (Point2D<usize>, Point2D<usize>) {
-        let rect = rect.to_untyped();
-
-        // NB: Even in the case of an empty rect, the semantics of Rust floating-point-to-integer
-        // casts mean this will corrently round to zero.
-        (Point2D::new((rect.origin.x / self.tile_size.get() as f32) as usize,
-                      (rect.origin.y / self.tile_size.get() as f32) as usize),
-         Point2D::new(((rect.origin.x + rect.size.width - 1.0) / self.tile_size.get() as f32) as usize,
-                      ((rect.origin.y + rect.size.height - 1.0) / self.tile_size.get() as f32) as usize))
-    }
-
     pub fn get_rect_for_tile_index(&self,
                                    tile_index: Point2D<usize>,
                                    current_layer_size: TypedSize2D<DevicePixel, f32>)
@@ -186,13 +166,42 @@ impl TileGrid {
         }
     }
 
+    pub fn tile_intersects_rect(&self,
+                                tile_index: &Point2D<usize>,
+                                test_rect: &Rect<f32>,
+                                current_layer_size: TypedSize2D<DevicePixel, f32>,
+                                layer_world_origin: &Point2D<f32>,
+                                layer_transform: &Matrix4) -> bool {
+        let tile_rect = self.get_rect_for_tile_index(*tile_index,
+                                                     current_layer_size);
+        let tile_rect = tile_rect.as_f32()
+                                 .to_untyped()
+                                 .translate(layer_world_origin);
+
+        let screen_rect = project_rect_to_screen(&tile_rect, layer_transform);
+
+        if let Some(screen_rect) = screen_rect {
+            if screen_rect.rect.intersection(&test_rect).is_some() {
+                return true;
+            }
+        }
+
+        false
+    }
+
     pub fn mark_tiles_outside_of_rect_as_unused(&mut self,
                                                 rect: TypedRect<DevicePixel, f32>,
+                                                layer_world_origin: &Point2D<f32>,
+                                                layer_transform: &Matrix4,
                                                 current_layer_size: TypedSize2D<DevicePixel, f32>) {
         let mut tile_indexes_to_take = Vec::new();
+
         for tile_index in self.tiles.keys() {
-            let tile_rect = self.get_rect_for_tile_index(*tile_index, current_layer_size);
-            if !tile_rect.as_f32().intersects(&rect) {
+            if !self.tile_intersects_rect(tile_index,
+                                          &rect.to_untyped(),
+                                          current_layer_size,
+                                          layer_world_origin,
+                                          layer_transform) {
                 tile_indexes_to_take.push(tile_index.clone());
             }
         }
@@ -234,27 +243,45 @@ impl TileGrid {
     /// Returns buffer requests inside the given dirty rect, and simultaneously throws out tiles
     /// outside the given viewport rect.
     pub fn get_buffer_requests_in_rect(&mut self,
-                                       rect_in_layer: TypedRect<DevicePixel, f32>,
-                                       viewport_in_layer: TypedRect<DevicePixel, f32>,
+                                       dirty_rect: TypedRect<DevicePixel, f32>,
+                                       viewport: TypedRect<DevicePixel, f32>,
                                        current_layer_size: TypedSize2D<DevicePixel, f32>,
+                                       layer_world_origin: &Point2D<f32>,
+                                       layer_transform: &Matrix4,
                                        current_content_age: ContentAge)
                                        -> Vec<BufferRequest> {
         let mut buffer_requests = Vec::new();
-        let (top_left_index, bottom_right_index) =
-            self.get_tile_index_range_for_rect(rect_in_layer);
 
-        for x in range_inclusive(top_left_index.x, bottom_right_index.x) {
-            for y in range_inclusive(top_left_index.y, bottom_right_index.y) {
-                match self.get_buffer_request_for_tile(Point2D::new(x, y),
-                                                       current_layer_size,
-                                                       current_content_age) {
-                    Some(buffer) => buffer_requests.push(buffer),
-                    None => {},
+        // Get the range of tiles that can fit into the current layer size.
+        // Step through each, transform/clip them to 2d rect
+        // Check if visible against rect
+
+        let tile_size = self.tile_size.get() as f32;
+        let x_tile_count = ((current_layer_size.to_untyped().width + tile_size - 1.0) / tile_size) as usize;
+        let y_tile_count = ((current_layer_size.to_untyped().height + tile_size - 1.0) / tile_size) as usize;
+
+        for x in 0..x_tile_count {
+            for y in 0..y_tile_count {
+                let tile_index = Point2D::new(x, y);
+                if self.tile_intersects_rect(&tile_index,
+                                             &dirty_rect.to_untyped(),
+                                             current_layer_size,
+                                             layer_world_origin,
+                                             layer_transform) {
+                    if let Some(buffer) = self.get_buffer_request_for_tile(tile_index,
+                                                                           current_layer_size,
+                                                                           current_content_age) {
+                        buffer_requests.push(buffer);
+                    }
                 }
             }
         }
 
-        self.mark_tiles_outside_of_rect_as_unused(viewport_in_layer, current_layer_size);
+        self.mark_tiles_outside_of_rect_as_unused(viewport,
+                                                  layer_world_origin,
+                                                  layer_transform,
+                                                  current_layer_size);
+
         return buffer_requests;
     }
 
@@ -277,7 +304,7 @@ impl TileGrid {
         self.add_unused_buffer(replaced_buffer);
     }
 
-    pub fn do_for_all_tiles<F: Fn(&Tile)>(&self, f: F) {
+    pub fn do_for_all_tiles<F>(&self, mut f: F) where F: FnMut(&Tile) {
         for tile in self.tiles.values() {
             f(tile);
         }

@@ -11,7 +11,7 @@
 #![crate_type = "rlib"]
 
 #![allow(raw_pointer_derive)]
-#![feature(collections, core)]
+#![feature(collections, core, owned_ascii_ext, vec_push_all)]
 #![cfg_attr(target_os="linux", feature(std_misc))]
 
 extern crate azure;

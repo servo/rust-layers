@@ -20,6 +20,7 @@ use platform::surface::{NativeCompositingGraphicsContext, NativePaintingGraphics
 use platform::surface::NativeSurface;
 use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
+use util::{project_rect_to_screen, ScreenRect};
 
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct ContentAge {
@@ -38,9 +39,35 @@ impl ContentAge {
     }
 }
 
+pub struct TransformState {
+    /// Final, concatenated transform + perspective matrix for this layer
+    pub final_transform: Matrix4,
+
+    /// If this is none, the rect was clipped and is not visible at all!
+    pub screen_rect: Option<ScreenRect>,
+
+    /// Rectangle in global coordinates, but not transformed.
+    pub world_rect: Rect<f32>,
+
+    /// True if this layer has a 3D transform
+    pub is_3d: bool,
+}
+
+impl TransformState {
+    fn new() -> TransformState {
+        TransformState {
+            final_transform: Matrix4::identity(),
+            screen_rect: None,
+            world_rect: Rect::zero(),
+            is_3d: false,
+        }
+    }
+}
+
 pub struct Layer<T> {
     pub children: RefCell<Vec<Rc<Layer<T>>>>,
     pub transform: RefCell<Matrix4>,
+    pub perspective: RefCell<Matrix4>,
     pub tile_size: usize,
     pub extra_data: RefCell<T>,
     tile_grid: RefCell<TileGrid>,
@@ -62,6 +89,12 @@ pub struct Layer<T> {
 
     /// The opacity of this layer, from 0.0 (fully transparent) to 1.0 (fully opaque).
     pub opacity: RefCell<f32>,
+
+    /// Whether this stacking context creates a new 3d rendering context.
+    pub establishes_3d_context: bool,
+
+    /// Collection of state related to transforms for this layer.
+    pub transform_state: RefCell<TransformState>,
 }
 
 impl<T> Layer<T> {
@@ -69,11 +102,13 @@ impl<T> Layer<T> {
                tile_size: usize,
                background_color: Color,
                opacity: f32,
+               establishes_3d_context: bool,
                data: T)
                -> Layer<T> {
         Layer {
             children: RefCell::new(vec!()),
             transform: RefCell::new(Matrix4::identity()),
+            perspective: RefCell::new(Matrix4::identity()),
             bounds: RefCell::new(bounds),
             tile_size: tile_size,
             extra_data: RefCell::new(data),
@@ -83,6 +118,8 @@ impl<T> Layer<T> {
             content_offset: RefCell::new(Point2D::zero()),
             background_color: RefCell::new(background_color),
             opacity: RefCell::new(opacity),
+            establishes_3d_context: establishes_3d_context,
+            transform_state: RefCell::new(TransformState::new()),
         }
     }
 
@@ -109,6 +146,8 @@ impl<T> Layer<T> {
         return tile_grid.get_buffer_requests_in_rect(rect_in_layer * scale,
                                                      viewport_in_layer * scale,
                                                      self.bounds.borrow().size * scale,
+                                                     &self.transform_state.borrow().world_rect.origin,
+                                                     &self.transform_state.borrow().final_transform,
                                                      *self.content_age.borrow());
     }
 
@@ -136,8 +175,49 @@ impl<T> Layer<T> {
         self.tile_grid.borrow_mut().create_textures(graphics_context);
     }
 
-    pub fn do_for_all_tiles<F: Fn(&Tile)>(&self, f: F) {
+    pub fn do_for_all_tiles<F: FnMut(&Tile)>(&self, f: F) {
         self.tile_grid.borrow().do_for_all_tiles(f);
+    }
+
+    pub fn update_transform_state(&self,
+                                  parent_transform: &Matrix4,
+                                  parent_perspective: &Matrix4,
+                                  parent_origin: &Point2D<f32>) {
+        let mut ts = self.transform_state.borrow_mut();
+        let rect_without_scroll = self.bounds.borrow()
+                                             .to_untyped()
+                                             .translate(parent_origin);
+
+        ts.world_rect = rect_without_scroll.translate(&self.content_offset.borrow().to_untyped());
+
+        let x0 = ts.world_rect.origin.x;
+        let y0 = ts.world_rect.origin.y;
+
+        // Build world space transform
+        let local_transform = Matrix4::identity().translate(x0, y0, 0.0)
+                                                 .mul(&*self.transform.borrow())
+                                                 .translate(-x0, -y0, 0.0);
+
+        ts.final_transform = parent_perspective.mul(&local_transform).mul(&parent_transform);
+        ts.screen_rect = project_rect_to_screen(&ts.world_rect, &ts.final_transform);
+
+        // TODO(gw): This is quite bogus. It's a hack to allow the paint task
+        // to avoid "optimizing" 3d layers with an incorrect clip rect.
+        // We should probably make the display list optimizer work with transforms!
+        // This layer is part of a 3d context if its concatenated transform
+        // is not identity, since 2d transforms don't get layers.
+        ts.is_3d = ts.final_transform != Matrix4::identity();
+
+        // Build world space perspective transform
+        let perspective_transform = Matrix4::identity().translate(x0, y0, 0.0)
+                                                       .mul(&*self.perspective.borrow())
+                                                       .translate(-x0, -y0, 0.0);
+
+        for child in self.children().iter() {
+            child.update_transform_state(&ts.final_transform,
+                                         &perspective_transform,
+                                         &rect_without_scroll.origin);
+        }
     }
 }
 
