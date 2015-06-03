@@ -16,7 +16,6 @@ use texturegl::Texture;
 use geom::size::Size2D;
 use libc::{c_char, c_int, c_uint, c_void};
 use glx;
-use gleam::gl;
 use skia::{SkiaSkNativeSharedGLContextRef, SkiaSkNativeSharedGLContextStealSurface};
 use std::ascii::OwnedAsciiExt;
 use std::ffi::{CString, CStr};
