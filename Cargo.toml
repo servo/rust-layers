@@ -21,14 +21,14 @@ git = "https://github.com/servo/skia"
 [dependencies.azure]
 git = "https://github.com/servo/rust-azure"
 
-[target.x86_64-apple-darwin.dependencies.core_foundation]
-git = "https://github.com/servo/rust-core-foundation"
+[target.x86_64-apple-darwin.dependencies.core-foundation]
+git = "https://github.com/servo/core-foundation-rs"
 
-[target.x86_64-apple-darwin.dependencies.io_surface]
-git = "https://github.com/servo/rust-io-surface"
+[target.x86_64-apple-darwin.dependencies.io-surface]
+git = "https://github.com/servo/io-surface-rs"
 
 [target.x86_64-apple-darwin.dependencies.cgl]
-git = "https://github.com/servo/rust-cgl"
+git = "https://github.com/servo/cgl-rs"
 
 [target.i686-unknown-linux-gnu.dependencies.glx]
 git = "https://github.com/servo/rust-glx"
