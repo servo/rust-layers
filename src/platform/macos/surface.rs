@@ -33,7 +33,7 @@ use std::ptr;
 use std::rc::Rc;
 use std::vec::Vec;
 
-thread_local!(static io_surface_repository: Rc<RefCell<HashMap<IOSurfaceID,IOSurface>>> = Rc::new(RefCell::new(HashMap::new())));
+thread_local!(static IO_SURFACE_REPOSITORY: Rc<RefCell<HashMap<IOSurfaceID,IOSurface>>> = Rc::new(RefCell::new(HashMap::new())));
 
 /// The Mac native graphics metadata.
 #[derive(Clone, Copy)]
@@ -155,7 +155,7 @@ impl IOSurfaceNativeSurface {
 
         let mut io_surface = Some(io_surface);
 
-        io_surface_repository.with(|ref r| {
+        IO_SURFACE_REPOSITORY.with(|ref r| {
             r.borrow_mut().insert(id, io_surface.take().unwrap())
         });
 
@@ -231,7 +231,7 @@ impl IOSurfaceNativeSurface {
     }
 
     pub fn destroy(&mut self, _: &NativePaintingGraphicsContext) {
-        io_surface_repository.with(|ref r| {
+        IO_SURFACE_REPOSITORY.with(|ref r| {
             r.borrow_mut().remove(&self.io_surface_id.unwrap())
         });
         self.io_surface_id = None;
