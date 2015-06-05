@@ -14,7 +14,6 @@ use texturegl::Texture;
 
 use geom::size::Size2D;
 use azure::azure_hl::DrawTargetBacking;
-use std::ptr;
 
 #[cfg(not(target_os="android"))]
 use gleam::gl;

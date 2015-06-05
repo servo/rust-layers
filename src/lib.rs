@@ -11,7 +11,7 @@
 #![crate_type = "rlib"]
 
 #![allow(raw_pointer_derive)]
-#![feature(collections, std_misc, core)]
+#![feature(collections, core)]
 
 extern crate azure;
 extern crate geom;
