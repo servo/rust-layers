@@ -12,6 +12,7 @@
 
 #![allow(raw_pointer_derive)]
 #![feature(collections, core)]
+#![cfg_attr(target_os="linux", feature(std_misc))]
 
 extern crate azure;
 extern crate geom;

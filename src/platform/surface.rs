@@ -29,6 +29,8 @@ pub use platform::linux::surface::{NativeCompositingGraphicsContext,
                                    NativeGraphicsMetadata,
                                    NativePaintingGraphicsContext,
                                    PixmapNativeSurface};
+#[cfg(target_os="linux")]
+use std::ptr;
 
 #[cfg(target_os="android")]
 pub use platform::android::surface::{NativeCompositingGraphicsContext,
