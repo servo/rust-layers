@@ -7,3 +7,5 @@ before_install:
   - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.7 20
 rust:
   - nightly
+notifications:
+  webhooks: http://build.servo.org:54856/travis
