@@ -34,7 +34,7 @@ pub struct Tile {
     pub texture: Texture,
 
     /// The transformation applied to this tiles texture.
-    pub transform: Matrix4<f32>,
+    pub transform: Matrix4,
 
     /// The tile boundaries in the parent layer coordinates.
     pub bounds: Option<TypedRect<LayerPixel,f32>>,
