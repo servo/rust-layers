@@ -166,9 +166,9 @@ impl TextureProgram {
     }
 
     fn bind_uniforms_and_attributes(&self,
-                                    transform: &Matrix4<f32>,
-                                    projection_matrix: &Matrix4<f32>,
-                                    texture_space_transform: &Matrix4<f32>,
+                                    transform: &Matrix4,
+                                    projection_matrix: &Matrix4,
+                                    texture_space_transform: &Matrix4,
                                     buffers: &Buffers,
                                     unit_rect: Rect<f32>,
                                     opacity: f32) {
@@ -241,8 +241,8 @@ impl SolidColorProgram {
     }
 
     fn bind_uniforms_and_attributes_common(&self,
-                                           transform: &Matrix4<f32>,
-                                           projection_matrix: &Matrix4<f32>,
+                                           transform: &Matrix4,
+                                           projection_matrix: &Matrix4,
                                            color: Color) {
         gl::uniform_matrix_4fv(self.modelview_uniform, false, &transform.to_array());
         gl::uniform_matrix_4fv(self.projection_uniform, false, &projection_matrix.to_array());
@@ -252,15 +252,15 @@ impl SolidColorProgram {
                    color.b as GLfloat,
                    color.a as GLfloat);
 
-        let texture_transform: Matrix4<f32> = identity();
+        let texture_transform: Matrix4 = identity();
         gl::uniform_matrix_4fv(self.texture_space_transform_uniform,
                            false,
                            &texture_transform.to_array());
     }
 
     fn bind_uniforms_and_attributes_for_lines(&self,
-                                              transform: &Matrix4<f32>,
-                                              projection_matrix: &Matrix4<f32>,
+                                              transform: &Matrix4,
+                                              projection_matrix: &Matrix4,
                                               buffers: &Buffers,
                                               color: Color) {
         self.bind_uniforms_and_attributes_common(transform, projection_matrix, color);
@@ -269,8 +269,8 @@ impl SolidColorProgram {
     }
 
     fn bind_uniforms_and_attributes_for_quad(&self,
-                                             transform: &Matrix4<f32>,
-                                             projection_matrix: &Matrix4<f32>,
+                                             transform: &Matrix4,
+                                             projection_matrix: &Matrix4,
                                              buffers: &Buffers,
                                              color: Color,
                                              unit_rect: Rect<f32>) {
@@ -351,7 +351,7 @@ impl RenderContext {
 
 pub fn bind_and_render_quad(render_context: RenderContext,
                             texture: &Texture,
-                            transform: &Matrix4<f32>,
+                            transform: &Matrix4,
                             scene_size: Size2D<f32>,
                             unit_rect: Rect<f32>,
                             opacity: f32) {
@@ -390,7 +390,7 @@ pub fn bind_and_render_quad(render_context: RenderContext,
     // We calculate a transformation matrix for the texture coordinates
     // which is useful for flipping the texture vertically or scaling the
     // coordinates when dealing with GL_ARB_texture_rectangle.
-    let mut texture_transform: Matrix4<f32> = identity();
+    let mut texture_transform: Matrix4 = identity();
     if texture.flip == VerticalFlip {
         texture_transform = texture_transform.scale(1.0, -1.0, 1.0);
     }
@@ -418,7 +418,7 @@ pub fn bind_and_render_quad(render_context: RenderContext,
 }
 
 pub fn bind_and_render_quad_lines(render_context: RenderContext,
-                                  transform: &Matrix4<f32>,
+                                  transform: &Matrix4,
                                   scene_size: Size2D<f32>,
                                   color: Color,
                                   line_thickness: usize) {
@@ -436,7 +436,7 @@ pub fn bind_and_render_quad_lines(render_context: RenderContext,
 }
 
 pub fn bind_and_render_solid_quad(render_context: RenderContext,
-                                  transform: &Matrix4<f32>,
+                                  transform: &Matrix4,
                                   scene_size: Size2D<f32>,
                                   color: Color,
                                   unit_rect: Rect<f32>) {
@@ -475,7 +475,7 @@ fn map_clip_to_unit_rectangle(rect: Rect<f32>,
 pub trait Render {
     fn render(&self,
               render_context: RenderContext,
-              transform: Matrix4<f32>,
+              transform: Matrix4,
               scene_size: Size2D<f32>,
               mut clip_rect: Option<Rect<f32>>,
               content_offset: Point2D<f32>,
@@ -485,7 +485,7 @@ pub trait Render {
 impl<T> Render for layers::Layer<T> {
     fn render(&self,
               render_context: RenderContext,
-              transform: Matrix4<f32>,
+              transform: Matrix4,
               scene_size: Size2D<f32>,
               mut clip_rect: Option<Rect<f32>>,
               _: Point2D<f32>,
@@ -561,7 +561,7 @@ impl<T> Render for layers::Layer<T> {
 impl Render for Tile {
     fn render(&self,
               render_context: RenderContext,
-              transform: Matrix4<f32>,
+              transform: Matrix4,
               scene_size: Size2D<f32>,
               clip_rect: Option<Rect<f32>>,
               content_offset: Point2D<f32>,

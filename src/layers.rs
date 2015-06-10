@@ -40,7 +40,7 @@ impl ContentAge {
 
 pub struct Layer<T> {
     pub children: RefCell<Vec<Rc<Layer<T>>>>,
-    pub transform: RefCell<Matrix4<f32>>,
+    pub transform: RefCell<Matrix4>,
     pub tile_size: usize,
     pub extra_data: RefCell<T>,
     tile_grid: RefCell<TileGrid>,
