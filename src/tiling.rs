@@ -13,7 +13,7 @@ use platform::surface::NativeCompositingGraphicsContext;
 use texturegl::Texture;
 
 use geom::length::Length;
-use geom::matrix::{Matrix4, identity};
+use geom::matrix::Matrix4;
 use geom::point::Point2D;
 use geom::rect::{Rect, TypedRect};
 use geom::size::{Size2D, TypedSize2D};
@@ -45,7 +45,7 @@ impl Tile {
         Tile {
             buffer: None,
             texture: Texture::zero(),
-            transform: identity(),
+            transform: Matrix4::identity(),
             content_age_of_pending_buffer: None,
             bounds: None,
         }
@@ -74,8 +74,8 @@ impl Tile {
     fn create_texture(&mut self, graphics_context: &NativeCompositingGraphicsContext) {
         match self.buffer {
             Some(ref buffer) => {
-                let size = Size2D(buffer.screen_pos.size.width as isize,
-                                  buffer.screen_pos.size.height as isize);
+                let size = Size2D::new(buffer.screen_pos.size.width as isize,
+                                       buffer.screen_pos.size.height as isize);
 
                 // If we already have a texture it should still be valid.
                 if !self.texture.is_zero() {
@@ -90,7 +90,7 @@ impl Tile {
 
                 // Set the layer's transform.
                 let rect = buffer.rect;
-                let transform = identity().translate(rect.origin.x, rect.origin.y, 0.0);
+                let transform = Matrix4::identity().translate(rect.origin.x, rect.origin.y, 0.0);
                 self.transform = transform.scale(rect.size.width, rect.size.height, 1.0);
                 self.bounds = Some(Rect::from_untyped(&rect));
             },
@@ -128,8 +128,8 @@ pub struct TileGrid {
 }
 
 pub fn rect_uint_as_rect_f32(rect: Rect<usize>) -> Rect<f32> {
-    Rect(Point2D(rect.origin.x as f32, rect.origin.y as f32),
-         Size2D(rect.size.width as f32, rect.size.height as f32))
+    Rect::new(Point2D::new(rect.origin.x as f32, rect.origin.y as f32),
+              Size2D::new(rect.size.width as f32, rect.size.height as f32))
 }
 
 impl TileGrid {
@@ -148,10 +148,10 @@ impl TileGrid {
 
         // NB: Even in the case of an empty rect, the semantics of Rust floating-point-to-integer
         // casts mean this will corrently round to zero.
-        (Point2D((rect.origin.x / self.tile_size.get() as f32) as usize,
-                 (rect.origin.y / self.tile_size.get() as f32) as usize),
-         Point2D(((rect.origin.x + rect.size.width - 1.0) / self.tile_size.get() as f32) as usize,
-                 ((rect.origin.y + rect.size.height - 1.0) / self.tile_size.get() as f32) as usize))
+        (Point2D::new((rect.origin.x / self.tile_size.get() as f32) as usize,
+                      (rect.origin.y / self.tile_size.get() as f32) as usize),
+         Point2D::new(((rect.origin.x + rect.size.width - 1.0) / self.tile_size.get() as f32) as usize,
+                      ((rect.origin.y + rect.size.height - 1.0) / self.tile_size.get() as f32) as usize))
     }
 
     pub fn get_rect_for_tile_index(&self,
@@ -159,18 +159,18 @@ impl TileGrid {
                                    current_layer_size: TypedSize2D<DevicePixel, f32>)
                                    -> TypedRect<DevicePixel, usize> {
 
-        let origin = Point2D(self.tile_size.get() * tile_index.x,
+        let origin = Point2D::new(self.tile_size.get() * tile_index.x,
                              self.tile_size.get() * tile_index.y);
 
         // Don't let tiles extend beyond the layer boundaries.
         let tile_size = self.tile_size.get() as f32;
-        let size = Size2D(tile_size.min(current_layer_size.width.get() - origin.x as f32),
+        let size = Size2D::new(tile_size.min(current_layer_size.width.get() - origin.x as f32),
                           tile_size.min(current_layer_size.height.get() - origin.y as f32));
 
         // Round up to texture pixels.
-        let size = Size2D(size.width.ceil() as usize, size.height.ceil() as usize);
+        let size = Size2D::new(size.width.ceil() as usize, size.height.ceil() as usize);
 
-        Rect::from_untyped(&Rect(origin, size))
+        Rect::from_untyped(&Rect::new(origin, size))
     }
 
     pub fn take_unused_buffers(&mut self) -> Vec<Box<LayerBuffer>> {
@@ -245,7 +245,7 @@ impl TileGrid {
 
         for x in range_inclusive(top_left_index.x, bottom_right_index.x) {
             for y in range_inclusive(top_left_index.y, bottom_right_index.y) {
-                match self.get_buffer_request_for_tile(Point2D(x, y),
+                match self.get_buffer_request_for_tile(Point2D::new(x, y),
                                                        current_layer_size,
                                                        current_content_age) {
                     Some(buffer) => buffer_requests.push(buffer),
@@ -261,8 +261,8 @@ impl TileGrid {
     pub fn get_tile_index_for_point(&self, point: Point2D<usize>) -> Point2D<usize> {
         assert!(point.x % self.tile_size.get() == 0);
         assert!(point.y % self.tile_size.get() == 0);
-        Point2D((point.x / self.tile_size.get()) as usize,
-                (point.y / self.tile_size.get()) as usize)
+        Point2D::new((point.x / self.tile_size.get()) as usize,
+                     (point.y / self.tile_size.get()) as usize)
     }
 
     pub fn add_buffer(&mut self, buffer: Box<LayerBuffer>) {

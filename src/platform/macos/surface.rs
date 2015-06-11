@@ -215,7 +215,7 @@ impl IOSurfaceNativeSurface {
                            size: Size2D<isize>) {
         let _bound_texture = texture.bind();
         let io_surface = io_surface::lookup(self.io_surface_id.unwrap());
-        io_surface.bind_to_gl_texture(Size2D(size.width as i32, size.height as i32))
+        io_surface.bind_to_gl_texture(Size2D::new(size.width as i32, size.height as i32))
     }
 
     pub fn upload(&mut self, _: &NativePaintingGraphicsContext, data: &[u8]) {

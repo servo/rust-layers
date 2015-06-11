@@ -18,7 +18,7 @@ use texturegl::TextureTarget::{TextureTarget2D, TextureTargetRectangle};
 use tiling::Tile;
 use platform::surface::NativeCompositingGraphicsContext;
 
-use geom::matrix::{Matrix4, identity, ortho};
+use geom::matrix::Matrix4;
 use geom::point::Point2D;
 use geom::rect::Rect;
 use geom::size::Size2D;
@@ -252,7 +252,7 @@ impl SolidColorProgram {
                    color.b as GLfloat,
                    color.a as GLfloat);
 
-        let texture_transform: Matrix4 = identity();
+        let texture_transform = Matrix4::identity();
         gl::uniform_matrix_4fv(self.texture_space_transform_uniform,
                            false,
                            &texture_transform.to_array());
@@ -385,12 +385,13 @@ pub fn bind_and_render_quad(render_context: RenderContext,
     let _bound_texture = texture.bind();
 
     // Set the projection matrix.
-    let projection_matrix = ortho(0.0, scene_size.width, scene_size.height, 0.0, -10.0, 10.0);
+    let projection_matrix = Matrix4::ortho(
+        0.0, scene_size.width, scene_size.height, 0.0, -10.0, 10.0);
 
     // We calculate a transformation matrix for the texture coordinates
     // which is useful for flipping the texture vertically or scaling the
     // coordinates when dealing with GL_ARB_texture_rectangle.
-    let mut texture_transform: Matrix4 = identity();
+    let mut texture_transform = Matrix4::identity();
     if texture.flip == VerticalFlip {
         texture_transform = texture_transform.scale(1.0, -1.0, 1.0);
     }
@@ -425,7 +426,8 @@ pub fn bind_and_render_quad_lines(render_context: RenderContext,
     let solid_color_program = render_context.solid_color_program;
     solid_color_program.enable_attribute_arrays();
     gl::use_program(solid_color_program.program.id);
-    let projection_matrix = ortho(0.0, scene_size.width, scene_size.height, 0.0, -10.0, 10.0);
+    let projection_matrix = Matrix4::ortho(
+        0.0, scene_size.width, scene_size.height, 0.0, -10.0, 10.0);
     solid_color_program.bind_uniforms_and_attributes_for_lines(transform,
                                                                &projection_matrix,
                                                                &render_context.buffers,
@@ -443,7 +445,8 @@ pub fn bind_and_render_solid_quad(render_context: RenderContext,
     let solid_color_program = render_context.solid_color_program;
     solid_color_program.enable_attribute_arrays();
     gl::use_program(solid_color_program.program.id);
-    let projection_matrix = ortho(0.0, scene_size.width, scene_size.height, 0.0, -10.0, 10.0);
+    let projection_matrix = Matrix4::ortho(
+        0.0, scene_size.width, scene_size.height, 0.0, -10.0, 10.0);
     solid_color_program.bind_uniforms_and_attributes_for_quad(transform,
                                                               &projection_matrix,
                                                               &render_context.buffers,
@@ -460,14 +463,14 @@ fn map_clip_to_unit_rectangle(rect: Rect<f32>,
         Some(clip_rect) => {
             match clip_rect.intersection(&rect) {
                 Some(intersected_rect) => {
-                    let offset = Point2D(0., 0.) - rect.origin;
+                    let offset = Point2D::new(0., 0.) - rect.origin;
                     intersected_rect.translate(&offset).scale(1. / rect.size.width,
                                                               1. / rect.size.height)
                 }
-                None => Rect(Point2D(0., 0.), Size2D(0., 0.)),
+                None => Rect::new(Point2D::new(0., 0.), Size2D::new(0., 0.)),
             }
         },
-        None => Rect(Point2D(0., 0.), Size2D(1., 1.))
+        None => Rect::new(Point2D::new(0., 0.), Size2D::new(1., 1.))
     }
 }
 
@@ -551,7 +554,7 @@ impl<T> Render for layers::Layer<T> {
                          cumulative_transform,
                          scene_size,
                          clip_rect,
-                         Point2D(0., 0.),
+                         Point2D::new(0., 0.),
                          opacity)
         }
 
@@ -610,13 +613,13 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
     gl::clear(gl::COLOR_BUFFER_BIT);
 
     // Set up the initial modelview matrix.
-    let transform = identity().scale(scene.scale.get(), scene.scale.get(), 1.0);
+    let transform = Matrix4::identity().scale(scene.scale.get(), scene.scale.get(), 1.0);
 
     // Render the root layer.
     root_layer.render(render_context,
                       transform,
                       scene.viewport.size.to_untyped(),
                       None,
-                      Point2D(0., 0.),
+                      Point2D::new(0., 0.),
                       1.0);
 }
