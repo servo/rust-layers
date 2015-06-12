@@ -11,7 +11,7 @@ use color::Color;
 use geometry::{DevicePixel, LayerPixel};
 use tiling::{Tile, TileGrid};
 
-use geom::matrix::{Matrix4, identity};
+use geom::matrix::Matrix4;
 use geom::scale_factor::ScaleFactor;
 use geom::size::{Size2D, TypedSize2D};
 use geom::point::{Point2D, TypedPoint2D};
@@ -73,7 +73,7 @@ impl<T> Layer<T> {
                -> Layer<T> {
         Layer {
             children: RefCell::new(vec!()),
-            transform: RefCell::new(identity()),
+            transform: RefCell::new(Matrix4::identity()),
             bounds: RefCell::new(bounds),
             tile_size: tile_size,
             extra_data: RefCell::new(data),
