@@ -8,12 +8,10 @@ authors = ["The Servo Project Developers"]
 libc = "*"
 rustc-serialize = "*"
 log = "*"
+gleam = "0.1"
 
 [dependencies.geom]
 git = "https://github.com/servo/rust-geom"
-
-[dependencies.gleam]
-git = "https://github.com/servo/gleam"
 
 [dependencies.skia]
 git = "https://github.com/servo/skia"
@@ -23,12 +21,10 @@ git = "https://github.com/servo/rust-azure"
 
 [target.x86_64-apple-darwin.dependencies]
 core-foundation = "*"
+cgl = "0.1"
 
 [target.x86_64-apple-darwin.dependencies.io-surface]
 git = "https://github.com/servo/io-surface-rs"
-
-[target.x86_64-apple-darwin.dependencies.cgl]
-git = "https://github.com/servo/cgl-rs"
 
 [target.i686-unknown-linux-gnu.dependencies.glx]
 git = "https://github.com/servo/rust-glx"
