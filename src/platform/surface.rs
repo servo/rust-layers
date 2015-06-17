@@ -12,7 +12,7 @@
 
 use texturegl::Texture;
 
-use geom::size::Size2D;
+use euclid::size::Size2D;
 use azure::azure_hl::DrawTargetBacking;
 
 #[cfg(not(target_os="android"))]

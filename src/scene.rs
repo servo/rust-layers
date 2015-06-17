@@ -7,10 +7,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use geom::rect::{Rect, TypedRect};
-use geom::scale_factor::ScaleFactor;
-use geom::size::TypedSize2D;
-use geom::point::Point2D;
+use euclid::rect::{Rect, TypedRect};
+use euclid::scale_factor::ScaleFactor;
+use euclid::size::TypedSize2D;
+use euclid::point::Point2D;
 use geometry::{DevicePixel, LayerPixel};
 use layers::{BufferRequest, Layer, LayerBuffer};
 use std::rc::Rc;
