@@ -11,11 +11,11 @@ use color::Color;
 use geometry::{DevicePixel, LayerPixel};
 use tiling::{Tile, TileGrid};
 
-use geom::matrix::Matrix4;
-use geom::scale_factor::ScaleFactor;
-use geom::size::{Size2D, TypedSize2D};
-use geom::point::{Point2D, TypedPoint2D};
-use geom::rect::{Rect, TypedRect};
+use euclid::matrix::Matrix4;
+use euclid::scale_factor::ScaleFactor;
+use euclid::size::{Size2D, TypedSize2D};
+use euclid::point::{Point2D, TypedPoint2D};
+use euclid::rect::{Rect, TypedRect};
 use platform::surface::{NativeCompositingGraphicsContext, NativePaintingGraphicsContext};
 use platform::surface::NativeSurface;
 use std::cell::{RefCell, RefMut};

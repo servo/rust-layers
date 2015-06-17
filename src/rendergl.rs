@@ -18,10 +18,10 @@ use texturegl::TextureTarget::{TextureTarget2D, TextureTargetRectangle};
 use tiling::Tile;
 use platform::surface::NativeCompositingGraphicsContext;
 
-use geom::matrix::Matrix4;
-use geom::point::Point2D;
-use geom::rect::Rect;
-use geom::size::Size2D;
+use euclid::matrix::Matrix4;
+use euclid::point::Point2D;
+use euclid::rect::Rect;
+use euclid::size::Size2D;
 use libc::c_int;
 use gleam::gl;
 use gleam::gl::{GLenum, GLfloat, GLint, GLsizei, GLuint};

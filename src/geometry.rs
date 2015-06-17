@@ -7,7 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Units for use with geom::length and geom::scale_factor.
+// Units for use with euclid::length and euclid::scale_factor.
 
 /// One hardware pixel.
 ///
