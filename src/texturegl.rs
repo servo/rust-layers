@@ -11,7 +11,7 @@
 
 use layers::LayerBuffer;
 
-use geom::size::Size2D;
+use euclid::size::Size2D;
 use gleam::gl;
 use gleam::gl::{GLenum, GLint, GLuint};
 

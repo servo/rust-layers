@@ -13,7 +13,7 @@
 
 use texturegl::Texture;
 
-use geom::size::Size2D;
+use euclid::size::Size2D;
 use libc::{c_char, c_int, c_uint, c_void};
 use glx;
 use skia::{SkiaSkNativeSharedGLContextRef, SkiaSkNativeSharedGLContextStealSurface};

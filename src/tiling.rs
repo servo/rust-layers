@@ -12,11 +12,11 @@ use layers::{BufferRequest, ContentAge, LayerBuffer};
 use platform::surface::NativeCompositingGraphicsContext;
 use texturegl::Texture;
 
-use geom::length::Length;
-use geom::matrix::Matrix4;
-use geom::point::Point2D;
-use geom::rect::{Rect, TypedRect};
-use geom::size::{Size2D, TypedSize2D};
+use euclid::length::Length;
+use euclid::matrix::Matrix4;
+use euclid::point::Point2D;
+use euclid::rect::{Rect, TypedRect};
+use euclid::size::{Size2D, TypedSize2D};
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::iter::range_inclusive;
