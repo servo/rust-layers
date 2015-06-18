@@ -13,8 +13,8 @@ use texturegl::Texture;
 
 use euclid::size::Size2D;
 use gleam::gl::{egl_image_target_texture2d_oes, TEXTURE_2D, TexImage2D, BGRA_EXT, UNSIGNED_BYTE};
-use egl::egl::EGLDisplay;
-use egl::eglext::{EGLImageKHR, DestroyImageKHR};
+use egl::types::{EGLDisplay, EGLImageKHR};
+use egl::DestroyImageKHR;
 use libc::c_void;
 use skia::{SkiaSkNativeSharedGLContextRef, SkiaSkNativeSharedGLContextStealSurface};
 use std::iter::repeat;
@@ -145,7 +145,9 @@ impl EGLImageNativeSurface {
         match self.image {
             None => {},
             Some(image_khr) => {
-                DestroyImageKHR(graphics_context.display, image_khr);
+                unsafe {
+                    DestroyImageKHR(graphics_context.display, image_khr);
+                }
                 mem::replace(&mut self.image, None);
             }
         }
