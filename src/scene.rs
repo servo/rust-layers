@@ -40,60 +40,47 @@ impl<T> Scene<T> {
                                                                         Vec<BufferRequest>)>,
                                          unused_buffers: &mut Vec<(Rc<Layer<T>>,
                                                                         Vec<Box<LayerBuffer>>)>) {
-        // We need to consider the intersection of the dirty rect with the final position
-        // of the layer onscreen. The layer will be translated by the content rect, so we
-        // simply do the reverse to the dirty rect.
-        let layer_bounds = *layer.bounds.borrow();
-        let content_offset = *layer.content_offset.borrow();
-        let dirty_rect_adjusted_for_content_offset = dirty_rect.translate(&-content_offset);
-        let viewport_rect_adjusted_for_content_offset = viewport_rect.translate(&-content_offset);
-
-        match dirty_rect_adjusted_for_content_offset.intersection(&layer_bounds) {
-            Some(mut intersected_rect) => {
-                // Layer::get_buffer_requests_for_layer expects a rectangle in coordinates relative
-                // to this layer's origin, so move our intersected rect into the coordinate space
-                // of this layer.
-                intersected_rect = intersected_rect.translate(&-layer_bounds.origin);
-                let viewport_rect =
-                    viewport_rect_adjusted_for_content_offset.translate(&-layer_bounds.origin);
-                let requests = layer.get_buffer_requests(intersected_rect,
-                                                         viewport_rect,
-                                                         self.scale);
-                if !requests.is_empty() {
-                    layers_and_requests.push((layer.clone(), requests));
-                }
-
-                unused_buffers.push((layer.clone(), layer.collect_unused_buffers()));
-            }
-            None => {},
+        // Get buffers for this layer, in global (screen) coordinates.
+        let requests = layer.get_buffer_requests(dirty_rect,
+                                                 viewport_rect,
+                                                 self.scale);
+        if !requests.is_empty() {
+            layers_and_requests.push((layer.clone(), requests));
         }
+        unused_buffers.push((layer.clone(), layer.collect_unused_buffers()));
 
         // If this layer masks its children, we don't need to ask for tiles outside the
-        // boundaries of this layer. We can simply re-use the intersection rectangle
-        // from above, but we must undo the content_offset translation, since children
-        // will re-apply it.
-        let mut dirty_rect_in_children = dirty_rect;
+        // boundaries of this layer.
+        let mut child_dirty_rect = dirty_rect;
         if *layer.masks_to_bounds.borrow() {
             // FIXME: Likely because of rust bug rust-lang/rust#16822, caching the intersected
             // rect and reusing it causes a crash in rustc. When that bug is resolved this code
             // should simply reuse a cached version of the intersection.
-            dirty_rect_in_children =
-                match dirty_rect_adjusted_for_content_offset.intersection(&layer_bounds) {
-                    Some(intersected_rect) => intersected_rect.translate(&content_offset),
-                    None => Rect::zero(),
-                };
+            match layer.transform_state.borrow().screen_rect {
+                Some(ref screen_rect) => {
+                    child_dirty_rect = match dirty_rect.to_untyped().intersection(&screen_rect.rect) {
+                        Some(child_dirty_rect) => {
+                            Rect::from_untyped(&child_dirty_rect)
+                        }
+                        None => {
+                            // The layer is entirely clipped by the dirty
+                            // rect, so early exit.
+                            return;
+                        }
+                    }
+                }
+                None => {
+                    // The layer is entirely clipped, and it masks children,
+                    // so early exit.
+                    return;
+                }
+            }
         }
 
-        if dirty_rect_in_children.is_empty() {
-            return;
-        }
-
-        dirty_rect_in_children = dirty_rect_in_children.translate(&-layer_bounds.origin);
-        let viewport_rect_in_children = viewport_rect.translate(&-layer_bounds.origin);
         for kid in layer.children().iter() {
             self.get_buffer_requests_for_layer(kid.clone(),
-                                               dirty_rect_in_children,
-                                               viewport_rect_in_children,
+                                               child_dirty_rect,
+                                               viewport_rect,
                                                layers_and_requests,
                                                unused_buffers);
         }
