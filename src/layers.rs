@@ -259,9 +259,6 @@ pub struct LayerBuffer {
     /// The scale at which this tile is rendered
     pub resolution: f32,
 
-    /// NB: stride is in pixels, like OpenGL GL_UNPACK_ROW_LENGTH.
-    pub stride: usize,
-
     /// Whether or not this buffer was painted with the CPU rasterization.
     pub painted_with_cpu: bool,
 
