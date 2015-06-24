@@ -246,7 +246,7 @@ impl PixmapNativeSurface {
         }
     }
 
-    pub fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>, _stride: i32)
+    pub fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>)
            -> PixmapNativeSurface {
         unsafe {
             // Create the pixmap.

@@ -51,14 +51,11 @@ pub enum NativeSurface {
 #[cfg(target_os="linux")]
 impl NativeSurface {
     /// Creates a new native surface with uninitialized data.
-    pub fn new(native_context: &NativePaintingGraphicsContext,
-               size: Size2D<i32>,
-               stride: i32)
-               -> NativeSurface {
+    pub fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>) -> NativeSurface {
         if native_context.display == ptr::null_mut() {
-            NativeSurface::MemoryBuffer(MemoryBufferNativeSurface::new(native_context, size, stride))
+            NativeSurface::MemoryBuffer(MemoryBufferNativeSurface::new(native_context, size))
         } else {
-            NativeSurface::Pixmap(PixmapNativeSurface::new(native_context, size, stride))
+            NativeSurface::Pixmap(PixmapNativeSurface::new(native_context, size))
         }
    }
 }
@@ -66,22 +63,16 @@ impl NativeSurface {
 #[cfg(target_os="macos")]
 impl NativeSurface {
     /// Creates a new native surface with uninitialized data.
-    pub fn new(native_context: &NativePaintingGraphicsContext,
-               size: Size2D<i32>,
-               stride: i32)
-               -> NativeSurface {
-        NativeSurface::IOSurface(IOSurfaceNativeSurface::new(native_context, size, stride))
+    pub fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>) -> NativeSurface {
+        NativeSurface::IOSurface(IOSurfaceNativeSurface::new(native_context, size))
    }
 }
 
 #[cfg(target_os="android")]
 impl NativeSurface {
     /// Creates a new native surface with uninitialized data.
-    pub fn new(native_context: &NativePaintingGraphicsContext,
-               size: Size2D<i32>,
-               stride: i32)
-               -> NativeSurface {
-        NativeSurface::EGLImage(EGLImageNativeSurface::new(native_context, size, stride))
+    pub fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>) -> NativeSurface {
+        NativeSurface::EGLImage(EGLImageNativeSurface::new(native_context, size))
    }
 }
 
@@ -198,7 +189,7 @@ pub struct MemoryBufferNativeSurface {
 }
 
 impl MemoryBufferNativeSurface {
-    pub fn new(_: &NativePaintingGraphicsContext, _: Size2D<i32>, _: i32) -> MemoryBufferNativeSurface {
+    pub fn new(_: &NativePaintingGraphicsContext, _: Size2D<i32>) -> MemoryBufferNativeSurface {
         MemoryBufferNativeSurface{
             bytes: vec!(),
         }
