@@ -176,10 +176,7 @@ impl IOSurfaceNativeSurface {
         }
     }
 
-    pub fn new(_: &NativePaintingGraphicsContext,
-               size: Size2D<i32>,
-               stride: i32)
-               -> IOSurfaceNativeSurface {
+    pub fn new(_: &NativePaintingGraphicsContext, size: Size2D<i32>) -> IOSurfaceNativeSurface {
         unsafe {
             let width_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceWidth);
             let width_value: CFNumber = CFNumber::from_i32(size.width);
@@ -188,7 +185,7 @@ impl IOSurfaceNativeSurface {
             let height_value: CFNumber = CFNumber::from_i32(size.height);
 
             let bytes_per_row_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceBytesPerRow);
-            let bytes_per_row_value: CFNumber = CFNumber::from_i32(stride);
+            let bytes_per_row_value: CFNumber = CFNumber::from_i32(size.width * 4);
 
             let bytes_per_elem_key: CFString =
                 TCFType::wrap_under_get_rule(kIOSurfaceBytesPerElement);

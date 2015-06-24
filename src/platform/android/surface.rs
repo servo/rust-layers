@@ -85,7 +85,7 @@ impl EGLImageNativeSurface {
     }
 
     /// This may only be called on the case of CPU rendering.
-    pub fn new(_: &NativePaintingGraphicsContext, size: Size2D<i32>, _stride: i32) -> EGLImageNativeSurface {
+    pub fn new(_: &NativePaintingGraphicsContext, size: Size2D<i32>) -> EGLImageNativeSurface {
         let len = size.width * size.height * 4;
         let bitmap: Vec<u8> = repeat(0).take(len as usize).collect();
 
