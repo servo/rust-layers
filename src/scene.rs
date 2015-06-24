@@ -58,16 +58,17 @@ impl<T> Scene<T> {
             // should simply reuse a cached version of the intersection.
             match layer.transform_state.borrow().screen_rect {
                 Some(ref screen_rect) => {
-                    child_dirty_rect = match dirty_rect.to_untyped().intersection(&screen_rect.rect) {
-                        Some(child_dirty_rect) => {
-                            Rect::from_untyped(&child_dirty_rect)
+                    child_dirty_rect =
+                        match dirty_rect.to_untyped().intersection(&screen_rect.rect) {
+                            Some(child_dirty_rect) => {
+                                Rect::from_untyped(&child_dirty_rect)
+                            }
+                            None => {
+                                // The layer is entirely clipped by the dirty
+                                // rect, so early exit.
+                                return;
+                            }
                         }
-                        None => {
-                            // The layer is entirely clipped by the dirty
-                            // rect, so early exit.
-                            return;
-                        }
-                    }
                 }
                 None => {
                     // The layer is entirely clipped, and it masks children,
