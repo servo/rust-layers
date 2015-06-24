@@ -143,12 +143,13 @@ impl<T> Layer<T> {
                                scale: ScaleFactor<LayerPixel, DevicePixel, f32>)
                                -> Vec<BufferRequest> {
         let mut tile_grid = self.tile_grid.borrow_mut();
-        return tile_grid.get_buffer_requests_in_rect(rect_in_layer * scale,
-                                                     viewport_in_layer * scale,
-                                                     self.bounds.borrow().size * scale,
-                                                     &self.transform_state.borrow().world_rect.origin,
-                                                     &self.transform_state.borrow().final_transform,
-                                                     *self.content_age.borrow());
+        tile_grid.get_buffer_requests_in_rect(rect_in_layer * scale,
+                                              viewport_in_layer * scale,
+                                              self.bounds.borrow().size * scale,
+                                              &(self.transform_state.borrow().world_rect.origin *
+                                                scale.get()),
+                                              &self.transform_state.borrow().final_transform,
+                                              *self.content_age.borrow())
     }
 
     pub fn resize(&self, new_size: TypedSize2D<LayerPixel, f32>) {
