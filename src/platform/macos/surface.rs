@@ -49,68 +49,6 @@ impl NativeGraphicsMetadata {
             pixel_format: pixel_format,
         }
     }
-
-    pub fn from_descriptor(descriptor: &NativeGraphicsMetadataDescriptor)
-                           -> NativeGraphicsMetadata {
-        unsafe {
-            let mut attributes = Vec::new();
-            for (i, &set) in descriptor.boolean_attributes.iter().enumerate() {
-                if set {
-                    attributes.push(CORE_BOOLEAN_ATTRIBUTES[i]);
-                }
-            }
-            for (i, &value) in descriptor.integer_attributes.iter().enumerate() {
-                attributes.push(CORE_INTEGER_ATTRIBUTES[i]);
-                attributes.push(value as CGLPixelFormatAttribute);
-            }
-            attributes.push(0);
-            let mut pixel_format = ptr::null_mut();
-            let mut count = 0;
-            assert!(CGLChoosePixelFormat(attributes.as_ptr(), &mut pixel_format, &mut count) ==
-                    kCGLNoError);
-            assert!(pixel_format != ptr::null_mut());
-            assert!(count > 0);
-
-            NativeGraphicsMetadata {
-                pixel_format: pixel_format,
-            }
-        }
-    }
-}
-
-/// The Mac native graphics metadata descriptor, which encompasses the values needed to create a
-/// pixel format object.
-#[derive(Clone, RustcDecodable, RustcEncodable)]
-pub struct NativeGraphicsMetadataDescriptor {
-    boolean_attributes: Vec<bool>,
-    integer_attributes: Vec<GLint>,
-}
-
-impl NativeGraphicsMetadataDescriptor {
-    pub fn from_metadata(metadata: NativeGraphicsMetadata) -> NativeGraphicsMetadataDescriptor {
-        unsafe {
-            let mut descriptor = NativeGraphicsMetadataDescriptor {
-                boolean_attributes: Vec::new(),
-                integer_attributes: Vec::new(),
-            };
-            for &attribute in CORE_BOOLEAN_ATTRIBUTES.iter() {
-                let mut value = 0;
-                assert!(CGLDescribePixelFormat(metadata.pixel_format, 0, attribute, &mut value) ==
-                        kCGLNoError);
-                descriptor.boolean_attributes.push(value != 0);
-                println!("{}: bool = {}", attribute, value);
-            }
-            for &attribute in CORE_INTEGER_ATTRIBUTES.iter() {
-                let mut value = 0;
-                assert!(CGLDescribePixelFormat(metadata.pixel_format, 0, attribute, &mut value) ==
-                        kCGLNoError);
-                descriptor.integer_attributes.push(value);
-                println!("{}: int = {}", attribute, value);
-            }
-            descriptor
-        }
-    }
-
 }
 
 pub struct NativePaintingGraphicsContext {
