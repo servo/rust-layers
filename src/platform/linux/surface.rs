@@ -173,43 +173,6 @@ pub struct NativeGraphicsMetadata {
 unsafe impl Send for NativeGraphicsMetadata {}
 
 impl NativeGraphicsMetadata {
-    /// Creates graphics metadata from a metadata descriptor.
-    pub fn from_descriptor(descriptor: &NativeGraphicsMetadataDescriptor)
-                           -> NativeGraphicsMetadata {
-        // WARNING: We currently rely on the X display connection being the
-        // same in both the Painting and Compositing contexts, as otherwise
-        // the X Pixmap will not be sharable across them. Using this
-        // method breaks that assumption.
-        unsafe {
-            let c_str = CString::new(descriptor.display.as_bytes()).unwrap();
-            let display = XOpenDisplay(c_str.as_ptr() as *mut _);
-            if display.is_null() {
-                panic!("XOpenDisplay() failed!");
-            }
-            NativeGraphicsMetadata {
-                display: display,
-            }
-        }
-    }
-}
-
-/// A sendable form of the X display string.
-#[derive(Clone, RustcDecodable, RustcEncodable)]
-pub struct NativeGraphicsMetadataDescriptor {
-    display: String,
-}
-
-impl NativeGraphicsMetadataDescriptor {
-    /// Creates a metadata descriptor from metadata.
-    pub fn from_metadata(metadata: NativeGraphicsMetadata) -> NativeGraphicsMetadataDescriptor {
-        unsafe {
-            let c_str = XDisplayString(metadata.display) as *const _;
-            let bytes = CStr::from_ptr(c_str).to_bytes();
-            NativeGraphicsMetadataDescriptor {
-                display: str::from_utf8(bytes).unwrap().to_string(),
-            }
-        }
-    }
 }
 
 #[derive(RustcDecodable, RustcEncodable)]
