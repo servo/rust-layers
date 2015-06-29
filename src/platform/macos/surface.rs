@@ -21,9 +21,9 @@ use euclid::size::Size2D;
 use io_surface::{kIOSurfaceBytesPerElement, kIOSurfaceBytesPerRow, kIOSurfaceHeight};
 use io_surface::{kIOSurfaceIsGlobal, kIOSurfaceWidth, IOSurface, IOSurfaceID};
 use io_surface;
-use cgl::{CGLChoosePixelFormat, CGLDescribePixelFormat, CGLPixelFormatAttribute};
-use cgl::{CGLPixelFormatObj, CORE_BOOLEAN_ATTRIBUTES, CORE_INTEGER_ATTRIBUTES};
-use cgl::{kCGLNoError};
+use cgl::{CGLChoosePixelFormat, CGLDescribePixelFormat, CGLGetCurrentContext, CGLGetPixelFormat};
+use cgl::{CGLPixelFormatAttribute, CGLPixelFormatObj};
+use cgl::{CORE_BOOLEAN_ATTRIBUTES, CORE_INTEGER_ATTRIBUTES, kCGLNoError};
 use gleam::gl::GLint;
 use skia::{SkiaSkNativeSharedGLContextRef, SkiaSkNativeSharedGLContextStealSurface};
 use std::cell::RefCell;
@@ -35,47 +35,18 @@ use std::vec::Vec;
 
 thread_local!(static IO_SURFACE_REPOSITORY: Rc<RefCell<HashMap<IOSurfaceID,IOSurface>>> = Rc::new(RefCell::new(HashMap::new())));
 
-/// The Mac native graphics metadata.
 #[derive(Clone, Copy)]
-pub struct NativeGraphicsMetadata {
+pub struct NativeDisplay {
     pub pixel_format: CGLPixelFormatObj,
 }
-unsafe impl Send for NativeGraphicsMetadata {}
+unsafe impl Send for NativeDisplay {}
 
-impl NativeGraphicsMetadata {
-    /// Creates a native graphics metadatum from a CGL pixel format.
-    pub fn from_cgl_pixel_format(pixel_format: CGLPixelFormatObj) -> NativeGraphicsMetadata {
-        NativeGraphicsMetadata {
-            pixel_format: pixel_format,
-        }
-    }
-}
-
-pub struct NativePaintingGraphicsContext {
-    _metadata: NativeGraphicsMetadata,
-}
-
-impl NativePaintingGraphicsContext {
-    pub fn from_metadata(metadata: &NativeGraphicsMetadata) -> NativePaintingGraphicsContext {
-        NativePaintingGraphicsContext {
-            _metadata: (*metadata).clone(),
-        }
-    }
-}
-
-impl Drop for NativePaintingGraphicsContext {
-    fn drop(&mut self) {}
-}
-
-#[derive(Copy, Clone)]
-pub struct NativeCompositingGraphicsContext {
-    _contents: (),
-}
-
-impl NativeCompositingGraphicsContext {
-    pub fn new() -> NativeCompositingGraphicsContext {
-        NativeCompositingGraphicsContext {
-            _contents: (),
+impl NativeDisplay {
+    pub fn new() -> NativeDisplay {
+        unsafe {
+            NativeDisplay {
+                pixel_format: CGLGetPixelFormat(CGLGetCurrentContext()),
+            }
         }
     }
 }
@@ -114,7 +85,7 @@ impl IOSurfaceNativeSurface {
         }
     }
 
-    pub fn new(_: &NativePaintingGraphicsContext, size: Size2D<i32>) -> IOSurfaceNativeSurface {
+    pub fn new(_: &NativeDisplay, size: Size2D<i32>) -> IOSurfaceNativeSurface {
         unsafe {
             let width_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceWidth);
             let width_value: CFNumber = CFNumber::from_i32(size.width);
@@ -145,7 +116,7 @@ impl IOSurfaceNativeSurface {
     }
 
     pub fn bind_to_texture(&self,
-                           _: &NativeCompositingGraphicsContext,
+                           _: &NativeDisplay,
                            texture: &Texture,
                            size: Size2D<isize>) {
         let _bound_texture = texture.bind();
@@ -153,7 +124,7 @@ impl IOSurfaceNativeSurface {
         io_surface.bind_to_gl_texture(Size2D::new(size.width as i32, size.height as i32))
     }
 
-    pub fn upload(&mut self, _: &NativePaintingGraphicsContext, data: &[u8]) {
+    pub fn upload(&mut self, _: &NativeDisplay, data: &[u8]) {
         let io_surface = io_surface::lookup(self.io_surface_id.unwrap());
         io_surface.upload(data)
     }
@@ -165,7 +136,7 @@ impl IOSurfaceNativeSurface {
         }
     }
 
-    pub fn destroy(&mut self, _: &NativePaintingGraphicsContext) {
+    pub fn destroy(&mut self, _: &NativeDisplay) {
         IO_SURFACE_REPOSITORY.with(|ref r| {
             r.borrow_mut().remove(&self.io_surface_id.unwrap())
         });

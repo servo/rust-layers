@@ -16,8 +16,7 @@ use euclid::scale_factor::ScaleFactor;
 use euclid::size::{Size2D, TypedSize2D};
 use euclid::point::{Point2D, TypedPoint2D};
 use euclid::rect::{Rect, TypedRect};
-use platform::surface::{NativeCompositingGraphicsContext, NativePaintingGraphicsContext};
-use platform::surface::NativeSurface;
+use platform::surface::{NativeDisplay, NativeSurface};
 use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
 use util::{project_rect_to_screen, ScreenRect};
@@ -172,8 +171,8 @@ impl<T> Layer<T> {
         self.content_age.borrow_mut().next();
     }
 
-    pub fn create_textures(&self, graphics_context: &NativeCompositingGraphicsContext) {
-        self.tile_grid.borrow_mut().create_textures(graphics_context);
+    pub fn create_textures(&self, display: &NativeDisplay) {
+        self.tile_grid.borrow_mut().create_textures(display);
     }
 
     pub fn do_for_all_tiles<F: FnMut(&Tile)>(&self, f: F) {
@@ -291,9 +290,9 @@ impl LayerBuffer {
     }
 
     /// Destroys the layer buffer. Painting task only.
-    pub fn destroy(self, graphics_context: &NativePaintingGraphicsContext) {
+    pub fn destroy(self, display: &NativeDisplay) {
         let mut this = self;
-        this.native_surface.destroy(graphics_context)
+        this.native_surface.destroy(display)
     }
 }
 

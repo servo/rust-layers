@@ -9,7 +9,7 @@
 
 use geometry::{DevicePixel, LayerPixel};
 use layers::{BufferRequest, ContentAge, LayerBuffer};
-use platform::surface::NativeCompositingGraphicsContext;
+use platform::surface::NativeDisplay;
 use texturegl::Texture;
 use util::project_rect_to_screen;
 
@@ -67,7 +67,7 @@ impl Tile {
         return old_buffer;
     }
 
-    fn create_texture(&mut self, graphics_context: &NativeCompositingGraphicsContext) {
+    fn create_texture(&mut self, display: &NativeDisplay) {
         match self.buffer {
             Some(ref buffer) => {
                 let size = Size2D::new(buffer.screen_pos.size.width as isize,
@@ -82,7 +82,7 @@ impl Tile {
                 self.texture = Texture::new_with_buffer(buffer);
                 debug!("Tile: binding to native surface {}",
                        buffer.native_surface.get_id() as isize);
-                buffer.native_surface.bind_to_texture(graphics_context, &self.texture, size);
+                buffer.native_surface.bind_to_texture(display, &self.texture, size);
 
                 // Set the layer's rect.
                 self.bounds = Some(Rect::from_untyped(&buffer.rect));
@@ -329,9 +329,9 @@ impl TileGrid {
         return collected_buffers;
     }
 
-    pub fn create_textures(&mut self, graphics_context: &NativeCompositingGraphicsContext) {
+    pub fn create_textures(&mut self, display: &NativeDisplay) {
         for (_, ref mut tile) in self.tiles.iter_mut() {
-            tile.create_texture(graphics_context);
+            tile.create_texture(display);
         }
     }
 }
