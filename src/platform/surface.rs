@@ -19,23 +19,17 @@ use azure::azure_hl::DrawTargetBacking;
 use gleam::gl;
 
 #[cfg(target_os="macos")]
-pub use platform::macos::surface::{NativeCompositingGraphicsContext,
-                                   NativeGraphicsMetadata,
-                                   NativePaintingGraphicsContext,
+pub use platform::macos::surface::{NativeDisplay,
                                    IOSurfaceNativeSurface};
 
 #[cfg(target_os="linux")]
-pub use platform::linux::surface::{NativeCompositingGraphicsContext,
-                                   NativeGraphicsMetadata,
-                                   NativePaintingGraphicsContext,
+pub use platform::linux::surface::{NativeDisplay,
                                    PixmapNativeSurface};
 #[cfg(target_os="linux")]
 use std::ptr;
 
 #[cfg(target_os="android")]
-pub use platform::android::surface::{NativeCompositingGraphicsContext,
-                                     NativeGraphicsMetadata,
-                                     NativePaintingGraphicsContext,
+pub use platform::android::surface::{NativeDisplay,
                                      EGLImageNativeSurface};
 
 pub enum NativeSurface {
@@ -51,11 +45,11 @@ pub enum NativeSurface {
 #[cfg(target_os="linux")]
 impl NativeSurface {
     /// Creates a new native surface with uninitialized data.
-    pub fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>) -> NativeSurface {
-        if native_context.display == ptr::null_mut() {
-            NativeSurface::MemoryBuffer(MemoryBufferNativeSurface::new(native_context, size))
+    pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> NativeSurface {
+        if display.display == ptr::null_mut() {
+            NativeSurface::MemoryBuffer(MemoryBufferNativeSurface::new(display, size))
         } else {
-            NativeSurface::Pixmap(PixmapNativeSurface::new(native_context, size))
+            NativeSurface::Pixmap(PixmapNativeSurface::new(display, size))
         }
    }
 }
@@ -63,16 +57,16 @@ impl NativeSurface {
 #[cfg(target_os="macos")]
 impl NativeSurface {
     /// Creates a new native surface with uninitialized data.
-    pub fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>) -> NativeSurface {
-        NativeSurface::IOSurface(IOSurfaceNativeSurface::new(native_context, size))
+    pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> NativeSurface {
+        NativeSurface::IOSurface(IOSurfaceNativeSurface::new(display, size))
    }
 }
 
 #[cfg(target_os="android")]
 impl NativeSurface {
     /// Creates a new native surface with uninitialized data.
-    pub fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>) -> NativeSurface {
-        NativeSurface::EGLImage(EGLImageNativeSurface::new(native_context, size))
+    pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> NativeSurface {
+        NativeSurface::EGLImage(EGLImageNativeSurface::new(display, size))
    }
 }
 
@@ -135,15 +129,15 @@ impl NativeSurface {
 
     /// Binds the surface to a GPU texture. Compositing task only.
     pub fn bind_to_texture(&self,
-                           native_context: &NativeCompositingGraphicsContext,
+                           display: &NativeDisplay,
                            texture: &Texture,
                            size: Size2D<isize>) {
-        native_surface_method!(self bind_to_texture (native_context, texture, size))
+        native_surface_method!(self bind_to_texture (display, texture, size))
     }
 
     /// Uploads pixel data to the surface. Painting task only.
-    pub fn upload(&mut self, native_context: &NativePaintingGraphicsContext, data: &[u8]) {
-        native_surface_method_mut!(self upload (native_context, data))
+    pub fn upload(&mut self, display: &NativeDisplay, data: &[u8]) {
+        native_surface_method_mut!(self upload (display, data))
     }
 
     /// Returns an opaque ID identifying the surface for debugging.
@@ -152,8 +146,8 @@ impl NativeSurface {
     }
 
     /// Destroys the surface. After this, it is an error to use the surface. Painting task only.
-    pub fn destroy(&mut self, graphics_context: &NativePaintingGraphicsContext) {
-        native_surface_method_mut!(self destroy (graphics_context))
+    pub fn destroy(&mut self, display: &NativeDisplay) {
+        native_surface_method_mut!(self destroy (display))
     }
 
     /// Records that the surface will leak if destroyed. This is done by the compositor immediately
@@ -189,7 +183,7 @@ pub struct MemoryBufferNativeSurface {
 }
 
 impl MemoryBufferNativeSurface {
-    pub fn new(_: &NativePaintingGraphicsContext, _: Size2D<i32>) -> MemoryBufferNativeSurface {
+    pub fn new(_: &NativeDisplay, _: Size2D<i32>) -> MemoryBufferNativeSurface {
         MemoryBufferNativeSurface{
             bytes: vec!(),
         }
@@ -197,7 +191,7 @@ impl MemoryBufferNativeSurface {
 
     /// This may only be called on the compositor side.
     #[cfg(not(target_os="android"))]
-    pub fn bind_to_texture(&self, _: &NativeCompositingGraphicsContext, texture: &Texture, size: Size2D<isize>) {
+    pub fn bind_to_texture(&self, _: &NativeDisplay, texture: &Texture, size: Size2D<isize>) {
         let _bound = texture.bind();
         gl::tex_image_2d(gl::TEXTURE_2D,
                          0,
@@ -211,12 +205,12 @@ impl MemoryBufferNativeSurface {
     }
 
     #[cfg(target_os="android")]
-    pub fn bind_to_texture(&self, _: &NativeCompositingGraphicsContext, _: &Texture, _: Size2D<isize>) {
+    pub fn bind_to_texture(&self, _: &NativeDisplay, _: &Texture, _: Size2D<isize>) {
         panic!("Binding a memory surface to a texture is not yet supported on Android.");
     }
 
     /// This may only be called on the painting side.
-    pub fn upload(&mut self, _: &NativePaintingGraphicsContext, data: &[u8]) {
+    pub fn upload(&mut self, _: &NativeDisplay, data: &[u8]) {
         self.bytes.clear();
         self.bytes.push_all(data);
     }
@@ -225,7 +219,7 @@ impl MemoryBufferNativeSurface {
         0
     }
 
-    pub fn destroy(&mut self, _: &NativePaintingGraphicsContext) {
+    pub fn destroy(&mut self, _: &NativeDisplay) {
     }
 
     pub fn mark_will_leak(&mut self) {

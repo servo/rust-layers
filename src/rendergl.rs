@@ -14,7 +14,7 @@ use texturegl::Texture;
 use texturegl::Flip::VerticalFlip;
 use texturegl::TextureTarget::{TextureTarget2D, TextureTargetRectangle};
 use tiling::Tile;
-use platform::surface::NativeCompositingGraphicsContext;
+use platform::surface::NativeDisplay;
 
 use euclid::matrix::Matrix4;
 use euclid::rect::Rect;
@@ -407,7 +407,7 @@ pub struct RenderContext {
     buffers: Buffers,
 
     /// The platform-specific graphics context.
-    compositing_context: NativeCompositingGraphicsContext,
+    compositing_display: NativeDisplay,
 
     /// Whether to show lines at border and tile boundaries for debugging purposes.
     show_debug_borders: bool,
@@ -416,7 +416,7 @@ pub struct RenderContext {
 }
 
 impl RenderContext {
-    pub fn new(compositing_context: NativeCompositingGraphicsContext,
+    pub fn new(compositing_display: NativeDisplay,
                show_debug_borders: bool,
                force_near_texture_filter: bool) -> RenderContext {
         gl::enable(gl::TEXTURE_2D);
@@ -434,7 +434,7 @@ impl RenderContext {
             texture_rectangle_program: texture_rectangle_program,
             solid_color_program: solid_color_program,
             buffers: RenderContext::init_buffers(),
-            compositing_context: compositing_context,
+            compositing_display: compositing_display,
             show_debug_borders: show_debug_borders,
             force_near_texture_filter: force_near_texture_filter,
         }
@@ -554,7 +554,7 @@ impl RenderContext {
                        transform: &Matrix4,
                        projection: &Matrix4,
                        clip_rect: Option<Rect<f32>>,
-                       gfx_context: &NativeCompositingGraphicsContext) {
+                       gfx_context: &NativeDisplay) {
         let ts = layer.transform_state.borrow();
 
         let transform = transform.mul(&ts.final_transform);
@@ -688,7 +688,7 @@ impl RenderContext {
                             transform: &Matrix4,
                             projection: &Matrix4,
                             mut clip_rect: Option<Rect<f32>>,
-                            gfx_context: &NativeCompositingGraphicsContext) {
+                            gfx_context: &NativeDisplay) {
 
         clip_rect = match (clip_rect, context.clip_rect) {
             (Some(current_clip), Some(context_clip)) => {
@@ -783,5 +783,5 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
                                      &transform,
                                      &projection,
                                      None,
-                                     &render_context.compositing_context);
+                                     &render_context.compositing_display);
 }

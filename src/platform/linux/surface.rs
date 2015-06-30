@@ -26,30 +26,6 @@ use x11::xlib::{Display, Pixmap, XCreateGC, XCreateImage, XCreatePixmap, XDefaul
 use x11::xlib::{XDisplayString, XFree, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage};
 use x11::xlib::{XRootWindow, XVisualInfo, ZPixmap};
 
-/// The display and visual info. This is needed in order to upload on the painting side. This
-/// holds a weak reference to the display and will not close it when done.
-///
-/// FIXME(pcwalton): Mark nonsendable.
-#[allow(missing_copy_implementations)]
-pub struct NativePaintingGraphicsContext {
-    pub display: *mut Display,
-    visual_info: *mut XVisualInfo,
-}
-
-impl NativePaintingGraphicsContext {
-    pub fn from_metadata(metadata: &NativeGraphicsMetadata) -> NativePaintingGraphicsContext {
-        // FIXME(pcwalton): It would be more robust to actually have the compositor pass the
-        // visual.
-        let (compositor_visual_info, _) =
-            NativeCompositingGraphicsContext::compositor_visual_info(metadata.display);
-
-        NativePaintingGraphicsContext {
-            display: metadata.display,
-            visual_info: compositor_visual_info,
-        }
-    }
-}
-
 /// The display, visual info, and framebuffer configuration. This is needed in order to bind to a
 /// texture on the compositor side. This holds only a *weak* reference to the display and does not
 /// close it.
@@ -57,15 +33,30 @@ impl NativePaintingGraphicsContext {
 /// FIXME(pcwalton): Unchecked weak references are bad and can violate memory safety. This is hard
 /// to fix because the Display is given to us by the native windowing system, but we should fix it
 /// someday.
-///
 /// FIXME(pcwalton): Mark nonsendable.
 #[derive(Copy, Clone)]
-pub struct NativeCompositingGraphicsContext {
-    display: *mut Display,
+pub struct NativeDisplay {
+    pub display: *mut Display,
+    visual_info: *mut XVisualInfo,
     framebuffer_configuration: Option<glx::types::GLXFBConfig>,
 }
 
-impl NativeCompositingGraphicsContext {
+unsafe impl Send for NativeDisplay {}
+
+impl NativeDisplay {
+    pub fn new(display: *mut Display) -> NativeDisplay {
+        // FIXME(pcwalton): It would be more robust to actually have the compositor pass the
+        // visual.
+        let (compositor_visual_info, frambuffer_configuration) =
+            NativeDisplay::compositor_visual_info(display);
+
+        NativeDisplay {
+            display: display,
+            visual_info: compositor_visual_info,
+            framebuffer_configuration: frambuffer_configuration,
+        }
+    }
+
     /// Chooses the compositor visual info using the same algorithm that the compositor uses.
     ///
     /// FIXME(pcwalton): It would be more robust to actually have the compositor pass the visual.
@@ -92,9 +83,7 @@ impl NativeCompositingGraphicsContext {
                                               screen,
                                               fbconfig_attributes.as_ptr(),
                                               &mut number_of_configs);
-            NativeCompositingGraphicsContext::get_compatible_configuration(display,
-                                                                           configs,
-                                                                           number_of_configs)
+            NativeDisplay::get_compatible_configuration(display, configs, number_of_configs)
         }
     }
 
@@ -107,7 +96,7 @@ impl NativeCompositingGraphicsContext {
                 panic!("glx::ChooseFBConfig returned no configurations.");
             }
 
-            if !NativeCompositingGraphicsContext::need_to_find_32_bit_depth_visual(display) {
+            if !NativeDisplay::need_to_find_32_bit_depth_visual(display) {
                 let config = *configs.offset(0);
                 let visual = glx::GetVisualFromFBConfig(mem::transmute(display), config);
 
@@ -152,27 +141,6 @@ impl NativeCompositingGraphicsContext {
             glx_vendor.contains("nvidia") || glx_vendor.contains("ati")
         }
     }
-
-    /// Creates a native graphics context from the given X display connection. This uses GLX. Only
-    /// the compositor is allowed to call this.
-    pub fn from_display(display: *mut Display) -> NativeCompositingGraphicsContext {
-        let (_, fbconfig) = NativeCompositingGraphicsContext::compositor_visual_info(display);
-
-        NativeCompositingGraphicsContext {
-            display: display,
-            framebuffer_configuration: fbconfig,
-        }
-    }
-}
-
-/// The X display.
-#[derive(Clone, Copy)]
-pub struct NativeGraphicsMetadata {
-    pub display: *mut Display,
-}
-unsafe impl Send for NativeGraphicsMetadata {}
-
-impl NativeGraphicsMetadata {
 }
 
 #[derive(RustcDecodable, RustcEncodable)]
@@ -209,16 +177,15 @@ impl PixmapNativeSurface {
         }
     }
 
-    pub fn new(native_context: &NativePaintingGraphicsContext, size: Size2D<i32>)
-           -> PixmapNativeSurface {
+    pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> PixmapNativeSurface {
         unsafe {
             // Create the pixmap.
-            let screen = XDefaultScreen(native_context.display);
-            let window = XRootWindow(native_context.display, screen);
+            let screen = XDefaultScreen(display.display);
+            let window = XRootWindow(display.display, screen);
             // The X server we use for testing on build machines always returns
             // visuals that report 24 bit depth. But creating a 32 bit pixmap does work, so
             // hard code the depth here.
-            let pixmap = XCreatePixmap(native_context.display,
+            let pixmap = XCreatePixmap(display.display,
                                        window,
                                        size.width as c_uint,
                                        size.height as c_uint,
@@ -229,7 +196,7 @@ impl PixmapNativeSurface {
 
     /// This may only be called on the compositor side.
     pub fn bind_to_texture(&self,
-                           native_context: &NativeCompositingGraphicsContext,
+                           display: &NativeDisplay,
                            texture: &Texture,
                            _: Size2D<isize>) {
         // Create the GLX pixmap.
@@ -242,19 +209,19 @@ impl PixmapNativeSurface {
                 0
             ];
 
-            let glx_display = mem::transmute(native_context.display);
+            let glx_display = mem::transmute(display.display);
 
             let glx_pixmap = glx::CreatePixmap(glx_display,
-                                             native_context.framebuffer_configuration.expect(
-                                                 "GLX 1.3 should have a framebuffer_configuration"),
-                                             self.pixmap,
-                                             pixmap_attributes.as_ptr());
+                                               display.framebuffer_configuration.expect(
+                                                   "GLX 1.3 should have a framebuffer_configuration"),
+                                               self.pixmap,
+                                               pixmap_attributes.as_ptr());
 
             let glXBindTexImageEXT: extern "C" fn(*mut Display, glx::types::GLXDrawable, c_int, *mut c_int) =
                 mem::transmute(glx::GetProcAddress(mem::transmute(&"glXBindTexImageEXT\x00".as_bytes()[0])));
             assert!(glXBindTexImageEXT as *mut c_void != ptr::null_mut());
             let _bound = texture.bind();
-            glXBindTexImageEXT(native_context.display,
+            glXBindTexImageEXT(display.display,
                                mem::transmute(glx_pixmap),
                                glx::FRONT_EXT  as i32,
                                ptr::null_mut());
@@ -265,7 +232,7 @@ impl PixmapNativeSurface {
     }
 
     /// This may only be called on the painting side.
-    pub fn upload(&mut self, graphics_context: &NativePaintingGraphicsContext, data: &[u8]) {
+    pub fn upload(&mut self, display: &NativeDisplay, data: &[u8]) {
         unsafe {
             // Ensure that we're running on the render task. Take the display.
             let pixmap = self.pixmap;
@@ -278,7 +245,7 @@ impl PixmapNativeSurface {
             let mut height = 0;
             let mut border_width = 0;
             let mut depth = 0;
-            let _ = XGetGeometry(graphics_context.display,
+            let _ = XGetGeometry(display.display,
                                  mem::transmute(pixmap),
                                  &mut root_window,
                                  &mut x,
@@ -289,8 +256,8 @@ impl PixmapNativeSurface {
                                  &mut depth);
 
             // Create the image.
-            let image = XCreateImage(graphics_context.display,
-                                     (*graphics_context.visual_info).visual,
+            let image = XCreateImage(display.display,
+                                     (*display.visual_info).visual,
                                      depth,
                                      ZPixmap,
                                      0,
@@ -301,10 +268,10 @@ impl PixmapNativeSurface {
                                      0);
 
             // Create the X graphics context.
-            let gc = XCreateGC(graphics_context.display, pixmap, 0, ptr::null_mut());
+            let gc = XCreateGC(display.display, pixmap, 0, ptr::null_mut());
 
             // Draw the image.
-            let _ = XPutImage(graphics_context.display,
+            let _ = XPutImage(display.display,
                               pixmap,
                               gc,
                               image,
@@ -321,10 +288,10 @@ impl PixmapNativeSurface {
         self.pixmap as isize
     }
 
-    pub fn destroy(&mut self, graphics_context: &NativePaintingGraphicsContext) {
+    pub fn destroy(&mut self, display: &NativeDisplay) {
         unsafe {
             assert!(self.pixmap != 0);
-            XFreePixmap(graphics_context.display, self.pixmap);
+            XFreePixmap(display.display, self.pixmap);
             self.mark_wont_leak()
         }
     }

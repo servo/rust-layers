@@ -11,10 +11,10 @@
 
 use texturegl::Texture;
 
+use egl::egl::{EGLDisplay, GetCurrentDisplay};
+use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use euclid::size::Size2D;
 use gleam::gl::{egl_image_target_texture2d_oes, TEXTURE_2D, TexImage2D, BGRA_EXT, UNSIGNED_BYTE};
-use egl::egl::EGLDisplay;
-use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use libc::c_void;
 use skia::{SkiaSkNativeSharedGLContextRef, SkiaSkNativeSharedGLContextStealSurface};
 use std::iter::repeat;
@@ -22,36 +22,26 @@ use std::mem;
 use std::ptr;
 use std::vec::Vec;
 
-/// FIXME(Aydin Kim) :Currently, native surface is consist of 2 types of hybrid image buffer. EGLImageKHR is used to GPU rendering and vector is used to CPU rendering. EGL extension seems not provide simple way to accessing its bitmap directly. In the future, we need to find out the way to integrate them.
+/// FIXME(Aydin Kim) :Currently, native surface is consist of 2 types of hybrid image
+/// buffer. EGLImageKHR is used to GPU rendering and vector is used to CPU rendering. EGL
+/// extension seems not provide simple way to accessing its bitmap directly. In the
+/// future, we need to find out the way to integrate them.
 
 #[derive(Clone, Copy)]
-pub struct NativeGraphicsMetadata {
+pub struct NativeDisplay {
     pub display: EGLDisplay,
 }
-unsafe impl Send for NativeGraphicsMetadata {}
+unsafe impl Send for NativeDisplay {}
 
-pub struct NativePaintingGraphicsContext{
-    display : EGLDisplay,
-}
-
-impl NativePaintingGraphicsContext {
-    pub fn from_metadata(metadata: &NativeGraphicsMetadata) -> NativePaintingGraphicsContext {
-        NativePaintingGraphicsContext {
-            display : metadata.display,
-        }
+impl NativeDisplay {
+    pub fn new() -> NativeDisplay {
+        NativeDisplay::new_with_display(GetCurrentDisplay())
     }
-}
 
-impl Drop for NativePaintingGraphicsContext {
-    fn drop(&mut self) {}
-}
-
-#[derive(Copy, Clone)]
-pub struct NativeCompositingGraphicsContext;
-
-impl NativeCompositingGraphicsContext {
-    pub fn new() -> NativeCompositingGraphicsContext {
-        NativeCompositingGraphicsContext
+    pub fn new_with_display(display: EGLDisplay) -> NativeDisplay {
+        NativeDisplay {
+            display: display,
+        }
     }
 }
 
@@ -85,7 +75,7 @@ impl EGLImageNativeSurface {
     }
 
     /// This may only be called on the case of CPU rendering.
-    pub fn new(_: &NativePaintingGraphicsContext, size: Size2D<i32>) -> EGLImageNativeSurface {
+    pub fn new(_: &NativeDisplay, size: Size2D<i32>) -> EGLImageNativeSurface {
         let len = size.width * size.height * 4;
         let bitmap: Vec<u8> = repeat(0).take(len as usize).collect();
 
@@ -98,7 +88,7 @@ impl EGLImageNativeSurface {
 
     /// This may only be called on the compositor side.
     pub fn bind_to_texture(&self,
-                           _: &NativeCompositingGraphicsContext,
+                           _: &NativeDisplay,
                            texture: &Texture,
                            size: Size2D<isize>) {
         let _bound = texture.bind();
@@ -122,7 +112,7 @@ impl EGLImageNativeSurface {
     }
 
     /// This may only be called on the painting side.
-    pub fn upload(&mut self, _: &NativePaintingGraphicsContext, data: &[u8]) {
+    pub fn upload(&mut self, _: &NativeDisplay, data: &[u8]) {
         match self.bitmap {
             Some(ref mut bitmap) => {
                 bitmap.clear();
@@ -141,7 +131,7 @@ impl EGLImageNativeSurface {
         }
     }
 
-    pub fn destroy(&mut self, graphics_context: &NativePaintingGraphicsContext) {
+    pub fn destroy(&mut self, graphics_context: &NativeDisplay) {
         match self.image {
             None => {},
             Some(image_khr) => {
