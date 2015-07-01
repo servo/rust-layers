@@ -38,8 +38,7 @@ impl<T> Scene<T> {
                                          viewport_rect: TypedRect<LayerPixel, f32>,
                                          layers_and_requests: &mut Vec<(Rc<Layer<T>>,
                                                                         Vec<BufferRequest>)>,
-                                         unused_buffers: &mut Vec<(Rc<Layer<T>>,
-                                                                        Vec<Box<LayerBuffer>>)>) {
+                                         unused_buffers: &mut Vec<Box<LayerBuffer>>) {
         // Get buffers for this layer, in global (screen) coordinates.
         let requests = layer.get_buffer_requests(dirty_rect,
                                                  viewport_rect,
@@ -47,7 +46,7 @@ impl<T> Scene<T> {
         if !requests.is_empty() {
             layers_and_requests.push((layer.clone(), requests));
         }
-        unused_buffers.push((layer.clone(), layer.collect_unused_buffers()));
+        unused_buffers.extend(layer.collect_unused_buffers().into_iter());
 
         // If this layer masks its children, we don't need to ask for tiles outside the
         // boundaries of this layer.
@@ -89,7 +88,7 @@ impl<T> Scene<T> {
 
     pub fn get_buffer_requests(&mut self,
                                requests: &mut Vec<(Rc<Layer<T>>, Vec<BufferRequest>)>,
-                               unused_buffers: &mut Vec<(Rc<Layer<T>>, Vec<Box<LayerBuffer>>)>) {
+                               unused_buffers: &mut Vec<Box<LayerBuffer>>) {
         let root_layer = match self.root {
             Some(ref root_layer) => root_layer.clone(),
             None => return,

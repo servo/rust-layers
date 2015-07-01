@@ -222,16 +222,18 @@ impl<T> Layer<T> {
 }
 
 /// A request from the compositor to the renderer for tiles that need to be (re)displayed.
-#[derive(Clone, Copy)]
 pub struct BufferRequest {
-    // The rect in pixels that will be drawn to the screen
+    /// The rect in pixels that will be drawn to the screen
     pub screen_rect: Rect<usize>,
 
-    // The rect in page coordinates that this tile represents
+    /// The rect in page coordinates that this tile represents
     pub page_rect: Rect<f32>,
 
     /// The content age of that this BufferRequest corresponds to.
     pub content_age: ContentAge,
+
+    /// A cached LayerBuffer that can be used to avoid allocating a new one.
+    pub layer_buffer: Option<Box<LayerBuffer>>,
 }
 
 impl BufferRequest {
@@ -241,6 +243,7 @@ impl BufferRequest {
             screen_rect: screen_rect,
             page_rect: page_rect,
             content_age: content_age,
+            layer_buffer: None,
         }
     }
 }
