@@ -16,14 +16,14 @@ use texturegl::Texture;
 use euclid::size::Size2D;
 use libc::{c_char, c_int, c_uint, c_void};
 use glx;
-use skia::{SkiaSkNativeSharedGLContextRef, SkiaSkNativeSharedGLContextStealSurface};
+use skia::gl_rasterization_context::GLRasterizationContext;
 use std::ascii::OwnedAsciiExt;
 use std::ffi::{CString, CStr};
 use std::mem;
 use std::ptr;
 use std::str;
 use x11::xlib::{Display, Pixmap, XCreateGC, XCreateImage, XCreatePixmap, XDefaultScreen};
-use x11::xlib::{XDisplayString, XFree, XFreePixmap, XGetGeometry, XOpenDisplay, XPutImage};
+use x11::xlib::{XDisplayString, XFree, XFreePixmap, XGetGeometry, XID, XOpenDisplay, XPutImage};
 use x11::xlib::{XRootWindow, XVisualInfo, ZPixmap};
 
 /// The display, visual info, and framebuffer configuration. This is needed in order to bind to a
@@ -162,21 +162,6 @@ impl Drop for PixmapNativeSurface {
 }
 
 impl PixmapNativeSurface {
-    fn from_pixmap(pixmap: Pixmap) -> PixmapNativeSurface {
-        PixmapNativeSurface {
-            pixmap: pixmap,
-            will_leak: true,
-        }
-    }
-
-    pub fn from_skia_shared_gl_context(context: SkiaSkNativeSharedGLContextRef)
-                                       -> PixmapNativeSurface {
-        unsafe {
-            let surface = SkiaSkNativeSharedGLContextStealSurface(context);
-            PixmapNativeSurface::from_pixmap(mem::transmute(surface))
-        }
-    }
-
     pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> PixmapNativeSurface {
         unsafe {
             // Create the pixmap.
@@ -190,7 +175,10 @@ impl PixmapNativeSurface {
                                        size.width as c_uint,
                                        size.height as c_uint,
                                        32);
-            PixmapNativeSurface::from_pixmap(pixmap)
+            PixmapNativeSurface {
+                pixmap: pixmap,
+                will_leak: true,
+            }
         }
     }
 
@@ -302,5 +290,12 @@ impl PixmapNativeSurface {
 
     pub fn mark_wont_leak(&mut self) {
         self.will_leak = false;
+    }
+
+    pub fn gl_rasterization_context(&mut self,
+                                    display: &NativeDisplay,
+                                    size: Size2D<i32>)
+                                    -> Option<GLRasterizationContext> {
+        GLRasterizationContext::new(display.display, display.visual_info, self.pixmap, size)
     }
 }

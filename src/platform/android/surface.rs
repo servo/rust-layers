@@ -16,10 +16,9 @@ use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use euclid::size::Size2D;
 use gleam::gl::{egl_image_target_texture2d_oes, TEXTURE_2D, TexImage2D, BGRA_EXT, UNSIGNED_BYTE};
 use libc::c_void;
-use skia::{SkiaSkNativeSharedGLContextRef, SkiaSkNativeSharedGLContextStealSurface};
+use skia::gl_rasterization_context::GLRasterizationContext;
 use std::iter::repeat;
 use std::mem;
-use std::ptr;
 use std::vec::Vec;
 
 /// FIXME(Aydin Kim) :Currently, native surface is consist of 2 types of hybrid image
@@ -54,27 +53,6 @@ pub struct EGLImageNativeSurface {
 unsafe impl Send for EGLImageNativeSurface {}
 
 impl EGLImageNativeSurface {
-    pub fn from_image_khr(image_khr: EGLImageKHR) -> EGLImageNativeSurface {
-        let mut _image: Option<EGLImageKHR> = None;
-        if image_khr != ptr::null_mut() {
-            _image = Some(image_khr);
-        }
-        EGLImageNativeSurface {
-            image : _image,
-            bitmap: None,
-            will_leak: true,
-        }
-    }
-
-    pub fn from_skia_shared_gl_context(context: SkiaSkNativeSharedGLContextRef)
-                                       -> EGLImageNativeSurface {
-        unsafe {
-            let surface = SkiaSkNativeSharedGLContextStealSurface(context);
-            EGLImageNativeSurface::from_image_khr(mem::transmute(surface))
-        }
-    }
-
-    /// This may only be called on the case of CPU rendering.
     pub fn new(_: &NativeDisplay, size: Size2D<i32>) -> EGLImageNativeSurface {
         let len = size.width * size.height * 4;
         let bitmap: Vec<u8> = repeat(0).take(len as usize).collect();
@@ -148,5 +126,23 @@ impl EGLImageNativeSurface {
 
     pub fn mark_wont_leak(&mut self) {
         self.will_leak = false
+    }
+
+    pub fn gl_rasterization_context(&mut self,
+                                    display: &NativeDisplay,
+                                    size: Size2D<i32>)
+                                    -> Option<GLRasterizationContext> {
+        // TODO: Eventually we should preserve the previous GLRasterizationContext,
+        // so that we don't have to keep destroying and recreating the image.
+        if let Some(egl_image) = self.image.take() {
+            DestroyImageKHR(display.display, egl_image);
+        }
+
+        let gl_rasterization_context = GLRasterizationContext::new(display.display, size);
+        if let Some(ref gl_rasterization_context) = gl_rasterization_context {
+            self.bitmap = None;
+            self.image = Some(gl_rasterization_context.egl_image);
+        }
+        gl_rasterization_context
     }
 }

@@ -25,7 +25,7 @@ use cgl::{CGLChoosePixelFormat, CGLDescribePixelFormat, CGLGetCurrentContext, CG
 use cgl::{CGLPixelFormatAttribute, CGLPixelFormatObj};
 use cgl::{CORE_BOOLEAN_ATTRIBUTES, CORE_INTEGER_ATTRIBUTES, kCGLNoError};
 use gleam::gl::GLint;
-use skia::{SkiaSkNativeSharedGLContextRef, SkiaSkNativeSharedGLContextStealSurface};
+use skia::gl_rasterization_context::GLRasterizationContext;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem;
@@ -58,33 +58,6 @@ pub struct IOSurfaceNativeSurface {
 }
 
 impl IOSurfaceNativeSurface {
-    pub fn from_io_surface(io_surface: IOSurface) -> IOSurfaceNativeSurface {
-        // Take the surface by ID (so that we can send it cross-process) and consume its reference.
-        let id = io_surface.get_id();
-
-        let mut io_surface = Some(io_surface);
-
-        IO_SURFACE_REPOSITORY.with(|ref r| {
-            r.borrow_mut().insert(id, io_surface.take().unwrap())
-        });
-
-        IOSurfaceNativeSurface {
-            io_surface_id: Some(id),
-            will_leak: true,
-        }
-    }
-
-    pub fn from_skia_shared_gl_context(context: SkiaSkNativeSharedGLContextRef)
-                                       -> IOSurfaceNativeSurface {
-        unsafe {
-            let surface = SkiaSkNativeSharedGLContextStealSurface(context);
-            let io_surface = IOSurface {
-                obj: mem::transmute(surface),
-            };
-            IOSurfaceNativeSurface::from_io_surface(io_surface)
-        }
-    }
-
     pub fn new(_: &NativeDisplay, size: Size2D<i32>) -> IOSurfaceNativeSurface {
         unsafe {
             let width_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceWidth);
@@ -111,7 +84,16 @@ impl IOSurfaceNativeSurface {
                 (is_global_key.as_CFType(), is_global_value.as_CFType()),
             ]));
 
-            IOSurfaceNativeSurface::from_io_surface(surface)
+            // Take the surface by ID (so that we can send it cross-process) and consume its reference.
+            let id = surface.get_id();
+            IO_SURFACE_REPOSITORY.with(|ref r| {
+                r.borrow_mut().insert(id, surface)
+            });
+
+            IOSurfaceNativeSurface {
+                io_surface_id: Some(id),
+                will_leak: true,
+            }
         }
     }
 
@@ -150,5 +132,14 @@ impl IOSurfaceNativeSurface {
 
     pub fn mark_wont_leak(&mut self) {
         self.will_leak = false
+    }
+
+    pub fn gl_rasterization_context(&mut self,
+                                    display: &NativeDisplay,
+                                    size: Size2D<i32>)
+                                    -> Option<GLRasterizationContext> {
+        GLRasterizationContext::new(display.pixel_format,
+                                    io_surface::lookup(self.io_surface_id.unwrap()).obj,
+                                    size)
     }
 }
