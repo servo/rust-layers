@@ -16,9 +16,11 @@ use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use euclid::size::Size2D;
 use gleam::gl::{egl_image_target_texture2d_oes, TEXTURE_2D, TexImage2D, BGRA_EXT, UNSIGNED_BYTE};
 use libc::c_void;
+use skia::gl_context::{GLContext, PlatformDisplayData};
 use skia::gl_rasterization_context::GLRasterizationContext;
 use std::iter::repeat;
 use std::mem;
+use std::sync::Arc;
 use std::vec::Vec;
 
 /// FIXME(Aydin Kim) :Currently, native surface is consist of 2 types of hybrid image
@@ -40,6 +42,12 @@ impl NativeDisplay {
     pub fn new_with_display(display: EGLDisplay) -> NativeDisplay {
         NativeDisplay {
             display: display,
+        }
+    }
+
+    pub fn platform_display_data(&self) -> PlatformDisplayData {
+        PlatformDisplayData {
+            display: self.display,
         }
     }
 }
@@ -142,15 +150,15 @@ impl EGLImageNativeSurface {
     }
 
     pub fn gl_rasterization_context(&mut self,
-                                    display: &NativeDisplay)
+                                    gl_context: Arc<GLContext>)
                                     -> Option<GLRasterizationContext> {
         // TODO: Eventually we should preserve the previous GLRasterizationContext,
         // so that we don't have to keep destroying and recreating the image.
         if let Some(egl_image) = self.image.take() {
-            DestroyImageKHR(display.display, egl_image);
+            DestroyImageKHR(gl_context.platform_context.display, egl_image);
         }
 
-        let gl_rasterization_context = GLRasterizationContext::new(display.display, self.size);
+        let gl_rasterization_context = GLRasterizationContext::new(gl_context, self.size);
         if let Some(ref gl_rasterization_context) = gl_rasterization_context {
             self.bitmap = None;
             self.image = Some(gl_rasterization_context.egl_image);

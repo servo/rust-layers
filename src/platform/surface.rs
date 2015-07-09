@@ -14,6 +14,7 @@ use texturegl::Texture;
 
 use euclid::size::Size2D;
 use skia::gl_rasterization_context::GLRasterizationContext;
+use skia::gl_context::GLContext;
 use std::sync::Arc;
 
 #[cfg(not(target_os="android"))]
@@ -173,12 +174,13 @@ impl NativeSurface {
     }
 
     pub fn gl_rasterization_context(&mut self,
-                                    display: &NativeDisplay)
+                                    gl_context: Arc<GLContext>)
                                     -> Option<Arc<GLRasterizationContext>> {
-        match native_surface_method_mut!(self gl_rasterization_context (display)) {
+        match native_surface_method_mut!(self gl_rasterization_context (gl_context)) {
             Some(context) => Some(Arc::new(context)),
             None => None,
         }
+
     }
 
     /// Get the memory usage of this native surface. This memory may be allocated
@@ -249,7 +251,7 @@ impl MemoryBufferNativeSurface {
     }
 
     pub fn gl_rasterization_context(&mut self,
-                                    _: &NativeDisplay)
+                                    _: Arc<GLContext>)
                                     -> Option<GLRasterizationContext> {
         None
     }
