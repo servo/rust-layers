@@ -1,11 +1,17 @@
 language: rust
+os:
+  - osx
+  - linux
 before_install:
-  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-  - sudo apt-get update
-  - sudo apt-get install gcc-4.7 g++-4.7
-  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.7 20
-  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.7 20
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install gcc-4.7 g++-4.7; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.7 20; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.7 20; fi
 rust:
   - nightly
+branches:
+  except:
+    - master
 notifications:
   webhooks: http://build.servo.org:54856/travis
