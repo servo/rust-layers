@@ -219,6 +219,15 @@ impl<T> Layer<T> {
                                          &rect_without_scroll.origin);
         }
     }
+
+    /// Calculate the amount of memory used by this layer and all its children.
+    /// The memory may be allocated on the heap or in GPU memory.
+    pub fn get_memory_usage(&self) -> usize {
+        let size_of_children : usize = self.children().iter().map(|ref child| -> usize {
+            child.get_memory_usage()
+        }).sum();
+        size_of_children + self.tile_grid.borrow().get_memory_usage()
+    }
 }
 
 /// A request from the compositor to the renderer for tiles that need to be (re)displayed.

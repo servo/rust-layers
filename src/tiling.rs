@@ -334,4 +334,17 @@ impl TileGrid {
             tile.create_texture(display);
         }
     }
+
+    /// Calculate the amount of memory used by all the tiles in the
+    /// tile grid. The memory may be allocated on the heap or in GPU memory.
+    pub fn get_memory_usage(&self) -> usize {
+        self.tiles.values().map(|ref tile| {
+            // We cannot use Option::map_or here because rust will
+            // complain about moving out of borrowed content.
+            match tile.buffer {
+                Some(ref buffer) => buffer.get_mem(),
+                None => 0,
+            }
+        }).sum()
+    }
 }
