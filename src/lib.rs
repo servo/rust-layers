@@ -11,8 +11,9 @@
 #![crate_type = "rlib"]
 
 #![allow(raw_pointer_derive)]
-#![feature(collections, core, owned_ascii_ext, vec_push_all)]
-#![cfg_attr(target_os="linux", feature(std_misc))]
+#![feature(vec_push_all)]
+#![cfg_attr(target_os="linux", feature(owned_ascii_ext))]
+#![cfg_attr(target_os="macos", feature(collections))]
 
 extern crate azure;
 extern crate euclid;

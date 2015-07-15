@@ -12,32 +12,25 @@
 
 use texturegl::Texture;
 
+use cgl;
 use core_foundation::base::TCFType;
 use core_foundation::boolean::CFBoolean;
 use core_foundation::dictionary::CFDictionary;
 use core_foundation::number::CFNumber;
 use core_foundation::string::CFString;
 use euclid::size::Size2D;
-use io_surface::{kIOSurfaceBytesPerElement, kIOSurfaceBytesPerRow, kIOSurfaceHeight};
-use io_surface::{kIOSurfaceIsGlobal, kIOSurfaceWidth, IOSurface, IOSurfaceID};
 use io_surface;
-use cgl::{CGLChoosePixelFormat, CGLDescribePixelFormat, CGLGetCurrentContext, CGLGetPixelFormat};
-use cgl::{CGLPixelFormatAttribute, CGLPixelFormatObj};
-use cgl::{CORE_BOOLEAN_ATTRIBUTES, CORE_INTEGER_ATTRIBUTES, kCGLNoError};
-use gleam::gl::GLint;
 use skia::gl_rasterization_context::GLRasterizationContext;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::mem;
-use std::ptr;
 use std::rc::Rc;
-use std::vec::Vec;
 
-thread_local!(static IO_SURFACE_REPOSITORY: Rc<RefCell<HashMap<IOSurfaceID,IOSurface>>> = Rc::new(RefCell::new(HashMap::new())));
+thread_local!(static IO_SURFACE_REPOSITORY: Rc<RefCell<HashMap<io_surface::IOSurfaceID, io_surface::IOSurface>>> =
+    Rc::new(RefCell::new(HashMap::new())));
 
 #[derive(Clone, Copy)]
 pub struct NativeDisplay {
-    pub pixel_format: CGLPixelFormatObj,
+    pub pixel_format: cgl::CGLPixelFormatObj,
 }
 unsafe impl Send for NativeDisplay {}
 
@@ -45,7 +38,7 @@ impl NativeDisplay {
     pub fn new() -> NativeDisplay {
         unsafe {
             NativeDisplay {
-                pixel_format: CGLGetPixelFormat(CGLGetCurrentContext()),
+                pixel_format: cgl::CGLGetPixelFormat(cgl::CGLGetCurrentContext()),
             }
         }
     }
@@ -53,27 +46,29 @@ impl NativeDisplay {
 
 #[derive(RustcDecodable, RustcEncodable)]
 pub struct IOSurfaceNativeSurface {
-    io_surface_id: Option<IOSurfaceID>,
+    io_surface_id: Option<io_surface::IOSurfaceID>,
     will_leak: bool,
 }
 
 impl IOSurfaceNativeSurface {
     pub fn new(_: &NativeDisplay, size: Size2D<i32>) -> IOSurfaceNativeSurface {
         unsafe {
-            let width_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceWidth);
+            let width_key: CFString = TCFType::wrap_under_get_rule(io_surface::kIOSurfaceWidth);
             let width_value: CFNumber = CFNumber::from_i32(size.width);
 
-            let height_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceHeight);
+            let height_key: CFString = TCFType::wrap_under_get_rule(io_surface::kIOSurfaceHeight);
             let height_value: CFNumber = CFNumber::from_i32(size.height);
 
-            let bytes_per_row_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceBytesPerRow);
+            let bytes_per_row_key: CFString =
+                TCFType::wrap_under_get_rule(io_surface::kIOSurfaceBytesPerRow);
             let bytes_per_row_value: CFNumber = CFNumber::from_i32(size.width * 4);
 
             let bytes_per_elem_key: CFString =
-                TCFType::wrap_under_get_rule(kIOSurfaceBytesPerElement);
+                TCFType::wrap_under_get_rule(io_surface::kIOSurfaceBytesPerElement);
             let bytes_per_elem_value: CFNumber = CFNumber::from_i32(4);
 
-            let is_global_key: CFString = TCFType::wrap_under_get_rule(kIOSurfaceIsGlobal);
+            let is_global_key: CFString =
+                TCFType::wrap_under_get_rule(io_surface::kIOSurfaceIsGlobal);
             let is_global_value = CFBoolean::true_value();
 
             let surface = io_surface::new(&CFDictionary::from_CFType_pairs(&[
