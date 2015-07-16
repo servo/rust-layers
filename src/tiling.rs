@@ -70,9 +70,6 @@ impl Tile {
     fn create_texture(&mut self, display: &NativeDisplay) {
         match self.buffer {
             Some(ref buffer) => {
-                let size = Size2D::new(buffer.screen_pos.size.width as isize,
-                                       buffer.screen_pos.size.height as isize);
-
                 // If we already have a texture it should still be valid.
                 if !self.texture.is_zero() {
                     return;
@@ -82,7 +79,7 @@ impl Tile {
                 self.texture = Texture::new_with_buffer(buffer);
                 debug!("Tile: binding to native surface {}",
                        buffer.native_surface.get_id() as isize);
-                buffer.native_surface.bind_to_texture(display, &self.texture, size);
+                buffer.native_surface.bind_to_texture(display, &self.texture);
 
                 // Set the layer's rect.
                 self.bounds = Some(Rect::from_untyped(&buffer.rect));

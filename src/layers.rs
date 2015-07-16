@@ -272,8 +272,7 @@ pub struct LayerBuffer {
 impl LayerBuffer {
     /// Returns the amount of memory used by the tile
     pub fn get_mem(&self) -> usize {
-        // This works for now, but in the future we may want a better heuristic
-        self.screen_pos.size.width * self.screen_pos.size.height
+        self.native_surface.get_memory_usage()
     }
 
     /// Returns true if the tile is displayable at the given scale

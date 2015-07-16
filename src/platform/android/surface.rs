@@ -45,9 +45,17 @@ impl NativeDisplay {
 }
 
 pub struct EGLImageNativeSurface {
-    image: Option<EGLImageKHR>, // For GPU rendering
-    bitmap: Option<Vec<u8>>, // For CPU rendering
+    /// An EGLImage for the case of GPU rendering.
+    image: Option<EGLImageKHR>,
+
+    /// A heap-allocated bitmap for the case of CPU rendering.
+    bitmap: Option<Vec<u8>>,
+
+    /// Whether this pixmap will leak if the destructor runs. This is for debugging purposes.
     will_leak: bool,
+
+    /// The size of this surface.
+    pub size: Size2D<i32>,
 }
 
 unsafe impl Send for EGLImageNativeSurface {}
@@ -60,23 +68,28 @@ impl EGLImageNativeSurface {
         EGLImageNativeSurface {
             image: None,
             bitmap: Some(bitmap),
-            will_leak : true,
+            will_leak: true,
+            size: size,
         }
     }
 
     /// This may only be called on the compositor side.
-    pub fn bind_to_texture(&self,
-                           _: &NativeDisplay,
-                           texture: &Texture,
-                           size: Size2D<isize>) {
+    pub fn bind_to_texture(&self, _: &NativeDisplay, texture: &Texture) {
         let _bound = texture.bind();
         match self.image {
             None => match self.bitmap {
                 Some(ref bitmap) => {
                     let data = bitmap.as_ptr() as *const c_void;
                     unsafe {
-                        TexImage2D(TEXTURE_2D, 0, BGRA_EXT as i32, size.width as i32, size.height as i32,
-                                   0, BGRA_EXT as u32, UNSIGNED_BYTE, data);
+                        TexImage2D(TEXTURE_2D,
+                                   0,
+                                   BGRA_EXT as i32,
+                                   self.size.width as i32,
+                                   self.size.height as i32,
+                                   0,
+                                   BGRA_EXT as u32,
+                                   UNSIGNED_BYTE,
+                                   data);
                     }
                 }
                 None => {
@@ -129,8 +142,7 @@ impl EGLImageNativeSurface {
     }
 
     pub fn gl_rasterization_context(&mut self,
-                                    display: &NativeDisplay,
-                                    size: Size2D<i32>)
+                                    display: &NativeDisplay)
                                     -> Option<GLRasterizationContext> {
         // TODO: Eventually we should preserve the previous GLRasterizationContext,
         // so that we don't have to keep destroying and recreating the image.
@@ -138,7 +150,7 @@ impl EGLImageNativeSurface {
             DestroyImageKHR(display.display, egl_image);
         }
 
-        let gl_rasterization_context = GLRasterizationContext::new(display.display, size);
+        let gl_rasterization_context = GLRasterizationContext::new(display.display, self.size);
         if let Some(ref gl_rasterization_context) = gl_rasterization_context {
             self.bitmap = None;
             self.image = Some(gl_rasterization_context.egl_image);
