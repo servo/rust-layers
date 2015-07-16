@@ -14,17 +14,15 @@
 use texturegl::Texture;
 
 use euclid::size::Size2D;
-use libc::{c_char, c_int, c_uint, c_void};
+use libc::{c_int, c_uint, c_void};
 use glx;
 use skia::gl_rasterization_context::GLRasterizationContext;
 use std::ascii::OwnedAsciiExt;
-use std::ffi::{CString, CStr};
+use std::ffi::CStr;
 use std::mem;
 use std::ptr;
 use std::str;
-use x11::xlib::{Display, Pixmap, XCreateGC, XCreateImage, XCreatePixmap, XDefaultScreen};
-use x11::xlib::{XDisplayString, XFree, XFreePixmap, XGetGeometry, XID, XOpenDisplay, XPutImage};
-use x11::xlib::{XRootWindow, XVisualInfo, ZPixmap};
+use x11::xlib;
 
 /// The display, visual info, and framebuffer configuration. This is needed in order to bind to a
 /// texture on the compositor side. This holds only a *weak* reference to the display and does not
@@ -36,15 +34,15 @@ use x11::xlib::{XRootWindow, XVisualInfo, ZPixmap};
 /// FIXME(pcwalton): Mark nonsendable.
 #[derive(Copy, Clone)]
 pub struct NativeDisplay {
-    pub display: *mut Display,
-    visual_info: *mut XVisualInfo,
+    pub display: *mut xlib::Display,
+    visual_info: *mut xlib::XVisualInfo,
     framebuffer_configuration: Option<glx::types::GLXFBConfig>,
 }
 
 unsafe impl Send for NativeDisplay {}
 
 impl NativeDisplay {
-    pub fn new(display: *mut Display) -> NativeDisplay {
+    pub fn new(display: *mut xlib::Display) -> NativeDisplay {
         // FIXME(pcwalton): It would be more robust to actually have the compositor pass the
         // visual.
         let (compositor_visual_info, frambuffer_configuration) =
@@ -60,7 +58,8 @@ impl NativeDisplay {
     /// Chooses the compositor visual info using the same algorithm that the compositor uses.
     ///
     /// FIXME(pcwalton): It would be more robust to actually have the compositor pass the visual.
-    fn compositor_visual_info(display: *mut Display) -> (*mut XVisualInfo, Option<glx::types::GLXFBConfig>) {
+    fn compositor_visual_info(display: *mut xlib::Display)
+                              -> (*mut xlib::XVisualInfo, Option<glx::types::GLXFBConfig>) {
         // If display is null, we'll assume we are going to be rendering
         // in headless mode without X running.
         if display == ptr::null_mut() {
@@ -77,7 +76,7 @@ impl NativeDisplay {
                 0
             ];
 
-            let screen = XDefaultScreen(display);
+            let screen = xlib::XDefaultScreen(display);
             let mut number_of_configs = 0;
             let configs = glx::ChooseFBConfig(mem::transmute(display),
                                               screen,
@@ -87,10 +86,10 @@ impl NativeDisplay {
         }
     }
 
-    fn get_compatible_configuration(display: *mut Display,
+    fn get_compatible_configuration(display: *mut xlib::Display,
                                     configs: *mut glx::types::GLXFBConfig,
                                     number_of_configs: i32)
-                                    -> (*mut XVisualInfo, Option<glx::types::GLXFBConfig>) {
+                                    -> (*mut xlib::XVisualInfo, Option<glx::types::GLXFBConfig>) {
         unsafe {
             if number_of_configs == 0 {
                 panic!("glx::ChooseFBConfig returned no configurations.");
@@ -100,7 +99,7 @@ impl NativeDisplay {
                 let config = *configs.offset(0);
                 let visual = glx::GetVisualFromFBConfig(mem::transmute(display), config);
 
-                XFree(configs as *mut c_void);
+                xlib::XFree(configs as *mut c_void);
                 return (mem::transmute(visual), Some(config));
             }
 
@@ -109,26 +108,22 @@ impl NativeDisplay {
             // so we look for the configuration with a full set of 32 bits.
             for i in 0..number_of_configs as isize {
                 let config = *configs.offset(i);
-                let visual: *mut XVisualInfo =
+                let visual: *mut xlib::XVisualInfo =
                     mem::transmute(glx::GetVisualFromFBConfig(mem::transmute(display), config));
                 if (*visual).depth == 32 {
-                    XFree(configs as *mut c_void);
+                    xlib::XFree(configs as *mut c_void);
                     return (visual, Some(config));
                 }
-                XFree(visual as *mut c_void);
+                xlib::XFree(visual as *mut c_void);
             }
 
-            XFree(configs as *mut c_void);
+            xlib::XFree(configs as *mut c_void);
             panic!("Could not find 32-bit visual.");
         }
     }
 
-    fn need_to_find_32_bit_depth_visual(display: *mut Display) -> bool {
+    fn need_to_find_32_bit_depth_visual(display: *mut xlib::Display) -> bool {
         unsafe {
-            let glXGetClientString: extern "C" fn(*mut Display, c_int) -> *const c_char =
-                mem::transmute(glx::GetProcAddress(mem::transmute(&"glXGetClientString\x00".as_bytes()[0])));
-            assert!(glXGetClientString as *mut c_void != ptr::null_mut());
-
             let glx_vendor = glx::GetClientString(mem::transmute(display), glx::VENDOR as i32);
             if glx_vendor == ptr::null() {
                 panic!("Could not determine GLX vendor.");
@@ -136,8 +131,9 @@ impl NativeDisplay {
             let glx_vendor =
                 str::from_utf8(CStr::from_ptr(glx_vendor).to_bytes())
                     .ok()
-                    .expect("GLX client vendor string not in UTF-8 format.");
-            let glx_vendor = String::from_str(glx_vendor).into_ascii_lowercase();
+                    .expect("GLX client vendor string not in UTF-8 format.")
+                    .to_string()
+                    .into_ascii_lowercase();
             glx_vendor.contains("nvidia") || glx_vendor.contains("ati")
         }
     }
@@ -146,7 +142,7 @@ impl NativeDisplay {
 #[derive(RustcDecodable, RustcEncodable)]
 pub struct PixmapNativeSurface {
     /// The pixmap.
-    pixmap: Pixmap,
+    pixmap: xlib::Pixmap,
 
     /// Whether this pixmap will leak if the destructor runs. This is for debugging purposes.
     will_leak: bool,
@@ -165,16 +161,16 @@ impl PixmapNativeSurface {
     pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> PixmapNativeSurface {
         unsafe {
             // Create the pixmap.
-            let screen = XDefaultScreen(display.display);
-            let window = XRootWindow(display.display, screen);
+            let screen = xlib::XDefaultScreen(display.display);
+            let window = xlib::XRootWindow(display.display, screen);
             // The X server we use for testing on build machines always returns
             // visuals that report 24 bit depth. But creating a 32 bit pixmap does work, so
             // hard code the depth here.
-            let pixmap = XCreatePixmap(display.display,
-                                       window,
-                                       size.width as c_uint,
-                                       size.height as c_uint,
-                                       32);
+            let pixmap = xlib::XCreatePixmap(display.display,
+                                             window,
+                                             size.width as c_uint,
+                                             size.height as c_uint,
+                                             32);
             PixmapNativeSurface {
                 pixmap: pixmap,
                 will_leak: true,
@@ -205,11 +201,11 @@ impl PixmapNativeSurface {
                                                self.pixmap,
                                                pixmap_attributes.as_ptr());
 
-            let glXBindTexImageEXT: extern "C" fn(*mut Display, glx::types::GLXDrawable, c_int, *mut c_int) =
+            let glx_bind_tex_image: extern "C" fn(*mut xlib::Display, glx::types::GLXDrawable, c_int, *mut c_int) =
                 mem::transmute(glx::GetProcAddress(mem::transmute(&"glXBindTexImageEXT\x00".as_bytes()[0])));
-            assert!(glXBindTexImageEXT as *mut c_void != ptr::null_mut());
+            assert!(glx_bind_tex_image as *mut c_void != ptr::null_mut());
             let _bound = texture.bind();
-            glXBindTexImageEXT(display.display,
+            glx_bind_tex_image(display.display,
                                mem::transmute(glx_pixmap),
                                glx::FRONT_EXT  as i32,
                                ptr::null_mut());
@@ -233,42 +229,42 @@ impl PixmapNativeSurface {
             let mut height = 0;
             let mut border_width = 0;
             let mut depth = 0;
-            let _ = XGetGeometry(display.display,
-                                 mem::transmute(pixmap),
-                                 &mut root_window,
-                                 &mut x,
-                                 &mut y,
-                                 &mut width,
-                                 &mut height,
-                                 &mut border_width,
-                                 &mut depth);
+            let _ = xlib::XGetGeometry(display.display,
+                                       mem::transmute(pixmap),
+                                       &mut root_window,
+                                       &mut x,
+                                       &mut y,
+                                       &mut width,
+                                       &mut height,
+                                       &mut border_width,
+                                       &mut depth);
 
             // Create the image.
-            let image = XCreateImage(display.display,
-                                     (*display.visual_info).visual,
-                                     depth,
-                                     ZPixmap,
-                                     0,
-                                     mem::transmute(&data[0]),
-                                     width as c_uint,
-                                     height as c_uint,
-                                     32,
-                                     0);
+            let image = xlib::XCreateImage(display.display,
+                                           (*display.visual_info).visual,
+                                           depth,
+                                           xlib::ZPixmap,
+                                           0,
+                                           mem::transmute(&data[0]),
+                                           width as c_uint,
+                                           height as c_uint,
+                                           32,
+                                           0);
 
             // Create the X graphics context.
-            let gc = XCreateGC(display.display, pixmap, 0, ptr::null_mut());
+            let gc = xlib::XCreateGC(display.display, pixmap, 0, ptr::null_mut());
 
             // Draw the image.
-            let _ = XPutImage(display.display,
-                              pixmap,
-                              gc,
-                              image,
-                              0,
-                              0,
-                              0,
-                              0,
-                              width,
-                              height);
+            let _ = xlib::XPutImage(display.display,
+                                    pixmap,
+                                    gc,
+                                    image,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    width,
+                                    height);
         }
     }
 
@@ -279,7 +275,7 @@ impl PixmapNativeSurface {
     pub fn destroy(&mut self, display: &NativeDisplay) {
         unsafe {
             assert!(self.pixmap != 0);
-            XFreePixmap(display.display, self.pixmap);
+            xlib::XFreePixmap(display.display, self.pixmap);
             self.mark_wont_leak()
         }
     }
