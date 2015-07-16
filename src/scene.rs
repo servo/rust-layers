@@ -124,5 +124,14 @@ impl<T> Scene<T> {
             None => {},
         }
     }
+
+    /// Calculate the amount of memory used by all the layers in the
+    /// scene graph. The memory may be allocated on the heap or in GPU memory.
+    pub fn get_memory_usage(&self) -> usize {
+        match self.root {
+            Some(ref root_layer) => root_layer.get_memory_usage(),
+            None => 0,
+        }
+    }
 }
 
