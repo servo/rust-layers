@@ -146,6 +146,9 @@ pub struct PixmapNativeSurface {
 
     /// Whether this pixmap will leak if the destructor runs. This is for debugging purposes.
     will_leak: bool,
+
+    /// The size of this surface.
+    pub size: Size2D<i32>,
 }
 
 impl Drop for PixmapNativeSurface {
@@ -174,15 +177,13 @@ impl PixmapNativeSurface {
             PixmapNativeSurface {
                 pixmap: pixmap,
                 will_leak: true,
+                size: size,
             }
         }
     }
 
     /// This may only be called on the compositor side.
-    pub fn bind_to_texture(&self,
-                           display: &NativeDisplay,
-                           texture: &Texture,
-                           _: Size2D<isize>) {
+    pub fn bind_to_texture(&self, display: &NativeDisplay, texture: &Texture) {
         // Create the GLX pixmap.
         //
         // FIXME(pcwalton): RAII for exception safety?
@@ -218,53 +219,28 @@ impl PixmapNativeSurface {
     /// This may only be called on the painting side.
     pub fn upload(&mut self, display: &NativeDisplay, data: &[u8]) {
         unsafe {
-            // Ensure that we're running on the render task. Take the display.
-            let pixmap = self.pixmap;
-
-            // Figure out the width, height, and depth of the pixmap.
-            let mut root_window = 0;
-            let mut x = 0;
-            let mut y = 0;
-            let mut width = 0;
-            let mut height = 0;
-            let mut border_width = 0;
-            let mut depth = 0;
-            let _ = xlib::XGetGeometry(display.display,
-                                       mem::transmute(pixmap),
-                                       &mut root_window,
-                                       &mut x,
-                                       &mut y,
-                                       &mut width,
-                                       &mut height,
-                                       &mut border_width,
-                                       &mut depth);
-
-            // Create the image.
             let image = xlib::XCreateImage(display.display,
                                            (*display.visual_info).visual,
-                                           depth,
+                                           32,
                                            xlib::ZPixmap,
                                            0,
                                            mem::transmute(&data[0]),
-                                           width as c_uint,
-                                           height as c_uint,
+                                           self.size.width as c_uint,
+                                           self.size.height as c_uint,
                                            32,
                                            0);
 
-            // Create the X graphics context.
-            let gc = xlib::XCreateGC(display.display, pixmap, 0, ptr::null_mut());
-
-            // Draw the image.
+            let gc = xlib::XCreateGC(display.display, self.pixmap, 0, ptr::null_mut());
             let _ = xlib::XPutImage(display.display,
-                                    pixmap,
+                                    self.pixmap,
                                     gc,
                                     image,
                                     0,
                                     0,
                                     0,
                                     0,
-                                    width,
-                                    height);
+                                    self.size.width as c_uint,
+                                    self.size.height as c_uint);
         }
     }
 
@@ -289,9 +265,8 @@ impl PixmapNativeSurface {
     }
 
     pub fn gl_rasterization_context(&mut self,
-                                    display: &NativeDisplay,
-                                    size: Size2D<i32>)
+                                    display: &NativeDisplay)
                                     -> Option<GLRasterizationContext> {
-        GLRasterizationContext::new(display.display, display.visual_info, self.pixmap, size)
+        GLRasterizationContext::new(display.display, display.visual_info, self.pixmap, self.size)
     }
 }

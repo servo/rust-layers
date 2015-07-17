@@ -48,6 +48,7 @@ impl NativeDisplay {
 pub struct IOSurfaceNativeSurface {
     io_surface_id: Option<io_surface::IOSurfaceID>,
     will_leak: bool,
+    pub size: Size2D<i32>,
 }
 
 impl IOSurfaceNativeSurface {
@@ -88,17 +89,15 @@ impl IOSurfaceNativeSurface {
             IOSurfaceNativeSurface {
                 io_surface_id: Some(id),
                 will_leak: true,
+                size: size,
             }
         }
     }
 
-    pub fn bind_to_texture(&self,
-                           _: &NativeDisplay,
-                           texture: &Texture,
-                           size: Size2D<isize>) {
+    pub fn bind_to_texture(&self, _: &NativeDisplay, texture: &Texture) {
         let _bound_texture = texture.bind();
         let io_surface = io_surface::lookup(self.io_surface_id.unwrap());
-        io_surface.bind_to_gl_texture(Size2D::new(size.width as i32, size.height as i32))
+        io_surface.bind_to_gl_texture(self.size);
     }
 
     pub fn upload(&mut self, _: &NativeDisplay, data: &[u8]) {
@@ -130,11 +129,10 @@ impl IOSurfaceNativeSurface {
     }
 
     pub fn gl_rasterization_context(&mut self,
-                                    display: &NativeDisplay,
-                                    size: Size2D<i32>)
+                                    display: &NativeDisplay)
                                     -> Option<GLRasterizationContext> {
         GLRasterizationContext::new(display.pixel_format,
                                     io_surface::lookup(self.io_surface_id.unwrap()).obj,
-                                    size)
+                                    self.size)
     }
 }

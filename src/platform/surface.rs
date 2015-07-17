@@ -111,13 +111,24 @@ macro_rules! native_surface_method {
     };
 }
 
+macro_rules! native_surface_property {
+    ($self_:ident $property_name:ident) => {
+        match *$self_ {
+            NativeSurface::MemoryBuffer(ref surface) => surface.$property_name,
+            #[cfg(target_os="linux")]
+            NativeSurface::Pixmap(ref surface) => surface.$property_name,
+            #[cfg(target_os="macos")]
+            NativeSurface::IOSurface(ref surface) => surface.$property_name,
+            #[cfg(target_os="android")]
+            NativeSurface::EGLImage(ref surface) => surface.$property_name,
+        }
+    };
+}
+
 impl NativeSurface {
     /// Binds the surface to a GPU texture. Compositing task only.
-    pub fn bind_to_texture(&self,
-                           display: &NativeDisplay,
-                           texture: &Texture,
-                           size: Size2D<isize>) {
-        native_surface_method!(self bind_to_texture (display, texture, size))
+    pub fn bind_to_texture(&self, display: &NativeDisplay, texture: &Texture) {
+        native_surface_method!(self bind_to_texture (display, texture))
     }
 
     /// Uploads pixel data to the surface. Painting task only.
@@ -162,37 +173,51 @@ impl NativeSurface {
     }
 
     pub fn gl_rasterization_context(&mut self,
-                                    display: &NativeDisplay,
-                                    size: Size2D<i32>)
+                                    display: &NativeDisplay)
                                     -> Option<Arc<GLRasterizationContext>> {
-        match native_surface_method_mut!(self gl_rasterization_context (display, size)) {
+        match native_surface_method_mut!(self gl_rasterization_context (display)) {
             Some(context) => Some(Arc::new(context)),
             None => None,
         }
+    }
+
+    /// Get the memory usage of this native surface. This memory may be allocated
+    /// on the GPU or on the heap.
+    pub fn get_memory_usage(&self) -> usize {
+        // This works for now, but in the future we may want a better heuristic
+        let size = self.get_size();
+        size.width as usize * size.height as usize
+    }
+
+    /// Get the size of this native surface.
+    pub fn get_size(&self) -> Size2D<i32> {
+        native_surface_property!(self size)
     }
 }
 
 #[derive(RustcDecodable, RustcEncodable)]
 pub struct MemoryBufferNativeSurface {
     bytes: Vec<u8>,
+    pub size: Size2D<i32>,
 }
 
 impl MemoryBufferNativeSurface {
-    pub fn new(_: &NativeDisplay, _: Size2D<i32>) -> MemoryBufferNativeSurface {
+    pub fn new(_: &NativeDisplay, size: Size2D<i32>) -> MemoryBufferNativeSurface {
         MemoryBufferNativeSurface{
             bytes: vec!(),
+            size: size,
         }
     }
 
     /// This may only be called on the compositor side.
     #[cfg(not(target_os="android"))]
-    pub fn bind_to_texture(&self, _: &NativeDisplay, texture: &Texture, size: Size2D<isize>) {
+    pub fn bind_to_texture(&self, _: &NativeDisplay, texture: &Texture) {
         let _bound = texture.bind();
         gl::tex_image_2d(gl::TEXTURE_2D,
                          0,
                          gl::RGBA as i32,
-                         size.width as i32,
-                         size.height as i32,
+                         self.size.width as i32,
+                         self.size.height as i32,
                          0,
                          gl::BGRA,
                          gl::UNSIGNED_BYTE,
@@ -200,7 +225,7 @@ impl MemoryBufferNativeSurface {
     }
 
     #[cfg(target_os="android")]
-    pub fn bind_to_texture(&self, _: &NativeDisplay, _: &Texture, _: Size2D<isize>) {
+    pub fn bind_to_texture(&self, _: &NativeDisplay, _: &Texture) {
         panic!("Binding a memory surface to a texture is not yet supported on Android.");
     }
 
@@ -224,8 +249,7 @@ impl MemoryBufferNativeSurface {
     }
 
     pub fn gl_rasterization_context(&mut self,
-                                    _: &NativeDisplay,
-                                    _: Size2D<i32>)
+                                    _: &NativeDisplay)
                                     -> Option<GLRasterizationContext> {
         None
     }
