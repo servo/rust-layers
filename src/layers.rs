@@ -241,8 +241,8 @@ pub struct BufferRequest {
     /// The content age of that this BufferRequest corresponds to.
     pub content_age: ContentAge,
 
-    /// A cached LayerBuffer that can be used to avoid allocating a new one.
-    pub layer_buffer: Option<Box<LayerBuffer>>,
+    /// A cached NativeSurface that can be used to avoid allocating a new one.
+    pub native_surface: Option<NativeSurface>,
 }
 
 impl BufferRequest {
@@ -252,7 +252,7 @@ impl BufferRequest {
             screen_rect: screen_rect,
             page_rect: page_rect,
             content_age: content_age,
-            layer_buffer: None,
+            native_surface: None,
         }
     }
 }
