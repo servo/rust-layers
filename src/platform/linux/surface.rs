@@ -16,12 +16,14 @@ use texturegl::Texture;
 use euclid::size::Size2D;
 use libc::{c_int, c_uint, c_void};
 use glx;
+use skia::gl_context::{GLContext, PlatformDisplayData};
 use skia::gl_rasterization_context::GLRasterizationContext;
 use std::ascii::OwnedAsciiExt;
 use std::ffi::CStr;
 use std::mem;
 use std::ptr;
 use std::str;
+use std::sync::Arc;
 use x11::xlib;
 
 /// The display, visual info, and framebuffer configuration. This is needed in order to bind to a
@@ -135,6 +137,13 @@ impl NativeDisplay {
                     .to_string()
                     .into_ascii_lowercase();
             glx_vendor.contains("nvidia") || glx_vendor.contains("ati")
+        }
+    }
+
+    pub fn platform_display_data(&self) -> PlatformDisplayData {
+        PlatformDisplayData {
+            display: self.display,
+            visual_info: self.visual_info,
         }
     }
 }
@@ -265,8 +274,8 @@ impl PixmapNativeSurface {
     }
 
     pub fn gl_rasterization_context(&mut self,
-                                    display: &NativeDisplay)
+                                    gl_context: Arc<GLContext>)
                                     -> Option<GLRasterizationContext> {
-        GLRasterizationContext::new(display.display, display.visual_info, self.pixmap, self.size)
+        GLRasterizationContext::new(gl_context, self.pixmap, self.size)
     }
 }

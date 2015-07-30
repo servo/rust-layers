@@ -20,10 +20,12 @@ use core_foundation::number::CFNumber;
 use core_foundation::string::CFString;
 use euclid::size::Size2D;
 use io_surface;
+use skia::gl_context::{GLContext, PlatformDisplayData};
 use skia::gl_rasterization_context::GLRasterizationContext;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::Arc;
 
 thread_local!(static IO_SURFACE_REPOSITORY: Rc<RefCell<HashMap<io_surface::IOSurfaceID, io_surface::IOSurface>>> =
     Rc::new(RefCell::new(HashMap::new())));
@@ -40,6 +42,12 @@ impl NativeDisplay {
             NativeDisplay {
                 pixel_format: cgl::CGLGetPixelFormat(cgl::CGLGetCurrentContext()),
             }
+        }
+    }
+
+    pub fn platform_display_data(&self) -> PlatformDisplayData {
+        PlatformDisplayData {
+            pixel_format: self.pixel_format,
         }
     }
 }
@@ -129,9 +137,9 @@ impl IOSurfaceNativeSurface {
     }
 
     pub fn gl_rasterization_context(&mut self,
-                                    display: &NativeDisplay)
+                                    gl_context: Arc<GLContext>)
                                     -> Option<GLRasterizationContext> {
-        GLRasterizationContext::new(display.pixel_format,
+        GLRasterizationContext::new(gl_context,
                                     io_surface::lookup(self.io_surface_id.unwrap()).obj,
                                     self.size)
     }
