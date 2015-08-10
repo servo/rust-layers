@@ -17,6 +17,7 @@ use tiling::Tile;
 use platform::surface::NativeDisplay;
 
 use euclid::matrix::Matrix4;
+use euclid::Matrix2D;
 use euclid::rect::Rect;
 use euclid::size::Size2D;
 use libc::c_int;
@@ -731,11 +732,28 @@ impl RenderContext {
                 // TODO(gw): Disable clipping on 3d layers for now.
                 // Need to implement proper polygon clipping to
                 // make this work correctly.
-                let clip_rect = if render_layer.layer.transform_state.borrow().is_3d {
-                    None
-                } else {
-                    clip_rect
-                };
+                let clip_rect = clip_rect.and_then(|cr| {
+                    let m = render_layer.layer.transform_state.borrow().final_transform;
+
+                    // See https://drafts.csswg.org/css-transforms/#2d-matrix
+                    let is_3d_transform = m.m31 != 0.0 || m.m32 != 0.0 ||
+                                          m.m13 != 0.0 || m.m23 != 0.0 ||
+                                          m.m43 != 0.0 || m.m14 != 0.0 ||
+                                          m.m24 != 0.0 || m.m34 != 0.0 ||
+                                          m.m33 != 1.0 || m.m44 != 1.0;
+
+                    if is_3d_transform {
+                        None
+                    } else {
+                        // If the transform is 2d, invert it and back-transform
+                        // the clip rect into world space.
+                        let transform = m.invert();
+                        let xform_2d = Matrix2D::new(transform.m11, transform.m12,
+                                                     transform.m21, transform.m22,
+                                                     transform.m41, transform.m42);
+                        Some(xform_2d.transform_rect(&cr))
+                    }
+                });
 
                 self.render_layer(render_layer.layer.clone(),
                                   transform,

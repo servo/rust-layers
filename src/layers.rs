@@ -48,8 +48,8 @@ pub struct TransformState {
     /// Rectangle in global coordinates, but not transformed.
     pub world_rect: Rect<f32>,
 
-    /// True if this layer has a 3D transform
-    pub is_3d: bool,
+    /// True if this layer has a non-identity transform
+    pub has_transform: bool,
 }
 
 impl TransformState {
@@ -58,7 +58,7 @@ impl TransformState {
             final_transform: Matrix4::identity(),
             screen_rect: None,
             world_rect: Rect::zero(),
-            is_3d: false,
+            has_transform: false,
         }
     }
 }
@@ -206,7 +206,7 @@ impl<T> Layer<T> {
         // We should probably make the display list optimizer work with transforms!
         // This layer is part of a 3d context if its concatenated transform
         // is not identity, since 2d transforms don't get layers.
-        ts.is_3d = ts.final_transform != Matrix4::identity();
+        ts.has_transform = ts.final_transform != Matrix4::identity();
 
         // Build world space perspective transform
         let perspective_transform = Matrix4::identity().translate(x0, y0, 0.0)
