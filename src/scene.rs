@@ -40,9 +40,7 @@ impl<T> Scene<T> {
                                                                         Vec<BufferRequest>)>,
                                          unused_buffers: &mut Vec<Box<LayerBuffer>>) {
         // Get buffers for this layer, in global (screen) coordinates.
-        let requests = layer.get_buffer_requests(dirty_rect,
-                                                 viewport_rect,
-                                                 self.scale);
+        let requests = layer.get_buffer_requests(dirty_rect, viewport_rect, self.scale);
         if !requests.is_empty() {
             layers_and_requests.push((layer.clone(), requests));
         }
@@ -50,32 +48,19 @@ impl<T> Scene<T> {
 
         // If this layer masks its children, we don't need to ask for tiles outside the
         // boundaries of this layer.
-        let mut child_dirty_rect = dirty_rect;
-        if *layer.masks_to_bounds.borrow() {
-            // FIXME: Likely because of rust bug rust-lang/rust#16822, caching the intersected
-            // rect and reusing it causes a crash in rustc. When that bug is resolved this code
-            // should simply reuse a cached version of the intersection.
+        let child_dirty_rect = if !*layer.masks_to_bounds.borrow() {
+            dirty_rect
+        } else {
             match layer.transform_state.borrow().screen_rect {
                 Some(ref screen_rect) => {
-                    child_dirty_rect =
-                        match dirty_rect.to_untyped().intersection(&screen_rect.rect) {
-                            Some(child_dirty_rect) => {
-                                Rect::from_untyped(&child_dirty_rect)
-                            }
-                            None => {
-                                // The layer is entirely clipped by the dirty
-                                // rect, so early exit.
-                                return;
-                            }
-                        }
-                }
-                None => {
-                    // The layer is entirely clipped, and it masks children,
-                    // so early exit.
-                    return;
-                }
+                    match dirty_rect.to_untyped().intersection(&screen_rect.rect) {
+                        Some(ref child_dirty_rect) => Rect::from_untyped(child_dirty_rect),
+                        None => return, // The layer is entirely outside the dirty rect.
+                    }
+                },
+                None => return, // The layer is entirely clipped.
             }
-        }
+        };
 
         for kid in layer.children().iter() {
             self.get_buffer_requests_for_layer(kid.clone(),
