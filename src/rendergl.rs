@@ -341,22 +341,33 @@ pub struct RenderContext3D<T>{
 }
 
 impl<T> RenderContext3D<T> {
-    fn new(layer: Rc<Layer<T>>) -> RenderContext3D<T> {
-        // TODO(gw): This doesn't work for iframes that are
-        // transformed (but the previous code with 2d transforms
-        // has the same problem, so it's no worse).
-        let clip_rect = match (*layer.masks_to_bounds.borrow(),
-                               layer.transform_state.borrow().screen_rect.as_ref()) {
-            (true, Some(screen_rect)) => {
-                Some(screen_rect.rect.clone())
-            }
-            _ => None
-        };
-
+    fn new(layer: Rc<Layer<T>>, parent_clip_rect: Option<Rect<f32>>) -> RenderContext3D<T> {
         RenderContext3D {
             layers: vec!(),
             child_contexts: vec!(),
-            clip_rect: clip_rect,
+            clip_rect: RenderContext3D::calculate_context_clip(layer, parent_clip_rect),
+        }
+    }
+
+    fn calculate_context_clip(layer: Rc<Layer<T>>,
+                              parent_clip_rect: Option<Rect<f32>>)
+                              -> Option<Rect<f32>> {
+        // TODO(gw): This doesn't work for iframes that are transformed.
+        if !*layer.masks_to_bounds.borrow() {
+            return parent_clip_rect;
+        }
+
+        let layer_clip = match layer.transform_state.borrow().screen_rect.as_ref() {
+            Some(screen_rect) => screen_rect.rect,
+            None => return Some(Rect::zero()), // Layer is entirely clipped away.
+        };
+
+        match parent_clip_rect {
+            Some(parent_clip_rect) => match layer_clip.intersection(&parent_clip_rect) {
+                Some(intersected_clip) => Some(intersected_clip),
+                None => Some(Rect::zero()), // No intersection.
+            },
+            None => Some(layer_clip),
         }
     }
 
@@ -688,21 +699,10 @@ impl RenderContext {
                             context: &mut RenderContext3D<T>,
                             transform: &Matrix4,
                             projection: &Matrix4,
-                            mut clip_rect: Option<Rect<f32>>,
                             gfx_context: &NativeDisplay) {
-
-        clip_rect = match (clip_rect, context.clip_rect) {
-            (Some(current_clip), Some(context_clip)) => {
-                current_clip.intersection(&context_clip)
-            }
-            (Some(current_clip), None) => Some(current_clip),
-            (None, Some(clip_rect)) => Some(clip_rect),
-            (None, None) => None,
-        };
 
         // Rendering order as specified in:
         // http://dev.w3.org/csswg/css-transforms/#3d-rendering-contexts
-
         if context.layers.len() > 0 {
             // Clear the z-buffer for each 3d render context
             // TODO(gw): Potential optimization here if there are no
@@ -732,7 +732,7 @@ impl RenderContext {
                 // TODO(gw): Disable clipping on 3d layers for now.
                 // Need to implement proper polygon clipping to
                 // make this work correctly.
-                let clip_rect = clip_rect.and_then(|cr| {
+                let clip_rect = context.clip_rect.and_then(|cr| {
                     let m = render_layer.layer.transform_state.borrow().final_transform;
 
                     // See https://drafts.csswg.org/css-transforms/#2d-matrix
@@ -768,7 +768,6 @@ impl RenderContext {
             self.render_3d_context(child_context,
                                    transform,
                                    projection,
-                                   clip_rect,
                                    gfx_context);
         }
     }
@@ -795,11 +794,10 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
     let projection = create_ortho(&scene.viewport.size.to_untyped());
 
     // Build the list of render items
-    let mut root_3d_context = RenderContext3D::new(root_layer.clone());
+    let mut root_3d_context = RenderContext3D::new(root_layer.clone(), None);
     root_layer.build(&mut root_3d_context);
     render_context.render_3d_context(&mut root_3d_context,
                                      &transform,
                                      &projection,
-                                     None,
                                      &render_context.compositing_display);
 }
