@@ -381,6 +381,13 @@ impl<T> RenderContext3D<T> {
         };
         self.layers.push(render_layer);
     }
+
+    fn has_empty_clip_rect(&self) -> bool {
+        match self.clip_rect {
+            Some(ref clip_rect) => clip_rect.is_empty(),
+            None => false,
+        }
+    }
 }
 
 pub trait RenderContext3DBuilder<T> {
@@ -395,18 +402,24 @@ impl<T> RenderContext3DBuilder<T> for Rc<Layer<T>> {
                                       screen_rect.z_center);
         }
 
-        if self.children().len() > 0 {
-            let current_context = if self.establishes_3d_context {
-                let new_context = RenderContext3D::new(self.clone());
-                current_context.child_contexts.push(new_context);
-                current_context.child_contexts.last_mut().unwrap()
-            } else {
-                current_context
-            };
+        if self.children().len() == 0 {
+            return;
+        }
 
-            for child in self.children().iter() {
-                child.build(current_context);
+        let current_context = if self.establishes_3d_context {
+            let new_context = RenderContext3D::new(self.clone(), current_context.clip_rect);
+            if new_context.has_empty_clip_rect() {
+                return;
             }
+
+            current_context.child_contexts.push(new_context);
+            current_context.child_contexts.last_mut().unwrap()
+        } else {
+            current_context
+        };
+
+        for child in self.children().iter() {
+            child.build(current_context);
         }
     }
 }
