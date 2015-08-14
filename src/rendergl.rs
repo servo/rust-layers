@@ -18,6 +18,7 @@ use platform::surface::NativeDisplay;
 
 use euclid::matrix::Matrix4;
 use euclid::Matrix2D;
+use euclid::point::Point2D;
 use euclid::rect::Rect;
 use euclid::size::Size2D;
 use libc::c_int;
@@ -581,131 +582,151 @@ impl RenderContext {
                        clip_rect: Option<Rect<f32>>,
                        gfx_context: &NativeDisplay) {
         let ts = layer.transform_state.borrow();
-
         let transform = transform.mul(&ts.final_transform);
-
         let background_color = *layer.background_color.borrow();
 
         // Create native textures for this layer
         layer.create_textures(gfx_context);
 
-        let layer_rect = clip_rect.map_or(Some(ts.world_rect), |clip_rect| {
-            clip_rect.intersection(&ts.world_rect)
+        let layer_rect = clip_rect.map_or(ts.world_rect, |clip_rect| {
+            match clip_rect.intersection(&ts.world_rect) {
+                Some(layer_rect) => layer_rect,
+                None => Rect::zero(),
+            }
         });
 
-        if let Some(layer_rect) = layer_rect {
-            let lx0 = layer_rect.origin.x;
-            let ly0 = layer_rect.origin.y;
-            let lx1 = layer_rect.origin.x + layer_rect.size.width;
-            let ly1 = layer_rect.origin.y + layer_rect.size.height;
-
-            if background_color.a != 0.0 {
-                let bg_vertices = [
-                    ColorVertex::new(lx0, ly0),
-                    ColorVertex::new(lx1, ly0),
-                    ColorVertex::new(lx0, ly1),
-                    ColorVertex::new(lx1, ly1),
-                ];
-
-                self.bind_and_render_solid_quad(&bg_vertices,
-                                                &transform,
-                                                &projection,
-                                                &background_color);
-            }
-
-            layer.do_for_all_tiles(|tile: &Tile| {
-                if !tile.texture.is_zero() && tile.bounds.is_some() {
-                    let opacity = *layer.opacity.borrow();
-
-                    let tile_rect = tile.bounds.unwrap()
-                                               .to_untyped()
-                                               .translate(&ts.world_rect.origin);
-                    let clipped_tile_rect = clip_rect.map_or(Some(tile_rect), |clip_rect| {
-                        clip_rect.intersection(&tile_rect)
-                    });
-
-                    if let Some(clipped_tile_rect) = clipped_tile_rect {
-                        let tx0 = tile_rect.min_x();
-                        let ty0 = tile_rect.min_y();
-
-                        let cx0 = clipped_tile_rect.min_x();
-                        let cx1 = clipped_tile_rect.max_x();
-                        let cy0 = clipped_tile_rect.min_y();
-                        let cy1 = clipped_tile_rect.max_y();
-
-                        let u0 = (cx0 - tx0) / tile_rect.size.width;
-                        let v0 = (cy0 - ty0) / tile_rect.size.height;
-
-                        let u1 = (cx1 - tx0) / tile_rect.size.width;
-                        let v1 = (cy1 - ty0) / tile_rect.size.height;
-
-                        let tile_vertices: [TextureVertex; 4] = [
-                            TextureVertex::new(cx0, cy0, u0, v0),
-                            TextureVertex::new(cx1, cy0, u1, v0),
-                            TextureVertex::new(cx0, cy1, u0, v1),
-                            TextureVertex::new(cx1, cy1, u1, v1),
-                        ];
-
-                        if self.show_debug_borders {
-                            let debug_vertices = [
-                                // The weird ordering here is converting from tri strip
-                                // into a line strip.
-                                ColorVertex::new(tile_vertices[0].x, tile_vertices[0].y),
-                                ColorVertex::new(tile_vertices[1].x, tile_vertices[1].y),
-                                ColorVertex::new(tile_vertices[3].x, tile_vertices[3].y),
-                                ColorVertex::new(tile_vertices[2].x, tile_vertices[2].y),
-                                ColorVertex::new(tile_vertices[0].x, tile_vertices[0].y),
-                            ];
-                            self.bind_and_render_quad_lines(&debug_vertices,
-                                                            &transform,
-                                                            projection,
-                                                            &TILE_DEBUG_BORDER_COLOR,
-                                                            TILE_DEBUG_BORDER_THICKNESS);
-                        }
-
-                        self.bind_and_render_quad(&tile_vertices,
-                                                  &tile.texture,
-                                                  &transform,
-                                                  projection,
-                                                  opacity);
-                    }
-                }
-            });
-
-            if self.show_debug_borders {
-                let debug_vertices = [
-                    ColorVertex::new(lx0, ly0),
-                    ColorVertex::new(lx1, ly0),
-                    ColorVertex::new(lx1, ly1),
-                    ColorVertex::new(lx0, ly1),
-                    ColorVertex::new(lx0, ly0),
-                ];
-                self.bind_and_render_quad_lines(&debug_vertices,
-                                                &transform,
-                                                projection,
-                                                &LAYER_DEBUG_BORDER_COLOR,
-                                                LAYER_DEBUG_BORDER_THICKNESS);
-
-                let aabb = ts.screen_rect.as_ref().unwrap().rect;
-                let sx0 = aabb.origin.x;
-                let sy0 = aabb.origin.y;
-                let sx1 = aabb.origin.x + aabb.size.width;
-                let sy1 = aabb.origin.y + aabb.size.height;
-
-                let debug_vertices = [
-                    ColorVertex::new(sx0, sy0),
-                    ColorVertex::new(sx1, sy0),
-                    ColorVertex::new(sx1, sy1),
-                    ColorVertex::new(sx0, sy1),
-                    ColorVertex::new(sx0, sy0),
-                ];
-                self.bind_and_render_quad_lines(&debug_vertices,
-                                                &Matrix4::identity(),
-                                                projection,
-                                                &LAYER_AABB_DEBUG_BORDER_COLOR,
-                                                LAYER_AABB_DEBUG_BORDER_THICKNESS);
-            }
+        if layer_rect.is_empty() {
+            return;
         }
+
+        let lx0 = layer_rect.origin.x;
+        let ly0 = layer_rect.origin.y;
+        let lx1 = layer_rect.origin.x + layer_rect.size.width;
+        let ly1 = layer_rect.origin.y + layer_rect.size.height;
+
+        if background_color.a != 0.0 {
+            let bg_vertices = [
+                ColorVertex::new(lx0, ly0),
+                ColorVertex::new(lx1, ly0),
+                ColorVertex::new(lx0, ly1),
+                ColorVertex::new(lx1, ly1),
+            ];
+
+            self.bind_and_render_solid_quad(&bg_vertices,
+                                            &transform,
+                                            &projection,
+                                            &background_color);
+        }
+
+        layer.do_for_all_tiles(|tile: &Tile| {
+           self.render_tile(tile,
+                            &ts.world_rect.origin,
+                            &transform,
+                            projection,
+                            clip_rect,
+                            *layer.opacity.borrow());
+        });
+
+        if self.show_debug_borders {
+            let debug_vertices = [
+                ColorVertex::new(lx0, ly0),
+                ColorVertex::new(lx1, ly0),
+                ColorVertex::new(lx1, ly1),
+                ColorVertex::new(lx0, ly1),
+                ColorVertex::new(lx0, ly0),
+            ];
+            self.bind_and_render_quad_lines(&debug_vertices,
+                                            &transform,
+                                            projection,
+                                            &LAYER_DEBUG_BORDER_COLOR,
+                                            LAYER_DEBUG_BORDER_THICKNESS);
+
+            let aabb = ts.screen_rect.as_ref().unwrap().rect;
+            let sx0 = aabb.origin.x;
+            let sy0 = aabb.origin.y;
+            let sx1 = aabb.origin.x + aabb.size.width;
+            let sy1 = aabb.origin.y + aabb.size.height;
+
+            let debug_vertices = [
+                ColorVertex::new(sx0, sy0),
+                ColorVertex::new(sx1, sy0),
+                ColorVertex::new(sx1, sy1),
+                ColorVertex::new(sx0, sy1),
+                ColorVertex::new(sx0, sy0),
+            ];
+            self.bind_and_render_quad_lines(&debug_vertices,
+                                            &Matrix4::identity(),
+                                            projection,
+                                            &LAYER_AABB_DEBUG_BORDER_COLOR,
+                                            LAYER_AABB_DEBUG_BORDER_THICKNESS);
+        }
+    }
+
+    fn render_tile(&self,
+                   tile: &Tile,
+                   layer_origin: &Point2D<f32>,
+                   transform: &Matrix4,
+                   projection: &Matrix4,
+                   clip_rect: Option<Rect<f32>>,
+                   opacity: f32) {
+        if tile.texture.is_zero() || !tile.bounds.is_some() {
+            return;
+        }
+
+        let tile_rect = tile.bounds.unwrap().to_untyped().translate(layer_origin);
+        let clipped_tile_rect = clip_rect.map_or(tile_rect, |clip_rect| {
+            match clip_rect.intersection(&tile_rect) {
+                Some(clipped_tile_rect) => clipped_tile_rect,
+                None => Rect::zero(),
+            }
+        });
+
+        if clipped_tile_rect.is_empty() {
+           return;
+        }
+
+        let tx0 = tile_rect.min_x();
+        let ty0 = tile_rect.min_y();
+
+        let cx0 = clipped_tile_rect.min_x();
+        let cx1 = clipped_tile_rect.max_x();
+        let cy0 = clipped_tile_rect.min_y();
+        let cy1 = clipped_tile_rect.max_y();
+
+        let u0 = (cx0 - tx0) / tile_rect.size.width;
+        let v0 = (cy0 - ty0) / tile_rect.size.height;
+
+        let u1 = (cx1 - tx0) / tile_rect.size.width;
+        let v1 = (cy1 - ty0) / tile_rect.size.height;
+
+        let tile_vertices: [TextureVertex; 4] = [
+            TextureVertex::new(cx0, cy0, u0, v0),
+            TextureVertex::new(cx1, cy0, u1, v0),
+            TextureVertex::new(cx0, cy1, u0, v1),
+            TextureVertex::new(cx1, cy1, u1, v1),
+        ];
+
+        if self.show_debug_borders {
+            let debug_vertices = [
+                // The weird ordering is converting from triangle-strip into a line-strip.
+                ColorVertex::new(tile_vertices[0].x, tile_vertices[0].y),
+                ColorVertex::new(tile_vertices[1].x, tile_vertices[1].y),
+                ColorVertex::new(tile_vertices[3].x, tile_vertices[3].y),
+                ColorVertex::new(tile_vertices[2].x, tile_vertices[2].y),
+                ColorVertex::new(tile_vertices[0].x, tile_vertices[0].y),
+            ];
+            self.bind_and_render_quad_lines(&debug_vertices,
+                                            &transform,
+                                            projection,
+                                            &TILE_DEBUG_BORDER_COLOR,
+                                            TILE_DEBUG_BORDER_THICKNESS);
+        }
+
+        self.bind_and_render_quad(&tile_vertices,
+                                  &tile.texture,
+                                  &transform,
+                                  projection,
+                                  opacity);
     }
 
     fn render_3d_context<T>(&self,
