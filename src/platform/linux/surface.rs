@@ -257,6 +257,10 @@ impl PixmapNativeSurface {
         self.pixmap as isize
     }
 
+    pub fn get_size(&self) -> Size2D<i32> {
+        self.size
+    }
+
     pub fn destroy(&mut self, display: &NativeDisplay) {
         unsafe {
             assert!(self.pixmap != 0);

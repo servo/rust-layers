@@ -13,12 +13,10 @@
 use texturegl::Texture;
 
 use euclid::size::Size2D;
+use gleam::gl;
 use skia::gl_rasterization_context::GLRasterizationContext;
 use skia::gl_context::GLContext;
 use std::sync::Arc;
-
-#[cfg(not(target_os="android"))]
-use gleam::gl;
 
 #[cfg(target_os="macos")]
 pub use platform::macos::surface::{NativeDisplay,
@@ -32,7 +30,7 @@ use std::ptr;
 
 #[cfg(target_os="android")]
 pub use platform::android::surface::{NativeDisplay,
-                                     EGLImageNativeSurface};
+                                     AndroidNativeSurface};
 
 pub enum NativeSurface {
     MemoryBuffer(MemoryBufferNativeSurface),
@@ -41,7 +39,7 @@ pub enum NativeSurface {
 #[cfg(target_os="macos")]
     IOSurface(IOSurfaceNativeSurface),
 #[cfg(target_os="android")]
-    EGLImage(EGLImageNativeSurface),
+    Android(AndroidNativeSurface),
 }
 
 #[cfg(target_os="linux")]
@@ -68,7 +66,7 @@ impl NativeSurface {
 impl NativeSurface {
     /// Creates a new native surface with uninitialized data.
     pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> NativeSurface {
-        NativeSurface::EGLImage(EGLImageNativeSurface::new(display, size))
+        NativeSurface::Android(AndroidNativeSurface::new(display, size))
    }
 }
 
@@ -84,7 +82,7 @@ macro_rules! native_surface_method_with_mutability {
             NativeSurface::IOSurface($pattern) =>
                 $surface.$function_name($($argument), *),
             #[cfg(target_os="android")]
-            NativeSurface::EGLImage($pattern) =>
+            NativeSurface::Android($pattern) =>
                 $surface.$function_name($($argument), *),
         }
     };
@@ -109,20 +107,6 @@ macro_rules! native_surface_method {
                                                ref surface,
                                                $($argument),
                                                *)
-    };
-}
-
-macro_rules! native_surface_property {
-    ($self_:ident $property_name:ident) => {
-        match *$self_ {
-            NativeSurface::MemoryBuffer(ref surface) => surface.$property_name,
-            #[cfg(target_os="linux")]
-            NativeSurface::Pixmap(ref surface) => surface.$property_name,
-            #[cfg(target_os="macos")]
-            NativeSurface::IOSurface(ref surface) => surface.$property_name,
-            #[cfg(target_os="android")]
-            NativeSurface::EGLImage(ref surface) => surface.$property_name,
-        }
     };
 }
 
@@ -193,7 +177,7 @@ impl NativeSurface {
 
     /// Get the size of this native surface.
     pub fn get_size(&self) -> Size2D<i32> {
-        native_surface_property!(self size)
+        native_surface_method!(self get_size ())
     }
 }
 
@@ -227,8 +211,17 @@ impl MemoryBufferNativeSurface {
     }
 
     #[cfg(target_os="android")]
-    pub fn bind_to_texture(&self, _: &NativeDisplay, _: &Texture) {
-        panic!("Binding a memory surface to a texture is not yet supported on Android.");
+    pub fn bind_to_texture(&self, _: &NativeDisplay, texture: &Texture) {
+        let _bound = texture.bind();
+        gl::tex_image_2d(gl::TEXTURE_2D,
+                         0,
+                         gl::BGRA_EXT as i32,
+                         self.size.width as i32,
+                         self.size.height as i32,
+                         0,
+                         gl::BGRA_EXT,
+                         gl::UNSIGNED_BYTE,
+                         Some(&self.bytes));
     }
 
     /// This may only be called on the painting side.
@@ -239,6 +232,10 @@ impl MemoryBufferNativeSurface {
 
     pub fn get_id(&self) -> isize {
         0
+    }
+
+    pub fn get_size(&self) -> Size2D<i32> {
+        self.size
     }
 
     pub fn destroy(&mut self, _: &NativeDisplay) {
