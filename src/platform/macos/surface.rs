@@ -120,6 +120,10 @@ impl IOSurfaceNativeSurface {
         }
     }
 
+    pub fn get_size(&self) -> Size2D<i32> {
+        self.size
+    }
+
     pub fn destroy(&mut self, _: &NativeDisplay) {
         IO_SURFACE_REPOSITORY.with(|ref r| {
             r.borrow_mut().remove(&self.io_surface_id.unwrap())
