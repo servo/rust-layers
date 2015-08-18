@@ -8,10 +8,8 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install gcc-4.7 g++-4.7; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.7 20; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.7 20; fi
-# We pin rust here, because aster (0.4.0) is broken with the latest
-# rust nightly. Once aster is fixed we can change this back to 'nightly.'
 rust:
-  - nightly-2015-07-30
+  - nightly
 branches:
   except:
     - master
