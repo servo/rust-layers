@@ -36,10 +36,10 @@ pub struct ColorVertex {
 }
 
 impl ColorVertex {
-    pub fn new(x: f32, y: f32) -> ColorVertex {
+    pub fn new(point: Point2D<f32>) -> ColorVertex {
         ColorVertex {
-            x: x,
-            y: y,
+            x: point.x,
+            y: point.y,
         }
     }
 }
@@ -53,12 +53,12 @@ pub struct TextureVertex {
 }
 
 impl TextureVertex {
-    pub fn new(x: f32, y: f32, u: f32, v: f32) -> TextureVertex {
+    pub fn new(point: Point2D<f32>, texture_coordinates: Point2D<f32>) -> TextureVertex {
         TextureVertex {
-            x: x,
-            y: y,
-            u: u,
-            v: v,
+            x: point.x,
+            y: point.y,
+            u: texture_coordinates.x,
+            v: texture_coordinates.y,
         }
     }
 }
@@ -599,17 +599,12 @@ impl RenderContext {
             return;
         }
 
-        let lx0 = layer_rect.origin.x;
-        let ly0 = layer_rect.origin.y;
-        let lx1 = layer_rect.origin.x + layer_rect.size.width;
-        let ly1 = layer_rect.origin.y + layer_rect.size.height;
-
         if background_color.a != 0.0 {
             let bg_vertices = [
-                ColorVertex::new(lx0, ly0),
-                ColorVertex::new(lx1, ly0),
-                ColorVertex::new(lx0, ly1),
-                ColorVertex::new(lx1, ly1),
+                ColorVertex::new(layer_rect.origin),
+                ColorVertex::new(layer_rect.top_right()),
+                ColorVertex::new(layer_rect.bottom_left()),
+                ColorVertex::new(layer_rect.bottom_right()),
             ];
 
             self.bind_and_render_solid_quad(&bg_vertices,
@@ -629,11 +624,11 @@ impl RenderContext {
 
         if self.show_debug_borders {
             let debug_vertices = [
-                ColorVertex::new(lx0, ly0),
-                ColorVertex::new(lx1, ly0),
-                ColorVertex::new(lx1, ly1),
-                ColorVertex::new(lx0, ly1),
-                ColorVertex::new(lx0, ly0),
+                ColorVertex::new(layer_rect.origin),
+                ColorVertex::new(layer_rect.top_right()),
+                ColorVertex::new(layer_rect.bottom_right()),
+                ColorVertex::new(layer_rect.bottom_left()),
+                ColorVertex::new(layer_rect.origin),
             ];
             self.bind_and_render_quad_lines(&debug_vertices,
                                             &transform,
@@ -642,17 +637,12 @@ impl RenderContext {
                                             LAYER_DEBUG_BORDER_THICKNESS);
 
             let aabb = ts.screen_rect.as_ref().unwrap().rect;
-            let sx0 = aabb.origin.x;
-            let sy0 = aabb.origin.y;
-            let sx1 = aabb.origin.x + aabb.size.width;
-            let sy1 = aabb.origin.y + aabb.size.height;
-
             let debug_vertices = [
-                ColorVertex::new(sx0, sy0),
-                ColorVertex::new(sx1, sy0),
-                ColorVertex::new(sx1, sy1),
-                ColorVertex::new(sx0, sy1),
-                ColorVertex::new(sx0, sy0),
+                ColorVertex::new(aabb.origin),
+                ColorVertex::new(aabb.top_right()),
+                ColorVertex::new(aabb.bottom_right()),
+                ColorVertex::new(aabb.bottom_left()),
+                ColorVertex::new(aabb.origin),
             ];
             self.bind_and_render_quad_lines(&debug_vertices,
                                             &Matrix4::identity(),
@@ -685,35 +675,28 @@ impl RenderContext {
            return;
         }
 
-        let tx0 = tile_rect.min_x();
-        let ty0 = tile_rect.min_y();
-
-        let cx0 = clipped_tile_rect.min_x();
-        let cx1 = clipped_tile_rect.max_x();
-        let cy0 = clipped_tile_rect.min_y();
-        let cy1 = clipped_tile_rect.max_y();
-
-        let u0 = (cx0 - tx0) / tile_rect.size.width;
-        let v0 = (cy0 - ty0) / tile_rect.size.height;
-
-        let u1 = (cx1 - tx0) / tile_rect.size.width;
-        let v1 = (cy1 - ty0) / tile_rect.size.height;
+        let texture_rect_origin = clipped_tile_rect.origin - tile_rect.origin;
+        let texture_rect = Rect::new(
+            Point2D::new(texture_rect_origin.x / tile_rect.size.width,
+                         texture_rect_origin.y / tile_rect.size.height),
+            Size2D::new(clipped_tile_rect.size.width / tile_rect.size.width,
+                        clipped_tile_rect.size.height / tile_rect.size.height));
 
         let tile_vertices: [TextureVertex; 4] = [
-            TextureVertex::new(cx0, cy0, u0, v0),
-            TextureVertex::new(cx1, cy0, u1, v0),
-            TextureVertex::new(cx0, cy1, u0, v1),
-            TextureVertex::new(cx1, cy1, u1, v1),
+            TextureVertex::new(clipped_tile_rect.origin, texture_rect.origin),
+            TextureVertex::new(clipped_tile_rect.top_right(), texture_rect.top_right()),
+            TextureVertex::new(clipped_tile_rect.bottom_left(), texture_rect.bottom_left()),
+            TextureVertex::new(clipped_tile_rect.bottom_right(), texture_rect.bottom_right()),
         ];
 
         if self.show_debug_borders {
             let debug_vertices = [
                 // The weird ordering is converting from triangle-strip into a line-strip.
-                ColorVertex::new(tile_vertices[0].x, tile_vertices[0].y),
-                ColorVertex::new(tile_vertices[1].x, tile_vertices[1].y),
-                ColorVertex::new(tile_vertices[3].x, tile_vertices[3].y),
-                ColorVertex::new(tile_vertices[2].x, tile_vertices[2].y),
-                ColorVertex::new(tile_vertices[0].x, tile_vertices[0].y),
+                ColorVertex::new(clipped_tile_rect.origin),
+                ColorVertex::new(clipped_tile_rect.top_right()),
+                ColorVertex::new(clipped_tile_rect.bottom_right()),
+                ColorVertex::new(clipped_tile_rect.bottom_left()),
+                ColorVertex::new(clipped_tile_rect.origin),
             ];
             self.bind_and_render_quad_lines(&debug_vertices,
                                             &transform,
