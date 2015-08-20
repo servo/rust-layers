@@ -18,7 +18,7 @@ use libc::{c_int, c_uint, c_void};
 use glx;
 use skia::gl_context::{GLContext, PlatformDisplayData};
 use skia::gl_rasterization_context::GLRasterizationContext;
-use std::ascii::OwnedAsciiExt;
+use std::ascii::AsciiExt;
 use std::ffi::CStr;
 use std::mem;
 use std::ptr;
@@ -135,7 +135,7 @@ impl NativeDisplay {
                     .ok()
                     .expect("GLX client vendor string not in UTF-8 format.")
                     .to_string()
-                    .into_ascii_lowercase();
+                    .to_ascii_lowercase();
             glx_vendor.contains("nvidia") || glx_vendor.contains("ati")
         }
     }
