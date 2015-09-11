@@ -9,7 +9,7 @@ libc = "*"
 rustc-serialize = "*"
 log = "*"
 gleam = "0.1"
-euclid = "0.1"
+euclid = "0.2"
 
 [dependencies.skia]
 git = "https://github.com/servo/skia"
