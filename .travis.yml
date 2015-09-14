@@ -10,8 +10,5 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.7 20; fi
 rust:
   - nightly
-branches:
-  except:
-    - master
 notifications:
   webhooks: http://build.servo.org:54856/travis
