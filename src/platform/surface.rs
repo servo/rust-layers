@@ -34,6 +34,7 @@ use std::ptr;
 pub use platform::android::surface::{NativeDisplay,
                                      EGLImageNativeSurface};
 
+#[derive(Clone)]
 pub enum NativeSurface {
     MemoryBuffer(MemoryBufferNativeSurface),
 #[cfg(target_os="linux")]
@@ -197,7 +198,7 @@ impl NativeSurface {
     }
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Clone, RustcDecodable, RustcEncodable)]
 pub struct MemoryBufferNativeSurface {
     bytes: Vec<u8>,
     pub size: Size2D<i32>,

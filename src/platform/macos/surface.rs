@@ -52,7 +52,7 @@ impl NativeDisplay {
     }
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Clone, RustcDecodable, RustcEncodable)]
 pub struct IOSurfaceNativeSurface {
     io_surface_id: Option<io_surface::IOSurfaceID>,
     will_leak: bool,

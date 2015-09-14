@@ -52,6 +52,7 @@ impl NativeDisplay {
     }
 }
 
+#[derive(Clone)]
 pub struct EGLImageNativeSurface {
     /// An EGLImage for the case of GPU rendering.
     image: Option<EGLImageKHR>,

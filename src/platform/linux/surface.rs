@@ -148,7 +148,7 @@ impl NativeDisplay {
     }
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Clone, RustcDecodable, RustcEncodable)]
 pub struct PixmapNativeSurface {
     /// The pixmap.
     pixmap: xlib::Pixmap,
