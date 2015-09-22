@@ -160,6 +160,11 @@ impl Texture {
         (Flip::NoFlip, TextureTarget::TextureTarget2D)
     }
 
+    #[cfg(target_os="windows")]
+    pub fn texture_flip_and_target(_: bool) -> (Flip, TextureTarget) {
+        (Flip::NoFlip, TextureTarget::TextureTarget2D)
+    }
+
     /// Returns the raw OpenGL texture underlying this texture.
     pub fn native_texture(&self) -> GLuint {
         self.id

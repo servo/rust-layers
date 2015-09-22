@@ -15,6 +15,7 @@ use texturegl::Texture;
 use euclid::size::Size2D;
 use skia::gl_rasterization_context::GLRasterizationContext;
 use skia::gl_context::GLContext;
+use skia::gl_context::PlatformDisplayData;
 use std::sync::Arc;
 
 #[cfg(not(target_os="android"))]
@@ -33,6 +34,9 @@ use std::ptr;
 #[cfg(target_os="android")]
 pub use platform::android::surface::{NativeDisplay,
                                      EGLImageNativeSurface};
+
+#[cfg(target_os="windows")]
+pub use platform::windows::surface::NativeDisplay;
 
 pub enum NativeSurface {
     MemoryBuffer(MemoryBufferNativeSurface),
@@ -69,6 +73,14 @@ impl NativeSurface {
     /// Creates a new native surface with uninitialized data.
     pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> NativeSurface {
         NativeSurface::EGLImage(EGLImageNativeSurface::new(display, size))
+   }
+}
+
+#[cfg(target_os="windows")]
+impl NativeSurface {
+    /// Creates a new native surface with uninitialized data.
+    pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> NativeSurface {
+        NativeSurface::MemoryBuffer(MemoryBufferNativeSurface::new(display, size))
    }
 }
 
