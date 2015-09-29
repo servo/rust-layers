@@ -62,6 +62,10 @@ pub mod platform {
     pub mod android {
         pub mod surface;
     }
+    #[cfg(target_os="windows")]
+    pub mod windows {
+        pub mod surface;
+    }
     pub mod surface;
 }
 
