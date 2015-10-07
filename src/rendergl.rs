@@ -329,25 +329,69 @@ impl SolidColorProgram {
     }
 }
 
-struct RenderLayer<T> {
+struct RenderContextChild<T> {
+    layer: Option<Rc<Layer<T>>>,
+    context: Option<RenderContext3D<T>>,
     paint_order: usize,
     z_center: f32,
-    layer: Rc<Layer<T>>,
 }
 
 pub struct RenderContext3D<T>{
-    layers: Vec<RenderLayer<T>>,
-    child_contexts: Vec<RenderContext3D<T>>,
+    children: Vec<RenderContextChild<T>>,
     clip_rect: Option<Rect<f32>>,
 }
 
 impl<T> RenderContext3D<T> {
-    fn new(layer: Rc<Layer<T>>, parent_clip_rect: Option<Rect<f32>>) -> RenderContext3D<T> {
-        RenderContext3D {
-            layers: vec!(),
-            child_contexts: vec!(),
-            clip_rect: RenderContext3D::calculate_context_clip(layer, parent_clip_rect),
+    fn new(layer: Rc<Layer<T>>) -> RenderContext3D<T> {
+        let mut render_context = RenderContext3D {
+            children: vec!(),
+            clip_rect: RenderContext3D::calculate_context_clip(layer.clone(), None),
+        };
+        layer.build(&mut render_context);
+        render_context.sort_children();
+        render_context
+    }
+
+    fn build_child(layer: Rc<Layer<T>>,
+                   parent_clip_rect: Option<Rect<f32>>)
+                   -> Option<RenderContext3D<T>> {
+        let clip_rect = RenderContext3D::calculate_context_clip(layer.clone(), parent_clip_rect);
+        if let Some(ref clip_rect) = clip_rect {
+            if clip_rect.is_empty() {
+                return None;
+            }
         }
+
+        let mut render_context = RenderContext3D {
+            children: vec!(),
+            clip_rect: clip_rect,
+        };
+
+        for child in layer.children().iter() {
+            child.build(&mut render_context);
+        }
+
+        render_context.sort_children();
+        Some(render_context)
+    }
+
+    fn sort_children(&mut self) {
+        // TODO(gw): This is basically what FF does, which breaks badly
+        // when there are intersecting polygons. Need to split polygons
+        // to handle this case correctly (Blink uses a BSP tree).
+        self.children.sort_by(|a, b| {
+            if a.z_center < b.z_center {
+                Ordering::Less
+            } else if a.z_center > b.z_center {
+                Ordering::Greater
+            } else if a.paint_order < b.paint_order {
+                Ordering::Less
+            } else if a.paint_order > b.paint_order {
+                Ordering::Greater
+            } else {
+                Ordering::Equal
+            }
+        });
     }
 
     fn calculate_context_clip(layer: Rc<Layer<T>>,
@@ -372,22 +416,17 @@ impl<T> RenderContext3D<T> {
         }
     }
 
-    fn add_layer(&mut self,
-                 layer: Rc<Layer<T>>,
+    fn add_child(&mut self,
+                 layer: Option<Rc<Layer<T>>>,
+                 child_context: Option<RenderContext3D<T>>,
                  z_center: f32) {
-        let render_layer = RenderLayer {
+        let paint_order = self.children.len();
+        self.children.push(RenderContextChild {
             layer: layer,
+            context: child_context,
             z_center: z_center,
-            paint_order: self.layers.len(),
-        };
-        self.layers.push(render_layer);
-    }
-
-    fn has_empty_clip_rect(&self) -> bool {
-        match self.clip_rect {
-            Some(ref clip_rect) => clip_rect.is_empty(),
-            None => false,
-        }
+            paint_order: paint_order,
+        });
     }
 }
 
@@ -397,27 +436,26 @@ pub trait RenderContext3DBuilder<T> {
 
 impl<T> RenderContext3DBuilder<T> for Rc<Layer<T>> {
     fn build(&self, current_context: &mut RenderContext3D<T>) {
-        // If this layer has not been entirely clipped
-        if let Some(ref screen_rect) = self.transform_state.borrow().screen_rect {
-            current_context.add_layer(self.clone(),
-                                      screen_rect.z_center);
-        }
+        let (layer, z_center) = match self.transform_state.borrow().screen_rect {
+            Some(ref rect) => (Some(self.clone()), rect.z_center),
+            None => (None, 0.), // Layer is entirely clipped.
+        };
 
-        if self.children().len() == 0 {
+        if !self.children.borrow().is_empty() && self.establishes_3d_context {
+            let child_context =
+                RenderContext3D::build_child(self.clone(), current_context.clip_rect);
+            if child_context.is_some() {
+                current_context.add_child(layer, child_context, z_center);
+                return;
+            }
+        };
+
+        // If we are completely clipped out, don't add anything to this context.
+        if layer.is_none() {
             return;
         }
 
-        let current_context = if self.establishes_3d_context {
-            let new_context = RenderContext3D::new(self.clone(), current_context.clip_rect);
-            if new_context.has_empty_clip_rect() {
-                return;
-            }
-
-            current_context.child_contexts.push(new_context);
-            current_context.child_contexts.last_mut().unwrap()
-        } else {
-            current_context
-        };
+        current_context.add_child(layer, None, z_center);
 
         for child in self.children().iter() {
             child.build(current_context);
@@ -713,44 +751,28 @@ impl RenderContext {
     }
 
     fn render_3d_context<T>(&self,
-                            context: &mut RenderContext3D<T>,
+                            context: &RenderContext3D<T>,
                             transform: &Matrix4,
                             projection: &Matrix4,
                             gfx_context: &NativeDisplay) {
+        if context.children.is_empty() {
+            return;
+        }
 
-        // Rendering order as specified in:
-        // http://dev.w3.org/csswg/css-transforms/#3d-rendering-contexts
-        if context.layers.len() > 0 {
-            // Clear the z-buffer for each 3d render context
-            // TODO(gw): Potential optimization here if there are no
-            //           layer intersections to disable z-buffering and
-            //           avoid clear.
-            gl::clear(gl::DEPTH_BUFFER_BIT);
+        // Clear the z-buffer for each 3d render context
+        // TODO(gw): Potential optimization here if there are no
+        //           layer intersections to disable z-buffering and
+        //           avoid clear.
+        gl::clear(gl::DEPTH_BUFFER_BIT);
 
-            // TODO(gw): This is basically what FF does, which breaks badly
-            // when there are intersecting polygons. Need to split polygons
-            // to handle this case correctly (Blink uses a BSP tree).
-            context.layers.sort_by(|a, b| {
-                if a.z_center < b.z_center {
-                    return Ordering::Less;
-                } else if a.z_center > b.z_center {
-                    return Ordering::Greater;
-                } else if a.paint_order < b.paint_order {
-                    return Ordering::Less
-                } else if a.paint_order > b.paint_order {
-                    return Ordering::Greater;
-                } else {
-                    return Ordering::Equal;
-                }
-            });
-
-            // Render child layers with z-testing.
-            for render_layer in &context.layers {
+        // Render child layers with z-testing.
+        for child in &context.children {
+            if let Some(ref layer) = child.layer {
                 // TODO(gw): Disable clipping on 3d layers for now.
                 // Need to implement proper polygon clipping to
                 // make this work correctly.
                 let clip_rect = context.clip_rect.and_then(|cr| {
-                    let m = render_layer.layer.transform_state.borrow().final_transform;
+                    let m = layer.transform_state.borrow().final_transform;
 
                     // See https://drafts.csswg.org/css-transforms/#2d-matrix
                     let is_3d_transform = m.m31 != 0.0 || m.m32 != 0.0 ||
@@ -770,22 +792,22 @@ impl RenderContext {
                                                      transform.m41, transform.m42);
                         Some(xform_2d.transform_rect(&cr))
                     }
-                });
 
-                self.render_layer(render_layer.layer.clone(),
+                });
+                self.render_layer(layer.clone(),
                                   transform,
                                   projection,
                                   clip_rect,
                                   gfx_context);
             }
-        }
 
-        // Now render child 3d contexts
-        for child_context in &mut context.child_contexts {
-            self.render_3d_context(child_context,
-                                   transform,
-                                   projection,
-                                   gfx_context);
+            if let Some(ref context) = child.context {
+                self.render_3d_context(context,
+                                       transform,
+                                       projection,
+                                       gfx_context);
+
+            }
         }
     }
 }
@@ -811,9 +833,7 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
     let projection = create_ortho(&scene.viewport.size.to_untyped());
 
     // Build the list of render items
-    let mut root_3d_context = RenderContext3D::new(root_layer.clone(), None);
-    root_layer.build(&mut root_3d_context);
-    render_context.render_3d_context(&mut root_3d_context,
+    render_context.render_3d_context(&RenderContext3D::new(root_layer.clone()),
                                      &transform,
                                      &projection,
                                      &render_context.compositing_display);
