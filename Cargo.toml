@@ -4,12 +4,16 @@ name = "layers"
 version = "0.1.0"
 authors = ["The Servo Project Developers"]
 
+[features]
+default = []
+plugins = ["euclid/plugins", "azure/plugins", "skia/euclid/plugins", "io-surface/euclid/plugins"]
+
 [dependencies]
 libc = "*"
 rustc-serialize = "*"
 log = "*"
 gleam = "0.1"
-euclid = "0.2"
+euclid = "0.3"
 
 [dependencies.skia]
 git = "https://github.com/servo/skia"
