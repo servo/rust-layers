@@ -477,7 +477,6 @@ pub struct RenderContext {
     show_debug_borders: bool,
 
     force_near_texture_filter: bool,
-    //graphics_select:String,
 }
 
 impl RenderContext {
@@ -485,7 +484,7 @@ impl RenderContext {
                show_debug_borders: bool,
                force_near_texture_filter: bool,
                graphics_select: String) -> RenderContext {
-               println!("Graphics select: {}",graphics_select);
+               println!("Graphics select: {}",graphics_select); //Debug for GL/ES2 develpment
         gl::enable(gl::TEXTURE_2D);
 
         // Each layer uses premultiplied alpha!
@@ -504,7 +503,6 @@ impl RenderContext {
             compositing_display: compositing_display,
             show_debug_borders: show_debug_borders,
             force_near_texture_filter: force_near_texture_filter,
-            //graphics_select: graphics_select,
         }
     }
 
