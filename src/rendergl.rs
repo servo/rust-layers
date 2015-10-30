@@ -496,6 +496,15 @@ impl RenderContext {
         // Each layer uses premultiplied alpha!
         gl::enable(gl::BLEND);
         gl::blend_func(gl::ONE, gl::ONE_MINUS_SRC_ALPHA);
+	let mut graphics_select = GraphicOption::GL;
+	if(graphics_option == true)
+	{
+		graphics_select = GraphicOption::GL;
+	}
+	else
+	{
+		graphics_select = GraphicOption::ES2;
+	}
 
         let texture_2d_program = TextureProgram::create_2d_program();
         let solid_color_program = SolidColorProgram::new();
