@@ -481,7 +481,7 @@ pub struct RenderContext {
     show_debug_borders: bool,
 
     force_near_texture_filter: bool,
-    graphics_select: GraphicOption,
+
 }
 
 impl RenderContext {
@@ -492,16 +492,6 @@ impl RenderContext {
                
         gl::enable(gl::TEXTURE_2D);
 
-	if(graphics_option)
-	{
-		println!("GL is selected");
-		graphics_select = GraphicOption::GL;
-	}
-	else
-	{	
-		println!("ES2 is selected");
-		graphics_select = GraphicOption::ES2;
-	}
 	
         // Each layer uses premultiplied alpha!
         gl::enable(gl::BLEND);
@@ -519,6 +509,8 @@ impl RenderContext {
             compositing_display: compositing_display,
             show_debug_borders: show_debug_borders,
             force_near_texture_filter: force_near_texture_filter,
+
+
         }
     }
 
