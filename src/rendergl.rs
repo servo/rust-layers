@@ -463,6 +463,10 @@ impl<T> RenderContext3DBuilder<T> for Rc<Layer<T>> {
     }
 }
 
+enum GraphicOption {
+    GL,
+    ES2,
+  }
 #[derive(Copy, Clone)]
 pub struct RenderContext {
     texture_2d_program: TextureProgram,
@@ -477,16 +481,28 @@ pub struct RenderContext {
     show_debug_borders: bool,
 
     force_near_texture_filter: bool,
+    graphics_select: GraphicOption,
 }
 
 impl RenderContext {
     pub fn new(compositing_display: NativeDisplay,
                show_debug_borders: bool,
                force_near_texture_filter: bool,
-               graphics_select: String) -> RenderContext {
-               println!("Graphics select: {}",graphics_select); //Debug for GL/ES2 develpment
+               graphics_option: bool) -> RenderContext {
+               
         gl::enable(gl::TEXTURE_2D);
 
+	if(graphics_option)
+	{
+		println!("GL is selected");
+		graphics_select = GraphicOption::GL;
+	}
+	else
+	{	
+		println!("ES2 is selected");
+		graphics_select = GraphicOption::ES2;
+	}
+	
         // Each layer uses premultiplied alpha!
         gl::enable(gl::BLEND);
         gl::blend_func(gl::ONE, gl::ONE_MINUS_SRC_ALPHA);
