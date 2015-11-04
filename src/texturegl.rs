@@ -108,6 +108,7 @@ pub struct BoundTexture {
 impl Drop for BoundTexture {
     fn drop(&mut self) {
         gl::bind_texture(self.target.as_gl_target(), 0);
+        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
     }
 }
 
@@ -121,6 +122,7 @@ impl Texture {
             flip: Flip::NoFlip,
             size: size,
         };
+        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
         this.set_default_params();
         this
     }
@@ -174,9 +176,13 @@ impl Texture {
     fn set_default_params(&self) {
         let _bound_texture = self.bind();
         gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_MAG_FILTER, gl::LINEAR as GLint);
+        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
         gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_MIN_FILTER, gl::LINEAR as GLint);
+        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
         gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as GLint);
+        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
         gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as GLint);
+        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
     }
 
     /// Sets the filter mode for this texture.
@@ -187,12 +193,15 @@ impl Texture {
             FilterMode::Linear => gl::LINEAR,
         } as GLint;
         gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_MAG_FILTER, gl_mode);
+        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
         gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_MIN_FILTER, gl_mode);
+        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
     }
 
     /// Binds the texture to the current context.
     pub fn bind(&self) -> BoundTexture {
         gl::bind_texture(self.target.as_gl_target(), self.id);
+        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
 
         BoundTexture {
             target: self.target,
