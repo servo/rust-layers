@@ -236,7 +236,7 @@ impl MemoryBufferNativeSurface {
                          gl::BGRA,
                          gl::UNSIGNED_BYTE,
                          Some(&self.bytes));
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
     }
 
     #[cfg(target_os="android")]

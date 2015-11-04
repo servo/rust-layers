@@ -143,15 +143,15 @@ struct ShaderProgram {
 
 impl ShaderProgram {
     pub fn new(vertex_shader_source: &str, fragment_shader_source: &str) -> ShaderProgram {
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         let id = gl::create_program();
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::attach_shader(id, ShaderProgram::compile_shader(fragment_shader_source, gl::FRAGMENT_SHADER));
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::attach_shader(id, ShaderProgram::compile_shader(vertex_shader_source, gl::VERTEX_SHADER));
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::link_program(id);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         if gl::get_program_iv(id, gl::LINK_STATUS) == (0 as GLint) {
             panic!("Failed to compile shader program: {}", gl::get_program_info_log(id));
         }
@@ -163,11 +163,11 @@ impl ShaderProgram {
 
     pub fn compile_shader(source_string: &str, shader_type: GLenum) -> GLuint {
         let id = gl::create_shader(shader_type);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::shader_source(id, &[ source_string.as_bytes() ]);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::compile_shader(id);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         if gl::get_shader_iv(id, gl::COMPILE_STATUS) == (0 as GLint) {
             panic!("Failed to compile shader: {}", gl::get_shader_info_log(id));
         }
@@ -224,43 +224,43 @@ impl TextureProgram {
                                     buffers: &Buffers,
                                     opacity: f32) {
         gl::uniform_1i(self.sampler_uniform, 0);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::uniform_matrix_4fv(self.modelview_uniform, false, &transform.to_array());
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::uniform_matrix_4fv(self.projection_uniform, false, &projection_matrix.to_array());
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
 
         let vertex_size = mem::size_of::<TextureVertex>();
 
         gl::bind_buffer(gl::ARRAY_BUFFER, buffers.quad_vertex_buffer);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::buffer_data(gl::ARRAY_BUFFER, vertices, gl::DYNAMIC_DRAW);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, vertex_size as i32, 0);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::vertex_attrib_pointer_f32(self.vertex_uv_attr as GLuint, 2, false, vertex_size as i32, 8);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
 
         gl::uniform_matrix_4fv(self.texture_space_transform_uniform,
                                false,
                                &texture_space_transform.to_array());
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
 
         gl::uniform_1f(self.opacity_uniform, opacity);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
     }
 
     fn enable_attribute_arrays(&self) {
         gl::enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::enable_vertex_attrib_array(self.vertex_uv_attr as GLuint);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
     }
 
     fn disable_attribute_arrays(&self) {
         gl::disable_vertex_attrib_array(self.vertex_uv_attr as GLuint);
         gl::disable_vertex_attrib_array(self.vertex_position_attr as GLuint);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
     }
 
     fn create_2d_program() -> TextureProgram {
@@ -270,7 +270,7 @@ impl TextureProgram {
     #[cfg(target_os="macos")]
     fn create_rectangle_program_if_necessary() -> Option<TextureProgram> {
         gl::enable(gl::TEXTURE_RECTANGLE_ARB);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         Some(TextureProgram::new("texture2DRect", "sampler2DRect"))
     }
 
@@ -307,15 +307,15 @@ impl SolidColorProgram {
                                            projection_matrix: &Matrix4,
                                            color: &Color) {
         gl::uniform_matrix_4fv(self.modelview_uniform, false, &transform.to_array());
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::uniform_matrix_4fv(self.projection_uniform, false, &projection_matrix.to_array());
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::uniform_4f(self.color_uniform,
                    color.r as GLfloat,
                    color.g as GLfloat,
                    color.b as GLfloat,
                    color.a as GLfloat);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
     }
 
     fn bind_uniforms_and_attributes_for_lines(&self,
@@ -327,11 +327,11 @@ impl SolidColorProgram {
         self.bind_uniforms_and_attributes_common(transform, projection_matrix, color);
 
         gl::bind_buffer(gl::ARRAY_BUFFER, buffers.line_quad_vertex_buffer);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::buffer_data(gl::ARRAY_BUFFER, vertices, gl::DYNAMIC_DRAW);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
     }
 
     fn bind_uniforms_and_attributes_for_quad(&self,
@@ -343,21 +343,21 @@ impl SolidColorProgram {
         self.bind_uniforms_and_attributes_common(transform, projection_matrix, color);
 
         gl::bind_buffer(gl::ARRAY_BUFFER, buffers.quad_vertex_buffer);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::buffer_data(gl::ARRAY_BUFFER, vertices, gl::DYNAMIC_DRAW);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
     }
 
     fn enable_attribute_arrays(&self) {
         gl::enable_vertex_attrib_array(self.vertex_position_attr as GLuint);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
     }
 
     fn disable_attribute_arrays(&self) {
         gl::disable_vertex_attrib_array(self.vertex_position_attr as GLuint);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
     }
 }
 
@@ -515,15 +515,15 @@ impl RenderContext {
     pub fn new(compositing_display: NativeDisplay,
                show_debug_borders: bool,
                force_near_texture_filter: bool) -> RenderContext {
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::enable(gl::TEXTURE_2D);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
 
         // Each layer uses premultiplied alpha!
         gl::enable(gl::BLEND);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::blend_func(gl::ONE, gl::ONE_MINUS_SRC_ALPHA);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
 
         let texture_2d_program = TextureProgram::create_2d_program();
         let solid_color_program = SolidColorProgram::new();
@@ -542,14 +542,14 @@ impl RenderContext {
 
     fn init_buffers() -> Buffers {
         let quad_vertex_buffer = gl::gen_buffers(1)[0];
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::bind_buffer(gl::ARRAY_BUFFER, quad_vertex_buffer);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
 
         let line_quad_vertex_buffer = gl::gen_buffers(1)[0];
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::bind_buffer(gl::ARRAY_BUFFER, line_quad_vertex_buffer);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
 
         Buffers {
             quad_vertex_buffer: quad_vertex_buffer,
@@ -564,14 +564,14 @@ impl RenderContext {
                                   color: &Color) {
         self.solid_color_program.enable_attribute_arrays();
         gl::use_program(self.solid_color_program.program.id);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         self.solid_color_program.bind_uniforms_and_attributes_for_quad(vertices,
                                                                        transform,
                                                                        projection,
                                                                        &self.buffers,
                                                                        color);
         gl::draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         self.solid_color_program.disable_attribute_arrays();
     }
 
@@ -595,11 +595,11 @@ impl RenderContext {
         program.enable_attribute_arrays();
 
         gl::use_program(program.program.id);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::active_texture(gl::TEXTURE0);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::bind_texture(texture.target.as_gl_target(), texture.native_texture());
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
 
         let filter_mode = if self.force_near_texture_filter {
             gl::NEAREST
@@ -607,9 +607,9 @@ impl RenderContext {
             gl::LINEAR
         } as GLint;
         gl::tex_parameter_i(texture.target.as_gl_target(), gl::TEXTURE_MAG_FILTER, filter_mode);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::tex_parameter_i(texture.target.as_gl_target(), gl::TEXTURE_MIN_FILTER, filter_mode);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
 
         // We calculate a transformation matrix for the texture coordinates
         // which is useful for flipping the texture vertically or scaling the
@@ -636,12 +636,12 @@ impl RenderContext {
 
         // Draw!
         gl::draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::bind_texture(gl::TEXTURE_2D, 0);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
 
         gl::bind_texture(texture.target.as_gl_target(), 0);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         program.disable_attribute_arrays()
     }
 
@@ -659,9 +659,9 @@ impl RenderContext {
                                                                         &self.buffers,
                                                                         color);
         gl::line_width(line_thickness as GLfloat);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         gl::draw_arrays(gl::LINE_STRIP, 0, 5);
-        unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+        unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
         self.solid_color_program.disable_attribute_arrays();
     }
 
@@ -871,19 +871,19 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
     let v = scene.viewport.to_untyped();
     gl::viewport(v.origin.x as GLint, v.origin.y as GLint,
                  v.size.width as GLsizei, v.size.height as GLsizei);
-    unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+    unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
 
     // Enable depth testing for 3d transforms. Set z-mode to LESS-EQUAL
     // so that layers with equal Z are able to paint correctly in
     // the order they are specified.
     gl::enable(gl::DEPTH_TEST);
-    unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+    unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
     gl::clear_color(1.0, 1.0, 1.0, 1.0);
-    unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+    unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
     gl::clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-    unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+    unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
     gl::depth_func(gl::LEQUAL);
-    unsafe { assert_eq!(gl::GetError(), gl::NO_ERROR); }
+    unsafe { if cfg!(feature = "gldebug") { assert_eq!(gl::GetError(), gl::NO_ERROR); }}
 
     // Set up the initial modelview matrix.
     let transform = Matrix4::identity().scale(scene.scale.get(), scene.scale.get(), 1.0);
