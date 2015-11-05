@@ -7,9 +7,10 @@ authors = ["The Servo Project Developers"]
 [features]
 default = []
 plugins = ["euclid/plugins", "azure/plugins", "skia/euclid/plugins", "io-surface/euclid/plugins"]
+gldebug = []
 
 [dependencies]
-libc = "*"
+libc = "0.1"
 rustc-serialize = "*"
 log = "*"
 gleam = "0.1"
