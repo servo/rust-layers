@@ -101,7 +101,7 @@ impl NativeDisplay {
                 let config = *configs.offset(0);
                 let visual = glx::GetVisualFromFBConfig(mem::transmute(display), config);
 
-                xlib::XFree(configs as *mut c_void);
+                xlib::XFree(configs as *mut _);
                 return (mem::transmute(visual), Some(config));
             }
 
@@ -113,13 +113,13 @@ impl NativeDisplay {
                 let visual: *mut xlib::XVisualInfo =
                     mem::transmute(glx::GetVisualFromFBConfig(mem::transmute(display), config));
                 if (*visual).depth == 32 {
-                    xlib::XFree(configs as *mut c_void);
+                    xlib::XFree(configs as *mut _);
                     return (visual, Some(config));
                 }
-                xlib::XFree(visual as *mut c_void);
+                xlib::XFree(visual as *mut _);
             }
 
-            xlib::XFree(configs as *mut c_void);
+            xlib::XFree(configs as *mut _);
             panic!("Could not find 32-bit visual.");
         }
     }
