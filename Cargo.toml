@@ -9,7 +9,7 @@ default = []
 plugins = ["euclid/plugins", "azure/plugins", "skia/euclid/plugins", "io-surface/euclid/plugins"]
 
 [dependencies]
-libc = "*"
+libc = "0.2"
 rustc-serialize = "*"
 log = "*"
 gleam = "0.1"
@@ -41,19 +41,19 @@ git = "https://github.com/servo/rust-glx"
 git = "https://github.com/servo/rust-glx"
 
 [target.i686-unknown-linux-gnu.dependencies.x11]
-version = "2.0.0"
+version = "2.3.0"
 features = ["xlib"]
 
 [target.x86_64-unknown-linux-gnu.dependencies.x11]
-version = "2.0.0"
+version = "2.3.0"
 features = ["xlib"]
 
 [target.arm-unknown-linux-gnueabihf.dependencies.x11]
-version = "2.0.0"
+version = "2.3.0"
 features = ["xlib"]
 
 [target.aarch64-unknown-linux-gnu.dependencies.x11]
-version = "2.0.0"
+version = "2.3.0"
 features = ["xlib"]
 
 [target.arm-linux-androideabi.dependencies.egl]
