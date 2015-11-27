@@ -1,7 +1,7 @@
 [package]
 
 name = "layers"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["The Servo Project Developers"]
 
 [features]
@@ -13,7 +13,7 @@ libc = "0.2"
 rustc-serialize = "*"
 log = "*"
 gleam = "0.1"
-euclid = "0.3"
+euclid = "0.4"
 
 [dependencies.skia]
 git = "https://github.com/servo/skia"
