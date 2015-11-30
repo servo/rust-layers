@@ -542,7 +542,7 @@ impl RenderContext {
         let mut texture_coordinates_need_to_be_scaled_by_size = false;
         let program = match texture.target {
             TextureTarget2D => self.texture_2d_program,
-            TextureTargetRectangle(..) => match self.texture_rectangle_program {
+            TextureTargetRectangle => match self.texture_rectangle_program {
                 Some(program) => {
                     texture_coordinates_need_to_be_scaled_by_size = true;
                     program
