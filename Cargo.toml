@@ -1,60 +1,42 @@
 [package]
 
 name = "layers"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["The Servo Project Developers"]
 
 [features]
 default = []
-plugins = ["euclid/plugins", "azure/plugins", "skia/euclid/plugins", "io-surface/euclid/plugins"]
+plugins = ["euclid/plugins"]
 
 [dependencies]
 libc = "0.2"
-rustc-serialize = "*"
-log = "*"
+rustc-serialize = "0.3.16"
+log = "0.3.4"
 gleam = "0.1"
-euclid = "0.3"
-
-[dependencies.skia]
-git = "https://github.com/servo/skia"
-
-[dependencies.azure]
-git = "https://github.com/servo/rust-azure"
+euclid = "0.4"
+servo-skia = "0.20130412.0"
+azure = { git = "https://github.com/servo/rust-azure" }
 
 [target.x86_64-apple-darwin.dependencies]
-core-foundation = "*"
+core-foundation = "0.2.0"
 cgl = "0.1"
+io-surface = "0.1.0"
 
-[target.x86_64-apple-darwin.dependencies.io-surface]
-git = "https://github.com/servo/io-surface-rs"
+[target.i686-unknown-linux-gnu.dependencies]
+glx = "0.1.0"
+x11 = { version = "2.3.0", features = ["xlib"] }
 
-[target.i686-unknown-linux-gnu.dependencies.glx]
-git = "https://github.com/servo/rust-glx"
+[target.x86_64-unknown-linux-gnu.dependencies]
+glx = "0.1.0"
+x11 = { version = "2.3.0", features = ["xlib"] }
 
-[target.x86_64-unknown-linux-gnu.dependencies.glx]
-git = "https://github.com/servo/rust-glx"
+[target.arm-unknown-linux-gnueabihf.dependencies]
+glx = "0.1.0"
+x11 = { version = "2.3.0", features = ["xlib"] }
 
-[target.arm-unknown-linux-gnueabihf.dependencies.glx]
-git = "https://github.com/servo/rust-glx"
+[target.aarch64-unknown-linux-gnu.dependencies]
+glx = "0.1.0"
+x11 = { version = "2.3.0", features = ["xlib"] }
 
-[target.aarch64-unknown-linux-gnu.dependencies.glx]
-git = "https://github.com/servo/rust-glx"
-
-[target.i686-unknown-linux-gnu.dependencies.x11]
-version = "2.3.0"
-features = ["xlib"]
-
-[target.x86_64-unknown-linux-gnu.dependencies.x11]
-version = "2.3.0"
-features = ["xlib"]
-
-[target.arm-unknown-linux-gnueabihf.dependencies.x11]
-version = "2.3.0"
-features = ["xlib"]
-
-[target.aarch64-unknown-linux-gnu.dependencies.x11]
-version = "2.3.0"
-features = ["xlib"]
-
-[target.arm-linux-androideabi.dependencies.egl]
-git = "https://github.com/servo/rust-egl"
+[target.arm-linux-androideabi.dependencies]
+servo-egl = "0.2"
