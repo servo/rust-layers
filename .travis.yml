@@ -7,6 +7,7 @@ addons:
     packages:
     - libxxf86vm-dev
     - libosmesa6-dev
+    - libgles2-mesa-dev
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update; fi

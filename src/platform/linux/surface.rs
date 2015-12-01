@@ -11,6 +11,10 @@
 
 #![allow(non_snake_case)]
 
+//TODO: Linking EGL here is probably wrong - should it be done in gleam / glutin etc?
+#[link(name = "EGL")]
+extern {}
+
 use texturegl::Texture;
 
 use euclid::size::Size2D;
@@ -26,6 +30,8 @@ use std::str;
 use std::sync::Arc;
 use x11::xlib;
 
+use egl::egl::{EGLDisplay, GetCurrentDisplay};
+
 /// The display, visual info, and framebuffer configuration. This is needed in order to bind to a
 /// texture on the compositor side. This holds only a *weak* reference to the display and does not
 /// close it.
@@ -34,12 +40,25 @@ use x11::xlib;
 /// to fix because the Display is given to us by the native windowing system, but we should fix it
 /// someday.
 /// FIXME(pcwalton): Mark nonsendable.
+
 #[derive(Copy, Clone)]
-pub struct NativeDisplay {
+pub struct GLXDisplayInfo {
     pub display: *mut xlib::Display,
     visual_info: *mut xlib::XVisualInfo,
     framebuffer_configuration: Option<glx::types::GLXFBConfig>,
 }
+#[derive(Copy, Clone)]
+pub struct EGLDisplayInfo {
+    pub display: EGLDisplay,
+}
+
+#[derive(Copy, Clone)]
+pub enum NativeDisplay {
+    EGL(EGLDisplayInfo),
+    GLX(GLXDisplayInfo),
+}
+
+
 
 unsafe impl Send for NativeDisplay {}
 
@@ -50,11 +69,11 @@ impl NativeDisplay {
         let (compositor_visual_info, frambuffer_configuration) =
             NativeDisplay::compositor_visual_info(display);
 
-        NativeDisplay {
+        NativeDisplay::GLX(GLXDisplayInfo {
             display: display,
             visual_info: compositor_visual_info,
             framebuffer_configuration: frambuffer_configuration,
-        }
+        })
     }
 
     /// Chooses the compositor visual info using the same algorithm that the compositor uses.
@@ -141,10 +160,21 @@ impl NativeDisplay {
     }
 
     pub fn platform_display_data(&self) -> PlatformDisplayData {
-        PlatformDisplayData {
-            display: self.display,
-            visual_info: self.visual_info,
+        match *self {
+            NativeDisplay::GLX(info) => {
+                PlatformDisplayData {
+                    display: info.display,
+                    visual_info: info.visual_info,
+                }
+            }
+            NativeDisplay::EGL(_) => unreachable!(),
         }
+    }
+
+    pub fn new_egl_display() -> NativeDisplay {
+        NativeDisplay::EGL(EGLDisplayInfo {
+            display: GetCurrentDisplay()
+        })
     }
 }
 
@@ -170,7 +200,7 @@ impl Drop for PixmapNativeSurface {
 }
 
 impl PixmapNativeSurface {
-    pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> PixmapNativeSurface {
+    pub fn new(display: &GLXDisplayInfo, size: Size2D<i32>) -> PixmapNativeSurface {
         unsafe {
             // Create the pixmap.
             let screen = xlib::XDefaultScreen(display.display);
@@ -197,6 +227,11 @@ impl PixmapNativeSurface {
         //
         // FIXME(pcwalton): RAII for exception safety?
         unsafe {
+            let display = match display {
+                &NativeDisplay::GLX(info) => info,
+                &NativeDisplay::EGL(_) => unreachable!(),
+            };
+
             let pixmap_attributes = [
                 glx::TEXTURE_TARGET_EXT as i32, glx::TEXTURE_2D_EXT as i32,
                 glx::TEXTURE_FORMAT_EXT as i32, glx::TEXTURE_FORMAT_RGBA_EXT as i32,
@@ -228,6 +263,11 @@ impl PixmapNativeSurface {
     /// This may only be called on the painting side.
     pub fn upload(&mut self, display: &NativeDisplay, data: &[u8]) {
         unsafe {
+            let display = match display {
+                &NativeDisplay::GLX(info) => info,
+                &NativeDisplay::EGL(_) => unreachable!(),
+            };
+
             let image = xlib::XCreateImage(display.display,
                                            (*display.visual_info).visual,
                                            32,
@@ -259,6 +299,11 @@ impl PixmapNativeSurface {
 
     pub fn destroy(&mut self, display: &NativeDisplay) {
         unsafe {
+            let display = match display {
+                &NativeDisplay::GLX(info) => info,
+                &NativeDisplay::EGL(_) => unreachable!(),
+            };
+
             assert!(self.pixmap != 0);
             xlib::XFreePixmap(display.display, self.pixmap);
             self.mark_wont_leak()
