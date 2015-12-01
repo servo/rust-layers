@@ -138,14 +138,17 @@ impl EGLImageNativeSurface {
         // TODO: Eventually we should preserve the previous GLRasterizationContext,
         // so that we don't have to keep destroying and recreating the image.
         if let Some(egl_image) = self.image.take() {
-            DestroyImageKHR(gl_context.platform_context.display, egl_image);
+            panic!("TO DO, DestroyImageKHR typecast ");
+        	//DestroyImageKHR(gl_context.platform_context.display, egl_image);
         }
 
-        let gl_rasterization_context = GLRasterizationContext::new(gl_context, self.size);
+        panic!("TO DO, num params in GLRasterizationContext.new() ");
+       /* let gl_rasterization_context = GLRasterizationContext::new(gl_context, self.size);
         if let Some(ref gl_rasterization_context) = gl_rasterization_context {
             self.bitmap = None;
             self.image = Some(gl_rasterization_context.egl_image);
         }
         gl_rasterization_context
+        */
     }
 }
