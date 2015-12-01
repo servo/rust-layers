@@ -32,8 +32,7 @@ pub use platform::linux::surface::{NativeDisplay,
 use std::ptr;
 
 #[cfg(target_os="android")]
-pub use platform::android::surface::{NativeDisplay,
-                                     EGLImageNativeSurface};
+pub use platform::egl::surface::{EGLImageNativeSurface};
 
 #[cfg(target_os="windows")]
 pub use platform::windows::surface::NativeDisplay;
