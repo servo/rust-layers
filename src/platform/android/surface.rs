@@ -15,11 +15,11 @@ use egl::egl::{EGLDisplay, GetCurrentDisplay};
 use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use euclid::size::Size2D;
 use gleam::gl::{egl_image_target_texture2d_oes, TEXTURE_2D, TexImage2D, BGRA_EXT, UNSIGNED_BYTE};
-use libc::c_void;
 use skia::gl_context::{GLContext, PlatformDisplayData};
 use skia::gl_rasterization_context::GLRasterizationContext;
 use std::iter::repeat;
 use std::mem;
+use std::os::raw::c_void;
 use std::sync::Arc;
 use std::vec::Vec;
 
