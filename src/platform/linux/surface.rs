@@ -57,6 +57,13 @@ impl NativeDisplay {
         }
     }
 
+ pub fn from_es2(display: *mut xlib::Display) -> NativeDisplay {
+        // FIXME(pcwalton): It would be more robust to actually have the compositor pass the
+        // visual.
+        panic!("TODO");
+    }
+
+
     /// Chooses the compositor visual info using the same algorithm that the compositor uses.
     ///
     /// FIXME(pcwalton): It would be more robust to actually have the compositor pass the visual.
