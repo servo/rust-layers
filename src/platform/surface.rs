@@ -267,4 +267,3 @@ impl MemoryBufferNativeSurface {
         None
     }
 }
-
