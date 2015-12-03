@@ -65,11 +65,11 @@ impl NativeDisplay {
         let (compositor_visual_info, frambuffer_configuration) =
             NativeDisplay::compositor_visual_info(display);
 
-        NativeDisplay::Glx(GlxDisplayInfo) {
+        NativeDisplay::Glx(GlxDisplayInfo {
             display: display,
             visual_info: compositor_visual_info,
             framebuffer_configuration: frambuffer_configuration,
-        }
+        })
     }
 
     /// Chooses the compositor visual info using the same algorithm that the compositor uses.
