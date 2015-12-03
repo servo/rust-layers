@@ -14,7 +14,7 @@ use texturegl::Texture;
 use egl::egl::{EGLDisplay, GetCurrentDisplay};
 use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use euclid::size::Size2D;
-//use gleam::gl::{egl_image_target_texture2d_oes, TEXTURE_2D}; //, TexImage2D, BGRA_EXT, UNSIGNED_BYTE};
+use gleam::gl::{/*egl_image_target_texture2d_oes,*/ TEXTURE_2D, TexImage2D, BGRA_EXT, UNSIGNED_BYTE};
 use libc::c_void;
 use skia::gl_context::{GLContext, PlatformDisplayData};
 use skia::gl_rasterization_context::GLRasterizationContext;
@@ -67,9 +67,6 @@ impl EGLImageNativeSurface {
                 Some(ref bitmap) => {
                     let data = bitmap.as_ptr() as *const c_void;
                     unsafe {
-
-                    panic!("TO DO  TexImage2D  ");
-                    /*
                         TexImage2D(TEXTURE_2D,
                                    0,
                                    BGRA_EXT as i32,
@@ -79,7 +76,6 @@ impl EGLImageNativeSurface {
                                    BGRA_EXT as u32,
                                    UNSIGNED_BYTE,
                                    data);
-                    */
                      }
                 }
                 None => {
