@@ -38,13 +38,13 @@ use egl::egl::{EGLDisplay};
 /// FIXME(pcwalton): Mark nonsendable.
 
 #[derive(Copy, Clone)]
- struct GlxDisplayInfo {
+pub struct GlxDisplayInfo {
     pub display: *mut xlib::Display,
     visual_info: *mut xlib::XVisualInfo,
     framebuffer_configuration: Option<glx::types::GLXFBConfig>,
 }
 #[derive(Copy, Clone)]
- struct EglDisplayInfo {
+pub struct EglDisplayInfo {
     pub display: EGLDisplay,
 }
 
@@ -288,7 +288,7 @@ impl PixmapNativeSurface {
                 &NativeDisplay::Glx(info) => info,
                 &NativeDisplay::Egl(_) => unreachable!(),
             };
-            
+
             assert!(self.pixmap != 0);
             xlib::XFreePixmap(display.display, self.pixmap);
             self.mark_wont_leak()
