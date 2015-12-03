@@ -156,6 +156,17 @@ impl NativeDisplay {
     }
 
     pub fn platform_display_data(&self) -> PlatformDisplayData {
+        match *self {
+            NativeDisplay::Glx(info) => {
+                PlatformDisplayData {
+                display: info.display,
+                visual_info: info.visual_info,
+                }
+            }
+            NativeDisplay::Egl(_) => {
+                    unreachable!();
+            }
+        }
         PlatformDisplayData {
             display: self.display,
             visual_info: self.visual_info,
