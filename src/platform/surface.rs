@@ -31,7 +31,7 @@ pub use platform::linux::surface::{NativeDisplay,
 #[cfg(target_os="linux")]
 use std::ptr;
 
-#[cfg(target_os="android")]
+#[cfg(any(target_os="android",target_os="linux"))]
 pub use platform::egl::surface::{EGLImageNativeSurface};
 
 #[cfg(target_os="windows")]
@@ -43,7 +43,7 @@ pub enum NativeSurface {
     Pixmap(PixmapNativeSurface),
 #[cfg(target_os="macos")]
     IOSurface(IOSurfaceNativeSurface),
-#[cfg(target_os="android")]
+#[cfg(any(target_os="android",target_os="linux"))]
     EGLImage(EGLImageNativeSurface),
 }
 
@@ -53,7 +53,7 @@ impl NativeSurface {
     pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> NativeSurface {
         match display {
             &NativeDisplay::Egl(info) => {
-                NativeSurface::EGLImage(EGLImageNativeSurface::new(size))
+                NativeSurface::EGLImage(EGLImageNativeSurface::new(display,size))
             }
             &NativeDisplay::Glx(info) => {
                 if info.display == ptr::null_mut() {
