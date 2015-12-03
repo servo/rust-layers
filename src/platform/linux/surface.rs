@@ -58,14 +58,14 @@ pub enum NativeDisplay {
 
 unsafe impl Send for NativeDisplay {}
 
-impl GlxDisplayInfo {
-    pub fn new(display: *mut xlib::Display) -> GlxDisplayInfo {
+impl NativeDisplay {
+    pub fn new(display: *mut xlib::Display) -> NativeDisplay::Glx(GlxDisplayInfo) {
         // FIXME(pcwalton): It would be more robust to actually have the compositor pass the
         // visual.
         let (compositor_visual_info, frambuffer_configuration) =
-            GlxDisplayInfo::compositor_visual_info(display);
+            NativeDisplay::compositor_visual_info(display);
 
-        GlxDisplayInfo {
+        NativeDisplay::Glx(GlxDisplayInfo) {
             display: display,
             visual_info: compositor_visual_info,
             framebuffer_configuration: frambuffer_configuration,
@@ -99,7 +99,7 @@ impl GlxDisplayInfo {
                                               screen,
                                               fbconfig_attributes.as_ptr(),
                                               &mut number_of_configs);
-            GlxDisplayInfo::get_compatible_configuration(display, configs, number_of_configs)
+            NativeDisplay::get_compatible_configuration(display, configs, number_of_configs)
         }
     }
 
@@ -112,7 +112,7 @@ impl GlxDisplayInfo {
                 panic!("glx::ChooseFBConfig returned no configurations.");
             }
 
-            if !GlxDisplayInfo::need_to_find_32_bit_depth_visual(display) {
+            if !NativeDisplay::need_to_find_32_bit_depth_visual(display) {
                 let config = *configs.offset(0);
                 let visual = glx::GetVisualFromFBConfig(mem::transmute(display), config);
 
