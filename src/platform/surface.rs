@@ -51,12 +51,19 @@ pub enum NativeSurface {
 impl NativeSurface {
     /// Creates a new native surface with uninitialized data.
     pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> NativeSurface {
-        if display.display == ptr::null_mut() {
-            NativeSurface::MemoryBuffer(MemoryBufferNativeSurface::new(display, size))
-        } else {
-            NativeSurface::Pixmap(PixmapNativeSurface::new(display, size))
+        match display {
+            &NativeDisplay::Egl(info) => {
+                NativeSurface::EGLImage(EGLImageNativeSurface::new(size))
+            }
+            &NativeDisplay::Glx(info) => {
+                if info.display == ptr::null_mut() {
+                    NativeSurface::MemoryBuffer(MemoryBufferNativeSurface::new(display, size))
+                } else {
+                    NativeSurface:ixmap(PixmapNativeSurface::new(&info, size))
+                }
+            }
         }
-   }
+    }
 }
 
 #[cfg(target_os="macos")]
