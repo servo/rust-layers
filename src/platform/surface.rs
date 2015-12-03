@@ -138,7 +138,7 @@ macro_rules! native_surface_property {
             NativeSurface::Pixmap(ref surface) => surface.$property_name,
             #[cfg(target_os="macos")]
             NativeSurface::IOSurface(ref surface) => surface.$property_name,
-            #[cfg(target_os="android")]
+            #[cfg(any(target_os="android",target_os="linux"))]
             NativeSurface::EGLImage(ref surface) => surface.$property_name,
         }
     };
