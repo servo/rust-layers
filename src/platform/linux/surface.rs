@@ -11,6 +11,9 @@
 
 #![allow(non_snake_case)]
 
+#[link(name = "EGL")]
+	extern {}
+
 use texturegl::Texture;
 
 use euclid::size::Size2D;
