@@ -26,7 +26,7 @@ use std::str;
 use std::sync::Arc;
 use x11::xlib;
 
-use egl::egl::{EGLDisplay};
+use egl::egl::{EGLDisplay, GetCurrentDisplay};
 
 /// The display, visual info, and framebuffer configuration. This is needed in order to bind to a
 /// texture on the compositor side. This holds only a *weak* reference to the display and does not
@@ -167,6 +167,12 @@ impl NativeDisplay {
                     unreachable!();
             }
         }
+    }
+
+    pub fn from_es2() -> NativeDisplay {
+        NativeDisplay::Egl(EglDisplayInfo {
+            display: GetCurrentDisplay()
+        })
     }
 }
 
