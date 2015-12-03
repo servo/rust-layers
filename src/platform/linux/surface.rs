@@ -248,6 +248,11 @@ impl PixmapNativeSurface {
     /// This may only be called on the painting side.
     pub fn upload(&mut self, display: &NativeDisplay, data: &[u8]) {
         unsafe {
+            let display = match display {
+                &NativeDisplay::Glx(info) => info,
+                &NativeDisplay::Egl(_) => unreachable!(),
+            };
+
             let image = xlib::XCreateImage(display.display,
                                            (*display.visual_info).visual,
                                            32,
@@ -279,6 +284,11 @@ impl PixmapNativeSurface {
 
     pub fn destroy(&mut self, display: &NativeDisplay) {
         unsafe {
+            let display = match display {
+                &NativeDisplay::Glx(info) => info,
+                &NativeDisplay::Egl(_) => unreachable!(),
+            };
+            
             assert!(self.pixmap != 0);
             xlib::XFreePixmap(display.display, self.pixmap);
             self.mark_wont_leak()
