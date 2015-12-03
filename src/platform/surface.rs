@@ -59,7 +59,7 @@ impl NativeSurface {
                 if info.display == ptr::null_mut() {
                     NativeSurface::MemoryBuffer(MemoryBufferNativeSurface::new(display, size))
                 } else {
-                    NativeSurface:ixmap(PixmapNativeSurface::new(&info, size))
+                    NativeSurface::Pixmap(PixmapNativeSurface::new(&info, size))
                 }
             }
         }
