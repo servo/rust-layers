@@ -101,7 +101,7 @@ macro_rules! native_surface_method_with_mutability {
             #[cfg(target_os="macos")]
             NativeSurface::IOSurface($pattern) =>
                 $surface.$function_name($($argument), *),
-            #[cfg(target_os="android")]
+            #[cfg(any(target_os="android",target_os="linux"))]
             NativeSurface::EGLImage($pattern) =>
                 $surface.$function_name($($argument), *),
         }
