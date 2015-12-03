@@ -26,6 +26,8 @@ use std::str;
 use std::sync::Arc;
 use x11::xlib;
 
+use egl::egl::{EGLDisplay};
+
 /// The display, visual info, and framebuffer configuration. This is needed in order to bind to a
 /// texture on the compositor side. This holds only a *weak* reference to the display and does not
 /// close it.
@@ -34,35 +36,41 @@ use x11::xlib;
 /// to fix because the Display is given to us by the native windowing system, but we should fix it
 /// someday.
 /// FIXME(pcwalton): Mark nonsendable.
+
 #[derive(Copy, Clone)]
-pub struct NativeDisplay {
+ struct GlxDisplayInfo {
     pub display: *mut xlib::Display,
     visual_info: *mut xlib::XVisualInfo,
     framebuffer_configuration: Option<glx::types::GLXFBConfig>,
 }
+#[derive(Copy, Clone)]
+ struct EglDisplayInfo {
+    pub display: EGLDisplay,
+}
 
-unsafe impl Send for NativeDisplay {}
+#[derive(Copy, Clone)]
+pub enum NativeDisplay {
+    Egl(EglDisplayInfo),
+    Glx(GlxDisplayInfo),
+}
 
-impl NativeDisplay {
-    pub fn new(display: *mut xlib::Display) -> NativeDisplay {
+
+
+unsafe impl Send for GlxDisplayInfo {}
+
+impl GlxDisplayInfo {
+    pub fn new(display: *mut xlib::Display) -> GlxDisplayInfo {
         // FIXME(pcwalton): It would be more robust to actually have the compositor pass the
         // visual.
         let (compositor_visual_info, frambuffer_configuration) =
-            NativeDisplay::compositor_visual_info(display);
+            GlxDisplayInfo::compositor_visual_info(display);
 
-        NativeDisplay {
+        GlxDisplayInfo {
             display: display,
             visual_info: compositor_visual_info,
             framebuffer_configuration: frambuffer_configuration,
         }
     }
-
- pub fn from_es2(display: *mut xlib::Display) -> NativeDisplay {
-        // FIXME(pcwalton): It would be more robust to actually have the compositor pass the
-        // visual.
-        panic!("TODO");
-    }
-
 
     /// Chooses the compositor visual info using the same algorithm that the compositor uses.
     ///
@@ -91,7 +99,7 @@ impl NativeDisplay {
                                               screen,
                                               fbconfig_attributes.as_ptr(),
                                               &mut number_of_configs);
-            NativeDisplay::get_compatible_configuration(display, configs, number_of_configs)
+            GlxDisplayInfo::get_compatible_configuration(display, configs, number_of_configs)
         }
     }
 
@@ -104,7 +112,7 @@ impl NativeDisplay {
                 panic!("glx::ChooseFBConfig returned no configurations.");
             }
 
-            if !NativeDisplay::need_to_find_32_bit_depth_visual(display) {
+            if !GlxDisplayInfo::need_to_find_32_bit_depth_visual(display) {
                 let config = *configs.offset(0);
                 let visual = glx::GetVisualFromFBConfig(mem::transmute(display), config);
 
@@ -177,7 +185,7 @@ impl Drop for PixmapNativeSurface {
 }
 
 impl PixmapNativeSurface {
-    pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> PixmapNativeSurface {
+    pub fn new(display: &GlxDisplayInfo, size: Size2D<i32>) -> PixmapNativeSurface {
         unsafe {
             // Create the pixmap.
             let screen = xlib::XDefaultScreen(display.display);
@@ -199,7 +207,7 @@ impl PixmapNativeSurface {
     }
 
     /// This may only be called on the compositor side.
-    pub fn bind_to_texture(&self, display: &NativeDisplay, texture: &Texture) {
+    pub fn bind_to_texture(&self, display: &GlxDisplayInfo, texture: &Texture) {
         // Create the GLX pixmap.
         //
         // FIXME(pcwalton): RAII for exception safety?
@@ -233,7 +241,7 @@ impl PixmapNativeSurface {
     }
 
     /// This may only be called on the painting side.
-    pub fn upload(&mut self, display: &NativeDisplay, data: &[u8]) {
+    pub fn upload(&mut self, display: &GlxDisplayInfo, data: &[u8]) {
         unsafe {
             let image = xlib::XCreateImage(display.display,
                                            (*display.visual_info).visual,
@@ -264,7 +272,7 @@ impl PixmapNativeSurface {
         self.pixmap as isize
     }
 
-    pub fn destroy(&mut self, display: &NativeDisplay) {
+    pub fn destroy(&mut self, display: &GlxDisplayInfo) {
         unsafe {
             assert!(self.pixmap != 0);
             xlib::XFreePixmap(display.display, self.pixmap);
