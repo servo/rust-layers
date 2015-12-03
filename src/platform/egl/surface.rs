@@ -24,11 +24,11 @@ use std::sync::Arc;
 use std::vec::Vec;
 
 
-#[derive(Clone, Copy)]
-pub struct NativeDisplay {
-    pub display: EGLDisplay,
-}
+#[cfg(target_os="linux")]
+pub use platform::linux::surface::NativeDisplay;
 
+#[cfg(target_os="android")]
+pub use platform::android::surface::NativeDisplay;
 
 pub struct EGLImageNativeSurface {
     /// An EGLImage for the case of GPU rendering.
@@ -67,8 +67,8 @@ impl EGLImageNativeSurface {
                 Some(ref bitmap) => {
                     let data = bitmap.as_ptr() as *const c_void;
                     unsafe {
-                    
-                    panic!("TO DO  TexImage2D  "); 
+
+                    panic!("TO DO  TexImage2D  ");
                     /*
                         TexImage2D(TEXTURE_2D,
                                    0,
@@ -80,7 +80,7 @@ impl EGLImageNativeSurface {
                                    UNSIGNED_BYTE,
                                    data);
                     */
-                     } 
+                     }
                 }
                 None => {
                     debug!("Cannot bind the buffer(CPU rendering), there is no bitmap");
@@ -117,7 +117,8 @@ impl EGLImageNativeSurface {
         match self.image {
             None => {},
             Some(image_khr) => {
-                DestroyImageKHR(graphics_context.display, image_khr);
+                panic!("TO DO, DestroyImageKHR");
+                //DestroyImageKHR(graphics_context.display, image_khr);
                 mem::replace(&mut self.image, None);
             }
         }
