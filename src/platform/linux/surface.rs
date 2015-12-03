@@ -167,10 +167,6 @@ impl NativeDisplay {
                     unreachable!();
             }
         }
-        PlatformDisplayData {
-            display: self.display,
-            visual_info: self.visual_info,
-        }
     }
 }
 
