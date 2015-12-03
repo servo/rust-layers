@@ -56,16 +56,16 @@ pub enum NativeDisplay {
 
 
 
-unsafe impl Send for GlxDisplayInfo {}
+unsafe impl Send for NativeDisplay {}
 
-impl GlxDisplayInfo {
-    pub fn new(display: *mut xlib::Display) -> GlxDisplayInfo {
+impl NativeDisplay {
+    pub fn new(display: *mut xlib::Display) -> NativeDisplay {
         // FIXME(pcwalton): It would be more robust to actually have the compositor pass the
         // visual.
         let (compositor_visual_info, frambuffer_configuration) =
-            GlxDisplayInfo::compositor_visual_info(display);
+            NativeDisplay::compositor_visual_info(display);
 
-        GlxDisplayInfo {
+        NativeDisplay {
             display: display,
             visual_info: compositor_visual_info,
             framebuffer_configuration: frambuffer_configuration,
@@ -99,7 +99,7 @@ impl GlxDisplayInfo {
                                               screen,
                                               fbconfig_attributes.as_ptr(),
                                               &mut number_of_configs);
-            GlxDisplayInfo::get_compatible_configuration(display, configs, number_of_configs)
+            NativeDisplay::get_compatible_configuration(display, configs, number_of_configs)
         }
     }
 
@@ -112,7 +112,7 @@ impl GlxDisplayInfo {
                 panic!("glx::ChooseFBConfig returned no configurations.");
             }
 
-            if !GlxDisplayInfo::need_to_find_32_bit_depth_visual(display) {
+            if !NativeDisplay::need_to_find_32_bit_depth_visual(display) {
                 let config = *configs.offset(0);
                 let visual = glx::GetVisualFromFBConfig(mem::transmute(display), config);
 
@@ -207,11 +207,16 @@ impl PixmapNativeSurface {
     }
 
     /// This may only be called on the compositor side.
-    pub fn bind_to_texture(&self, display: &GlxDisplayInfo, texture: &Texture) {
+    pub fn bind_to_texture(&self, display: &NativeDisplay, texture: &Texture) {
         // Create the GLX pixmap.
         //
         // FIXME(pcwalton): RAII for exception safety?
         unsafe {
+            let display = match display {
+                &NativeDisplay::Glx(info) => info,
+                &NativeDisplay::Egl(_) => unreachable!(),
+            };
+
             let pixmap_attributes = [
                 glx::TEXTURE_TARGET_EXT as i32, glx::TEXTURE_2D_EXT as i32,
                 glx::TEXTURE_FORMAT_EXT as i32, glx::TEXTURE_FORMAT_RGBA_EXT as i32,
@@ -241,7 +246,7 @@ impl PixmapNativeSurface {
     }
 
     /// This may only be called on the painting side.
-    pub fn upload(&mut self, display: &GlxDisplayInfo, data: &[u8]) {
+    pub fn upload(&mut self, display: &NativeDisplay, data: &[u8]) {
         unsafe {
             let image = xlib::XCreateImage(display.display,
                                            (*display.visual_info).visual,
@@ -272,7 +277,7 @@ impl PixmapNativeSurface {
         self.pixmap as isize
     }
 
-    pub fn destroy(&mut self, display: &GlxDisplayInfo) {
+    pub fn destroy(&mut self, display: &NativeDisplay) {
         unsafe {
             assert!(self.pixmap != 0);
             xlib::XFreePixmap(display.display, self.pixmap);
