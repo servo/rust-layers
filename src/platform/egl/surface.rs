@@ -82,7 +82,7 @@ impl EGLImageNativeSurface {
                 }
             },
             Some(image_khr) => {
-					panic!("TODO: Support GPU rasterizer path on EGL");
+			panic!("TODO: Support GPU rasterizer path on EGL");
             }
         }
     }
