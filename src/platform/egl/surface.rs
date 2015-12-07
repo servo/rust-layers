@@ -1,4 +1,4 @@
-// Copyright 2013 The Servo Project Developers. See the COPYRIGHT
+// Copyright 2015 The Servo Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
@@ -14,7 +14,7 @@ use texturegl::Texture;
 use egl::egl::{EGLDisplay, GetCurrentDisplay};
 use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use euclid::size::Size2D;
-use gleam::gl::{/*egl_image_target_texture2d_oes,*/ TEXTURE_2D, TexImage2D, BGRA, /*BGRA_EXT,*/ UNSIGNED_BYTE};
+use gleam::gl::{TEXTURE_2D, TexImage2D, BGRA, UNSIGNED_BYTE};
 use libc::c_void;
 use skia::gl_context::{GLContext, PlatformDisplayData};
 use skia::gl_rasterization_context::GLRasterizationContext;
@@ -22,7 +22,6 @@ use std::iter::repeat;
 use std::mem;
 use std::sync::Arc;
 use std::vec::Vec;
-
 
 #[cfg(target_os="linux")]
 pub use platform::linux::surface::NativeDisplay;
@@ -83,8 +82,7 @@ impl EGLImageNativeSurface {
                 }
             },
             Some(image_khr) => {
-                panic!("TO DO  egl_image_target_texture2d_oes");
-            	//egl_image_target_texture2d_oes(TEXTURE_2D, image_khr as *const c_void);
+					panic!("TODO: Support GPU rasterizer path on EGL");
             }
         }
     }
@@ -113,8 +111,7 @@ impl EGLImageNativeSurface {
         match self.image {
             None => {},
             Some(image_khr) => {
-                panic!("TO DO, DestroyImageKHR");
-                //DestroyImageKHR(graphics_context.display, image_khr);
+                panic!("TODO: Support GPU rendering path on Android");
                 mem::replace(&mut self.image, None);
             }
         }
@@ -132,20 +129,6 @@ impl EGLImageNativeSurface {
     pub fn gl_rasterization_context(&mut self,
                                     gl_context: Arc<GLContext>)
                                     -> Option<GLRasterizationContext> {
-        // TODO: Eventually we should preserve the previous GLRasterizationContext,
-        // so that we don't have to keep destroying and recreating the image.
-        if let Some(egl_image) = self.image.take() {
-            panic!("TO DO, DestroyImageKHR typecast ");
-        	//DestroyImageKHR(gl_context.platform_context.display, egl_image);
-        }
-
-        panic!("TO DO, num params in GLRasterizationContext.new() ");
-       /* let gl_rasterization_context = GLRasterizationContext::new(gl_context, self.size);
-        if let Some(ref gl_rasterization_context) = gl_rasterization_context {
-            self.bitmap = None;
-            self.image = Some(gl_rasterization_context.egl_image);
-        }
-        gl_rasterization_context
-        */
+        panic!("TODO: Support GL context on EGL");
     }
 }

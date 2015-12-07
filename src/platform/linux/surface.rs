@@ -11,8 +11,9 @@
 
 #![allow(non_snake_case)]
 
+//TODO: Linking EGL here is probably wrong - should it be done in gleam / glutin etc?
 #[link(name = "EGL")]
-	extern {}
+extern {}
 
 use texturegl::Texture;
 
@@ -41,20 +42,20 @@ use egl::egl::{EGLDisplay, GetCurrentDisplay};
 /// FIXME(pcwalton): Mark nonsendable.
 
 #[derive(Copy, Clone)]
-pub struct GlxDisplayInfo {
+pub struct GLXDisplayInfo {
     pub display: *mut xlib::Display,
     visual_info: *mut xlib::XVisualInfo,
     framebuffer_configuration: Option<glx::types::GLXFBConfig>,
 }
 #[derive(Copy, Clone)]
-pub struct EglDisplayInfo {
+pub struct EGLDisplayInfo {
     pub display: EGLDisplay,
 }
 
 #[derive(Copy, Clone)]
 pub enum NativeDisplay {
-    Egl(EglDisplayInfo),
-    Glx(GlxDisplayInfo),
+    Egl(EGLDisplayInfo),
+    Glx(GLXDisplayInfo),
 }
 
 
@@ -68,7 +69,7 @@ impl NativeDisplay {
         let (compositor_visual_info, frambuffer_configuration) =
             NativeDisplay::compositor_visual_info(display);
 
-        NativeDisplay::Glx(GlxDisplayInfo {
+        NativeDisplay::Glx(GLXDisplayInfo {
             display: display,
             visual_info: compositor_visual_info,
             framebuffer_configuration: frambuffer_configuration,
@@ -162,18 +163,16 @@ impl NativeDisplay {
         match *self {
             NativeDisplay::Glx(info) => {
                 PlatformDisplayData {
-                display: info.display,
-                visual_info: info.visual_info,
+                    display: info.display,
+                    visual_info: info.visual_info,
                 }
             }
-            NativeDisplay::Egl(_) => {
-                    unreachable!();
-            }
+            NativeDisplay::Egl(_) => unreachable!(),
         }
     }
 
     pub fn from_es2() -> NativeDisplay {
-        NativeDisplay::Egl(EglDisplayInfo {
+        NativeDisplay::Egl(EGLDisplayInfo {
             display: GetCurrentDisplay()
         })
     }
@@ -201,7 +200,7 @@ impl Drop for PixmapNativeSurface {
 }
 
 impl PixmapNativeSurface {
-    pub fn new(display: &GlxDisplayInfo, size: Size2D<i32>) -> PixmapNativeSurface {
+    pub fn new(display: &GLXDisplayInfo, size: Size2D<i32>) -> PixmapNativeSurface {
         unsafe {
             // Create the pixmap.
             let screen = xlib::XDefaultScreen(display.display);
