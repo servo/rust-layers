@@ -12,7 +12,7 @@ plugins = ["euclid/plugins"]
 libc = "0.2"
 rustc-serialize = "0.3.16"
 log = "0.3.4"
-gleam = "0.1"
+gleam = "0.2"
 euclid = "0.4"
 servo-skia = "0.20130412.0"
 azure = { git = "https://github.com/servo/rust-azure" }
