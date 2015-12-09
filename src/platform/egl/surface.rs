@@ -23,6 +23,14 @@ use std::mem;
 use std::sync::Arc;
 use std::vec::Vec;
 
+use gleam::gl;
+
+#[cfg(target_os = "linux")]
+const GL_FORMAT_BGRA: gl::GLuint = gl::BGRA;
+
+#[cfg(any(target_os = "android", target_os = "gonk"))]
+const GL_FORMAT_BGRA: gl::GLuint = gl::BGRA_EXT;
+
 #[cfg(target_os="linux")]
 pub use platform::linux::surface::NativeDisplay;
 
@@ -68,11 +76,11 @@ impl EGLImageNativeSurface {
                     unsafe {
                         TexImage2D(TEXTURE_2D,
                                    0,
-                                   BGRA as i32,
+                                   GL_FORMAT_BGRA as i32,
                                    self.size.width as i32,
                                    self.size.height as i32,
                                    0,
-                                   BGRA as u32,
+                                   GL_FORMAT_BGRA as u32,
                                    UNSIGNED_BYTE,
                                    data);
                      }
@@ -82,7 +90,7 @@ impl EGLImageNativeSurface {
                 }
             },
             Some(image_khr) => {
-			panic!("TODO: Support GPU rasterizer path on EGL");
+                panic!("TODO: Support GPU rasterizer path on EGL");
             }
         }
     }
