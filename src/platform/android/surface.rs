@@ -9,19 +9,18 @@
 
 //! Implementation of cross-process surfaces for Android. This uses EGL surface.
 
+use platform::surface::MemoryBufferNativeSurface;
 use texturegl::Texture;
 
 use egl::egl::{EGLDisplay, GetCurrentDisplay};
 use egl::eglext::{EGLImageKHR, DestroyImageKHR};
 use euclid::size::Size2D;
-use gleam::gl::{egl_image_target_texture2d_oes, TEXTURE_2D, TexImage2D, BGRA_EXT, UNSIGNED_BYTE};
+use gleam::gl::{egl_image_target_texture2d_oes, TEXTURE_2D};
 use skia::gl_context::{GLContext, PlatformDisplayData};
 use skia::gl_rasterization_context::GLRasterizationContext;
-use std::iter::repeat;
 use std::mem;
 use std::os::raw::c_void;
 use std::sync::Arc;
-use std::vec::Vec;
 
 /// FIXME(Aydin Kim) :Currently, native surface is consist of 2 types of hybrid image
 /// buffer. EGLImageKHR is used to GPU rendering and vector is used to CPU rendering. EGL
@@ -53,11 +52,8 @@ impl NativeDisplay {
 }
 
 pub struct EGLImageNativeSurface {
-    /// An EGLImage for the case of GPU rendering.
-    image: Option<EGLImageKHR>,
-
-    /// A heap-allocated bitmap for the case of CPU rendering.
-    bitmap: Option<Vec<u8>>,
+    /// An EGLImage, which stores the contents of the surface.
+    egl_image: EGLImageKHR,
 
     /// Whether this pixmap will leak if the destructor runs. This is for debugging purposes.
     will_leak: bool,
@@ -66,16 +62,10 @@ pub struct EGLImageNativeSurface {
     pub size: Size2D<i32>,
 }
 
-unsafe impl Send for EGLImageNativeSurface {}
-
 impl EGLImageNativeSurface {
-    pub fn new(_: &NativeDisplay, size: Size2D<i32>) -> EGLImageNativeSurface {
-        let len = size.width * size.height * 4;
-        let bitmap: Vec<u8> = repeat(0).take(len as usize).collect();
-
+    pub fn new(egl_image: EGLImageKHR, size: Size2D<i32>) -> EGLImageNativeSurface {
         EGLImageNativeSurface {
-            image: None,
-            bitmap: Some(bitmap),
+            egl_image: egl_image,
             will_leak: true,
             size: size,
         }
@@ -84,60 +74,20 @@ impl EGLImageNativeSurface {
     /// This may only be called on the compositor side.
     pub fn bind_to_texture(&self, _: &NativeDisplay, texture: &Texture) {
         let _bound = texture.bind();
-        match self.image {
-            None => match self.bitmap {
-                Some(ref bitmap) => {
-                    let data = bitmap.as_ptr() as *const c_void;
-                    unsafe {
-                        TexImage2D(TEXTURE_2D,
-                                   0,
-                                   BGRA_EXT as i32,
-                                   self.size.width as i32,
-                                   self.size.height as i32,
-                                   0,
-                                   BGRA_EXT as u32,
-                                   UNSIGNED_BYTE,
-                                   data);
-                    }
-                }
-                None => {
-                    debug!("Cannot bind the buffer(CPU rendering), there is no bitmap");
-                }
-            },
-            Some(image_khr) => {
-                egl_image_target_texture2d_oes(TEXTURE_2D, image_khr as *const c_void);
-            }
-        }
+        egl_image_target_texture2d_oes(TEXTURE_2D, self.egl_image as *const c_void);
     }
 
     /// This may only be called on the painting side.
-    pub fn upload(&mut self, _: &NativeDisplay, data: &[u8]) {
-        match self.bitmap {
-            Some(ref mut bitmap) => {
-                bitmap.clear();
-                bitmap.push_all(data);
-            }
-            None => {
-                debug!("Cannot upload the buffer(CPU rendering), there is no bitmap");
-            }
-        }
+    pub fn upload(&mut self, _: &NativeDisplay, _: &[u8]) {
+        panic!("Cannot upload a to an EGLImage surface.");
     }
 
     pub fn get_id(&self) -> isize {
-        match self.image {
-            None => 0,
-            Some(image_khr) => image_khr as isize,
-        }
+        self.egl_image as isize
     }
 
-    pub fn destroy(&mut self, graphics_context: &NativeDisplay) {
-        match self.image {
-            None => {},
-            Some(image_khr) => {
-                DestroyImageKHR(graphics_context.display, image_khr);
-                mem::replace(&mut self.image, None);
-            }
-        }
+    pub fn destroy(&mut self, egl_display: EGLDisplay) {
+        DestroyImageKHR(egl_display, self.egl_image);
         self.mark_wont_leak()
     }
 
@@ -148,20 +98,88 @@ impl EGLImageNativeSurface {
     pub fn mark_wont_leak(&mut self) {
         self.will_leak = false
     }
+}
+
+pub enum AndroidNativeSurface {
+    EGLImage(EGLImageNativeSurface),
+    MemoryBuffer(MemoryBufferNativeSurface),
+}
+
+unsafe impl Send for AndroidNativeSurface {}
+
+impl AndroidNativeSurface {
+    pub fn new(native_display: &NativeDisplay, size: Size2D<i32>) -> AndroidNativeSurface {
+        AndroidNativeSurface::MemoryBuffer(MemoryBufferNativeSurface::new(native_display, size))
+    }
+
+    /// This may only be called on the compositor side.
+    pub fn bind_to_texture(&self, native_display: &NativeDisplay, texture: &Texture) {
+        match *self {
+            AndroidNativeSurface::EGLImage(ref surface) =>
+                surface.bind_to_texture(native_display, texture),
+            AndroidNativeSurface::MemoryBuffer(ref surface) =>
+                surface.bind_to_texture(native_display, texture),
+        }
+    }
+
+    /// This may only be called on the painting side.
+    pub fn upload(&mut self, native_display: &NativeDisplay, data: &[u8]) {
+        match *self {
+            AndroidNativeSurface::EGLImage(_) => panic!("Cannot upload a to an EGLImage surface."),
+            AndroidNativeSurface::MemoryBuffer(ref mut surface) => surface.upload(native_display, data),
+        }
+    }
+
+    pub fn get_id(&self) -> isize {
+        match *self {
+            AndroidNativeSurface::EGLImage(ref surface) => surface.get_id(),
+            AndroidNativeSurface::MemoryBuffer(ref surface) => surface.get_id(),
+        }
+    }
+
+    pub fn get_size(&self) -> Size2D<i32> {
+        match *self {
+            AndroidNativeSurface::EGLImage(ref surface) => surface.size,
+            AndroidNativeSurface::MemoryBuffer(ref surface) => surface.get_size(),
+        }
+    }
+
+    pub fn destroy(&mut self, native_display: &NativeDisplay) {
+        match *self {
+            AndroidNativeSurface::EGLImage(ref mut surface) => surface.destroy(native_display.display),
+            AndroidNativeSurface::MemoryBuffer(ref mut surface) => surface.destroy(native_display),
+        }
+    }
+
+    pub fn mark_will_leak(&mut self) {
+        match *self {
+            AndroidNativeSurface::EGLImage(ref mut surface) => surface.mark_will_leak(),
+            AndroidNativeSurface::MemoryBuffer(ref mut surface) => surface.mark_will_leak(),
+        }
+    }
+
+    pub fn mark_wont_leak(&mut self) {
+        match *self {
+            AndroidNativeSurface::EGLImage(ref mut surface) => surface.mark_wont_leak(),
+            AndroidNativeSurface::MemoryBuffer(ref mut surface) => surface.mark_wont_leak(),
+        }
+    }
 
     pub fn gl_rasterization_context(&mut self,
                                     gl_context: Arc<GLContext>)
                                     -> Option<GLRasterizationContext> {
         // TODO: Eventually we should preserve the previous GLRasterizationContext,
         // so that we don't have to keep destroying and recreating the image.
-        if let Some(egl_image) = self.image.take() {
-            DestroyImageKHR(gl_context.platform_context.display, egl_image);
-        }
-
-        let gl_rasterization_context = GLRasterizationContext::new(gl_context, self.size);
+        let size = self.get_size();
+        let gl_rasterization_context = GLRasterizationContext::new(gl_context, size);
         if let Some(ref gl_rasterization_context) = gl_rasterization_context {
-            self.bitmap = None;
-            self.image = Some(gl_rasterization_context.egl_image);
+            match *self {
+                AndroidNativeSurface::EGLImage(ref mut surface) =>
+                    surface.destroy(gl_rasterization_context.gl_context.platform_context.display),
+                AndroidNativeSurface::MemoryBuffer(_) => {}
+            }
+            mem::replace(self, AndroidNativeSurface::EGLImage(
+                EGLImageNativeSurface::new(gl_rasterization_context.egl_image, size)));
         }
         gl_rasterization_context
     }
