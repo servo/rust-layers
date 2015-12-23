@@ -10,9 +10,7 @@
 #![crate_name = "layers"]
 #![crate_type = "rlib"]
 
-#![allow(raw_pointer_derive)]
-#![feature(vec_push_all, iter_arith)]
-#![cfg_attr(target_os="macos", feature(collections))]
+#![feature(iter_arith)]
 
 extern crate azure;
 extern crate euclid;
@@ -27,8 +25,6 @@ extern crate skia;
 extern crate core_foundation;
 #[cfg(target_os="macos")]
 extern crate io_surface;
-#[cfg(target_os="macos")]
-extern crate collections;
 #[cfg(target_os="macos")]
 extern crate cgl;
 
