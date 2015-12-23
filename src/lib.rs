@@ -10,7 +10,6 @@
 #![crate_name = "layers"]
 #![crate_type = "rlib"]
 
-#![allow(raw_pointer_derive)]
 #![feature(vec_push_all, iter_arith)]
 #![cfg_attr(target_os="macos", feature(collections))]
 
