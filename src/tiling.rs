@@ -309,18 +309,7 @@ impl TileGrid {
 
     pub fn collect_buffers(&mut self) -> Vec<Box<LayerBuffer>> {
         let mut collected_buffers = self.take_unused_buffers();
-
-        // We need to replace the HashMap since it cannot be used again after move_iter().
-        let mut tile_map = HashMap::new();
-        mem::swap(&mut tile_map, &mut self.tiles);
-
-        for (_, mut tile) in tile_map.into_iter() {
-            match tile.buffer.take() {
-                Some(buffer) => collected_buffers.push(buffer),
-                None => {},
-            }
-        }
-
+        collected_buffers.extend(self.tiles.drain().flat_map(|(_, mut tile)| tile.buffer.take()));
         return collected_buffers;
     }
 
