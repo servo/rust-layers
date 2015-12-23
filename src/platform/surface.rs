@@ -246,7 +246,7 @@ impl MemoryBufferNativeSurface {
     /// This may only be called on the painting side.
     pub fn upload(&mut self, _: &NativeDisplay, data: &[u8]) {
         self.bytes.clear();
-        self.bytes.push_all(data);
+        self.bytes.extend_from_slice(data);
     }
 
     pub fn get_id(&self) -> isize {

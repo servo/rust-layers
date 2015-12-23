@@ -10,7 +10,7 @@
 #![crate_name = "layers"]
 #![crate_type = "rlib"]
 
-#![feature(vec_push_all, iter_arith)]
+#![feature(iter_arith)]
 #![cfg_attr(target_os="macos", feature(collections))]
 
 extern crate azure;

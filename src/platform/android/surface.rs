@@ -115,7 +115,7 @@ impl EGLImageNativeSurface {
         match self.bitmap {
             Some(ref mut bitmap) => {
                 bitmap.clear();
-                bitmap.push_all(data);
+                bitmap.extend_from_slice(data);
             }
             None => {
                 debug!("Cannot upload the buffer(CPU rendering), there is no bitmap");
