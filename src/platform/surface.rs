@@ -15,7 +15,6 @@ use texturegl::Texture;
 use euclid::size::Size2D;
 use skia::gl_rasterization_context::GLRasterizationContext;
 use skia::gl_context::GLContext;
-use skia::gl_context::PlatformDisplayData;
 use std::sync::Arc;
 
 #[cfg(not(target_os="android"))]
