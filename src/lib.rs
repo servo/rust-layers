@@ -11,7 +11,6 @@
 #![crate_type = "rlib"]
 
 #![feature(iter_arith)]
-#![cfg_attr(target_os="macos", feature(collections))]
 
 extern crate azure;
 extern crate euclid;
@@ -26,8 +25,6 @@ extern crate skia;
 extern crate core_foundation;
 #[cfg(target_os="macos")]
 extern crate io_surface;
-#[cfg(target_os="macos")]
-extern crate collections;
 #[cfg(target_os="macos")]
 extern crate cgl;
 
