@@ -48,7 +48,7 @@ impl<T> Scene<T> {
 
         // If this layer masks its children, we don't need to ask for tiles outside the
         // boundaries of this layer.
-        let child_dirty_rect = if !*layer.masks_to_bounds.borrow() {
+        let child_dirty_rect = if !layer.masks_to_bounds.get() {
             dirty_rect
         } else {
             match layer.transform_state.borrow().screen_rect {

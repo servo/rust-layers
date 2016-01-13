@@ -17,7 +17,7 @@ use euclid::size::{Size2D, TypedSize2D};
 use euclid::point::{Point2D, TypedPoint2D};
 use euclid::rect::{Rect, TypedRect};
 use platform::surface::{NativeDisplay, NativeSurface};
-use std::cell::{RefCell, RefMut};
+use std::cell::{Cell, RefCell, RefMut};
 use std::rc::Rc;
 use util::{project_rect_to_screen, ScreenRect};
 
@@ -81,13 +81,13 @@ pub struct Layer<T> {
     pub content_offset: RefCell<TypedPoint2D<LayerPixel, f32>>,
 
     /// Whether this layer clips its children to its boundaries.
-    pub masks_to_bounds: RefCell<bool>,
+    pub masks_to_bounds: Cell<bool>,
 
     /// The background color for this layer.
-    pub background_color: RefCell<Color>,
+    pub background_color: Cell<Color>,
 
     /// The opacity of this layer, from 0.0 (fully transparent) to 1.0 (fully opaque).
-    pub opacity: RefCell<f32>,
+    pub opacity: Cell<f32>,
 
     /// Whether this stacking context creates a new 3d rendering context.
     pub establishes_3d_context: bool,
@@ -113,10 +113,10 @@ impl<T> Layer<T> {
             extra_data: RefCell::new(data),
             tile_grid: RefCell::new(TileGrid::new(tile_size)),
             content_age: RefCell::new(ContentAge::new()),
-            masks_to_bounds: RefCell::new(false),
+            masks_to_bounds: Cell::new(false),
             content_offset: RefCell::new(Point2D::zero()),
-            background_color: RefCell::new(background_color),
-            opacity: RefCell::new(opacity),
+            background_color: Cell::new(background_color),
+            opacity: Cell::new(opacity),
             establishes_3d_context: establishes_3d_context,
             transform_state: RefCell::new(TransformState::new()),
         }

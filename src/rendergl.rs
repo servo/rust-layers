@@ -398,7 +398,7 @@ impl<T> RenderContext3D<T> {
                               parent_clip_rect: Option<Rect<f32>>)
                               -> Option<Rect<f32>> {
         // TODO(gw): This doesn't work for iframes that are transformed.
-        if !*layer.masks_to_bounds.borrow() {
+        if !layer.masks_to_bounds.get() {
             return parent_clip_rect;
         }
 
@@ -621,7 +621,7 @@ impl RenderContext {
                        gfx_context: &NativeDisplay) {
         let ts = layer.transform_state.borrow();
         let transform = transform.mul(&ts.final_transform);
-        let background_color = *layer.background_color.borrow();
+        let background_color = layer.background_color.get();
 
         // Create native textures for this layer
         layer.create_textures(gfx_context);
@@ -657,7 +657,7 @@ impl RenderContext {
                             &transform,
                             projection,
                             clip_rect,
-                            *layer.opacity.borrow());
+                            layer.opacity.get());
         });
 
         if self.show_debug_borders {
