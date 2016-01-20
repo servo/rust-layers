@@ -122,7 +122,7 @@ impl<T> Layer<T> {
         }
     }
 
-    pub fn children<'a>(&'a self) -> RefMut<'a,Vec<Rc<Layer<T>>>> {
+    pub fn children(&self) -> RefMut<Vec<Rc<Layer<T>>>> {
         self.children.borrow_mut()
     }
 
@@ -316,7 +316,7 @@ pub struct LayerBufferSet {
 impl LayerBufferSet {
     /// Notes all buffer surfaces will leak if not destroyed via a call to `destroy`.
     pub fn mark_will_leak(&mut self) {
-        for buffer in self.buffers.iter_mut() {
+        for buffer in &mut self.buffers {
             buffer.native_surface.mark_will_leak()
         }
     }

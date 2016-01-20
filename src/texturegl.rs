@@ -129,7 +129,7 @@ impl Texture {
         let (flip, target) = Texture::texture_flip_and_target(buffer.painted_with_cpu);
         let mut texture = Texture::new(target, buffer.screen_pos.size);
         texture.flip = flip;
-        return texture;
+        texture
     }
 
     // Returns whether the layer should be vertically flipped.
