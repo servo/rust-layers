@@ -51,13 +51,12 @@ fn clip_polygon_to_near_plane(clip_space_vertices: &[Point4D<f32>; 4])
     // TODO(gw): Check for trivial accept / reject if all
     // input vertices are on the same side of the near plane.
 
-    for i in 0..clip_space_vertices.len() {
+    for (i, current_vertex) in clip_space_vertices.iter().enumerate() {
         let previous_vertex = if i == 0 {
             clip_space_vertices.last().unwrap()
         } else {
             &clip_space_vertices[i-1]
         };
-        let current_vertex = &clip_space_vertices[i];
 
         let previous_dot = if previous_vertex.w < W_CLIPPING_PLANE { -1 } else { 1 };
         let current_dot = if current_vertex.w < W_CLIPPING_PLANE { -1 } else { 1 };

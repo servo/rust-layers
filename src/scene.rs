@@ -102,11 +102,8 @@ impl<T> Scene<T> {
     }
 
     pub fn set_root_layer_size(&self, new_size: TypedSize2D<DevicePixel, f32>) {
-        match self.root {
-            Some(ref root_layer) => {
-                *root_layer.bounds.borrow_mut() = Rect::new(Point2D::zero(), new_size / self.scale);
-            },
-            None => {},
+        if let Some(ref root_layer) = self.root {
+            *root_layer.bounds.borrow_mut() = Rect::new(Point2D::zero(), new_size / self.scale);
         }
     }
 
@@ -119,4 +116,3 @@ impl<T> Scene<T> {
         }
     }
 }
-

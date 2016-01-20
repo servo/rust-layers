@@ -164,7 +164,7 @@ impl ShaderProgram {
             panic!("Failed to compile shader: {}", gl::get_shader_info_log(id));
         }
 
-        return id;
+        id
     }
 
     pub fn get_attribute_location(&self, name: &str) -> GLint {

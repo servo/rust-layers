@@ -64,39 +64,33 @@ impl Tile {
         self.buffer = Some(buffer);
         self.texture = Texture::zero(); // The old texture is bound to the old buffer.
         self.content_age_of_pending_buffer = None;
-        return old_buffer;
+        old_buffer
     }
 
     fn create_texture(&mut self, display: &NativeDisplay) {
-        match self.buffer {
-            Some(ref buffer) => {
-                // If we already have a texture it should still be valid.
-                if !self.texture.is_zero() {
-                    return;
-                }
+        if let Some(ref buffer) = self.buffer {
+            // If we already have a texture it should still be valid.
+            if !self.texture.is_zero() {
+                return;
+            }
 
-                // Make a new texture and bind the LayerBuffer's surface to it.
-                self.texture = Texture::new_with_buffer(buffer);
-                debug!("Tile: binding to native surface {}",
-                       buffer.native_surface.get_id() as isize);
-                buffer.native_surface.bind_to_texture(display, &self.texture);
+            // Make a new texture and bind the LayerBuffer's surface to it.
+            self.texture = Texture::new_with_buffer(buffer);
+            debug!("Tile: binding to native surface {}",
+                   buffer.native_surface.get_id() as isize);
+            buffer.native_surface.bind_to_texture(display, &self.texture);
 
-                // Set the layer's rect.
-                self.bounds = Some(Rect::from_untyped(&buffer.rect));
-            },
-            None => {},
+            // Set the layer's rect.
+            self.bounds = Some(Rect::from_untyped(&buffer.rect));
         }
     }
 
     fn should_request_buffer(&self, content_age: ContentAge) -> bool {
         // Don't resend a request if our buffer's content age matches the current content age.
-        match self.buffer {
-            Some(ref buffer) => {
-                if buffer.content_age >= content_age {
-                    return false;
-                }
+        if let Some(ref buffer) = self.buffer {
+            if buffer.content_age >= content_age {
+                return false;
             }
-            None => {}
         }
 
         // Don't resend a request, if we already have one pending.
@@ -153,13 +147,12 @@ impl TileGrid {
     pub fn take_unused_buffers(&mut self) -> Vec<Box<LayerBuffer>> {
         let mut unused_buffers = Vec::new();
         mem::swap(&mut unused_buffers, &mut self.unused_buffers);
-        return unused_buffers;
+        unused_buffers
     }
 
     pub fn add_unused_buffer(&mut self, buffer: Option<Box<LayerBuffer>>) {
-        match buffer {
-            Some(buffer) => self.unused_buffers.push(buffer),
-            None => {},
+        if let Some(buffer) = buffer {
+            self.unused_buffers.push(buffer);
         }
     }
 
@@ -203,10 +196,9 @@ impl TileGrid {
             }
         }
 
-        for tile_index in tile_indexes_to_take.iter() {
-            match self.tiles.remove(tile_index) {
-                Some(ref mut tile) => self.add_unused_buffer(tile.buffer.take()),
-                None => {},
+        for tile_index in &tile_indexes_to_take {
+            if let Some(ref mut tile) = self.tiles.remove(tile_index) {
+                self.add_unused_buffer(tile.buffer.take());
             }
         }
     }
@@ -232,9 +224,9 @@ impl TileGrid {
 
         tile.content_age_of_pending_buffer = Some(current_content_age);
 
-        return Some(BufferRequest::new(tile_rect.to_untyped(),
-                                       tile_rect.as_f32().to_untyped(),
-                                       current_content_age));
+        Some(BufferRequest::new(tile_rect.to_untyped(),
+                                tile_rect.as_f32().to_untyped(),
+                                current_content_age))
     }
 
     /// Returns buffer requests inside the given dirty rect, and simultaneously throws out tiles
@@ -279,7 +271,7 @@ impl TileGrid {
                                                   layer_transform,
                                                   current_layer_size);
 
-        return buffer_requests;
+        buffer_requests
     }
 
     pub fn get_tile_index_for_point(&self, point: Point2D<usize>) -> Point2D<usize> {
@@ -310,11 +302,11 @@ impl TileGrid {
     pub fn collect_buffers(&mut self) -> Vec<Box<LayerBuffer>> {
         let mut collected_buffers = self.take_unused_buffers();
         collected_buffers.extend(self.tiles.drain().flat_map(|(_, mut tile)| tile.buffer.take()));
-        return collected_buffers;
+        collected_buffers
     }
 
     pub fn create_textures(&mut self, display: &NativeDisplay) {
-        for (_, ref mut tile) in self.tiles.iter_mut() {
+        for (_, ref mut tile) in &mut self.tiles {
             tile.create_texture(display);
         }
     }
