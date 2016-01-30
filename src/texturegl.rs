@@ -16,12 +16,14 @@ use gleam::gl;
 use gleam::gl::{GLenum, GLint, GLuint};
 
 #[derive(Copy, Clone)]
+#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub enum Format {
     ARGB32Format,
     RGB24Format
 }
 
 #[derive(Copy, Clone)]
+#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub enum FilterMode {
     Nearest,
     Linear
@@ -29,6 +31,7 @@ pub enum FilterMode {
 
 /// The texture target.
 #[derive(Copy, Clone)]
+#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub enum TextureTarget {
     /// TEXTURE_2D.
     TextureTarget2D,
@@ -202,6 +205,7 @@ impl Texture {
 
 /// Whether a texture should be flipped.
 #[derive(PartialEq, Copy, Clone)]
+#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub enum Flip {
     /// The texture should not be flipped.
     NoFlip,

@@ -11,9 +11,16 @@
 #![crate_type = "rlib"]
 
 #![feature(iter_arith)]
+#![cfg_attr(feature = "plugins", feature(custom_attribute))]
+#![cfg_attr(feature = "plugins", feature(custom_derive))]
+#![cfg_attr(feature = "plugins", feature(plugin))]
+
+#![cfg_attr(feature = "plugins", plugin(heapsize_plugin))]
 
 extern crate azure;
 extern crate euclid;
+#[cfg(feature = "plugins")]
+extern crate heapsize;
 extern crate libc;
 #[macro_use]
 extern crate log;
