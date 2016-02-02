@@ -22,6 +22,7 @@ use std::rc::Rc;
 use util::{project_rect_to_screen, ScreenRect};
 
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub struct ContentAge {
     age: usize,
 }
@@ -38,6 +39,7 @@ impl ContentAge {
     }
 }
 
+#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub struct TransformState {
     /// Final, concatenated transform + perspective matrix for this layer
     pub final_transform: Matrix4,

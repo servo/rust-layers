@@ -1,12 +1,12 @@
 [package]
 
 name = "layers"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["The Servo Project Developers"]
 
 [features]
 default = []
-plugins = ["euclid/plugins"]
+plugins = ["euclid/plugins", "heapsize", "heapsize_plugin"]
 
 [dependencies]
 libc = "0.2"
@@ -16,6 +16,14 @@ gleam = "0.2"
 euclid = "0.4"
 servo-skia = "0.20130412.0"
 azure = { git = "https://github.com/servo/rust-azure" }
+
+[dependencies.heapsize]
+version = "0.2.2"
+optional = true
+
+[dependencies.heapsize_plugin]
+version = "0.1.2"
+optional = true
 
 [target.x86_64-apple-darwin.dependencies]
 core-foundation = "0.2.0"

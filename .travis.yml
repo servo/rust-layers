@@ -15,5 +15,11 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.7 20; fi
 rust:
   - nightly
+env:
+  - FEATURES=""
+  - FEATURES="plugins"
+script:
+  - cargo build --features "$FEATURES"
+  - cargo test --features "$FEATURES"
 notifications:
   webhooks: http://build.servo.org:54856/travis
