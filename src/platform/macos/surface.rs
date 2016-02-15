@@ -20,15 +20,10 @@ use core_foundation::number::CFNumber;
 use core_foundation::string::CFString;
 use euclid::size::Size2D;
 use io_surface;
+use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use skia::gl_context::{GLContext, PlatformDisplayData};
 use skia::gl_rasterization_context::GLRasterizationContext;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::Arc;
-
-thread_local!(static IO_SURFACE_REPOSITORY: Rc<RefCell<HashMap<io_surface::IOSurfaceID, io_surface::IOSurface>>> =
-    Rc::new(RefCell::new(HashMap::new())));
 
 #[derive(Clone, Copy)]
 pub struct NativeDisplay {
@@ -52,11 +47,32 @@ impl NativeDisplay {
     }
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
 pub struct IOSurfaceNativeSurface {
-    io_surface_id: Option<io_surface::IOSurfaceID>,
+    surface: Option<io_surface::IOSurface>,
     will_leak: bool,
     pub size: Size2D<i32>,
+}
+
+unsafe impl Send for IOSurfaceNativeSurface {}
+unsafe impl Sync for IOSurfaceNativeSurface {}
+
+impl Decodable for IOSurfaceNativeSurface {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        let id: Option<io_surface::IOSurfaceID> = try!(Decodable::decode(d));
+        Ok(IOSurfaceNativeSurface {
+            surface: id.map(io_surface::lookup),
+            will_leak: try!(Decodable::decode(d)),
+            size: try!(Decodable::decode(d)),
+        })
+    }
+}
+impl Encodable for IOSurfaceNativeSurface {
+    fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+        try!(self.surface.as_ref().map(io_surface::IOSurface::get_id).encode(e));
+        try!(self.will_leak.encode(e));
+        try!(self.size.encode(e));
+        Ok(())
+    }
 }
 
 impl IOSurfaceNativeSurface {
@@ -88,14 +104,8 @@ impl IOSurfaceNativeSurface {
                 (is_global_key.as_CFType(), is_global_value.as_CFType()),
             ]));
 
-            // Take the surface by ID (so that we can send it cross-process) and consume its reference.
-            let id = surface.get_id();
-            IO_SURFACE_REPOSITORY.with(|ref r| {
-                r.borrow_mut().insert(id, surface)
-            });
-
             IOSurfaceNativeSurface {
-                io_surface_id: Some(id),
+                surface: Some(surface),
                 will_leak: true,
                 size: size,
             }
@@ -104,27 +114,24 @@ impl IOSurfaceNativeSurface {
 
     pub fn bind_to_texture(&self, _: &NativeDisplay, texture: &Texture) {
         let _bound_texture = texture.bind();
-        let io_surface = io_surface::lookup(self.io_surface_id.unwrap());
+        let io_surface = self.surface.as_ref().unwrap();
         io_surface.bind_to_gl_texture(self.size);
     }
 
     pub fn upload(&mut self, _: &NativeDisplay, data: &[u8]) {
-        let io_surface = io_surface::lookup(self.io_surface_id.unwrap());
+        let io_surface = self.surface.as_ref().unwrap();
         io_surface.upload(data)
     }
 
     pub fn get_id(&self) -> isize {
-        match self.io_surface_id {
+        match self.surface {
             None => 0,
-            Some(id) => id as isize,
+            Some(ref io_surface) => io_surface.get_id() as isize,
         }
     }
 
     pub fn destroy(&mut self, _: &NativeDisplay) {
-        IO_SURFACE_REPOSITORY.with(|ref r| {
-            r.borrow_mut().remove(&self.io_surface_id.unwrap())
-        });
-        self.io_surface_id = None;
+        self.surface = None;
         self.mark_wont_leak()
     }
 
@@ -140,7 +147,7 @@ impl IOSurfaceNativeSurface {
                                     gl_context: Arc<GLContext>)
                                     -> Option<GLRasterizationContext> {
         GLRasterizationContext::new(gl_context,
-                                    io_surface::lookup(self.io_surface_id.unwrap()).obj,
+                                    self.surface.as_ref().unwrap().obj,
                                     self.size)
     }
 }
