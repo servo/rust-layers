@@ -3,6 +3,7 @@
 name = "layers"
 version = "0.2.2"
 authors = ["The Servo Project Developers"]
+license = "MIT/Apache-2.0"
 
 [features]
 default = []
