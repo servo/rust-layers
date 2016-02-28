@@ -40,7 +40,7 @@ extern crate x11;
 #[cfg(target_os="linux")]
 extern crate glx;
 
-#[cfg(target_os="android")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 extern crate egl;
 
 pub mod color;
@@ -65,10 +65,13 @@ pub mod platform {
     pub mod android {
         pub mod surface;
     }
+    #[cfg(any(target_os="android",target_os="linux"))]
+    pub mod egl {
+        pub mod surface;
+    }
     #[cfg(target_os="windows")]
     pub mod windows {
         pub mod surface;
     }
     pub mod surface;
 }
-

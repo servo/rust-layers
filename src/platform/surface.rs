@@ -30,9 +30,11 @@ pub use platform::linux::surface::{NativeDisplay,
 #[cfg(target_os="linux")]
 use std::ptr;
 
+#[cfg(any(target_os="android",target_os="linux"))]
+pub use platform::egl::surface::{EGLImageNativeSurface};
+
 #[cfg(target_os="android")]
-pub use platform::android::surface::{NativeDisplay,
-                                     EGLImageNativeSurface};
+pub use platform::android::surface::NativeDisplay;
 
 #[cfg(target_os="windows")]
 pub use platform::windows::surface::NativeDisplay;
@@ -43,7 +45,7 @@ pub enum NativeSurface {
     Pixmap(PixmapNativeSurface),
 #[cfg(target_os="macos")]
     IOSurface(IOSurfaceNativeSurface),
-#[cfg(target_os="android")]
+#[cfg(any(target_os="android",target_os="linux"))]
     EGLImage(EGLImageNativeSurface),
 }
 
@@ -51,12 +53,19 @@ pub enum NativeSurface {
 impl NativeSurface {
     /// Creates a new native surface with uninitialized data.
     pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> NativeSurface {
-        if display.display == ptr::null_mut() {
-            NativeSurface::MemoryBuffer(MemoryBufferNativeSurface::new(display, size))
-        } else {
-            NativeSurface::Pixmap(PixmapNativeSurface::new(display, size))
+        match display {
+            &NativeDisplay::EGL(_info) => {
+                NativeSurface::EGLImage(EGLImageNativeSurface::new(display, size))
+            }
+            &NativeDisplay::GLX(info) => {
+                if info.display == ptr::null_mut() {
+                    NativeSurface::MemoryBuffer(MemoryBufferNativeSurface::new(display, size))
+                } else {
+                    NativeSurface::Pixmap(PixmapNativeSurface::new(&info, size))
+                }
+            }
         }
-   }
+    }
 }
 
 #[cfg(target_os="macos")]
@@ -94,7 +103,7 @@ macro_rules! native_surface_method_with_mutability {
             #[cfg(target_os="macos")]
             NativeSurface::IOSurface($pattern) =>
                 $surface.$function_name($($argument), *),
-            #[cfg(target_os="android")]
+            #[cfg(any(target_os="android",target_os="linux"))]
             NativeSurface::EGLImage($pattern) =>
                 $surface.$function_name($($argument), *),
         }
@@ -131,7 +140,7 @@ macro_rules! native_surface_property {
             NativeSurface::Pixmap(ref surface) => surface.$property_name,
             #[cfg(target_os="macos")]
             NativeSurface::IOSurface(ref surface) => surface.$property_name,
-            #[cfg(target_os="android")]
+            #[cfg(any(target_os="android",target_os="linux"))]
             NativeSurface::EGLImage(ref surface) => surface.$property_name,
         }
     };
@@ -267,4 +276,3 @@ impl MemoryBufferNativeSurface {
         None
     }
 }
-
