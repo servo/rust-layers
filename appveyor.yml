@@ -15,7 +15,7 @@ install:
   - SET RUST_BACKTRACE=1
   - bash -lc "pacman --needed --noconfirm -Sy pacman-mirrors"
   - bash -lc "pacman --noconfirm -Sy"
-  - bash -lc "pacman -Sy --needed --noconfirm mingw-w64-x86_64-expat make"
+  - bash -lc "pacman -Sy --needed --noconfirm mingw-w64-x86_64-expat mingw-w64-x86_64-freetype make"
   - rustc -V
   - cargo -V
 
