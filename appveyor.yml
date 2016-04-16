@@ -11,7 +11,7 @@ install:
   - SET PATH=C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
   - SET PATH=%PATH%;C:\Program Files (x86)\Rust\bin
   - SET PATH=%PATH%;C:\MinGW\bin
-  - SET MSYSTEM=MSYS
+  - SET MSYSTEM=MINGW64
   - SET RUST_BACKTRACE=1
   - bash -lc "pacman --needed --noconfirm -Sy pacman-mirrors"
   - bash -lc "pacman --noconfirm -Sy"
