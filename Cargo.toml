@@ -46,7 +46,7 @@ glx = "0.1.0"
 servo-egl = "0.2"
 x11 = { version = "2.3.0", features = ["xlib"] }
 
-[target.arm-unknown-linux-gnueabihf.dependencies]
+[target.armv7-unknown-linux-gnueabihf.dependencies]
 glx = "0.1.0"
 servo-egl = "0.2"
 x11 = { version = "2.3.0", features = ["xlib"] }
