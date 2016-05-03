@@ -10,7 +10,7 @@
 // Miscellaneous utilities.
 
 use std::iter::repeat;
-use euclid::{Rect, Point2D, Point3D, Point4D, Matrix4, Size2D};
+use euclid::{Matrix4D, Point2D, Point3D, Point4D, Rect, Size2D};
 use std::f32;
 
 const W_CLIPPING_PLANE: f32 = 0.00001;
@@ -89,7 +89,7 @@ fn clip_polygon_to_near_plane(clip_space_vertices: &[Point4D<f32>; 4])
 }
 
 pub fn project_rect_to_screen(rect: &Rect<f32>,
-                              transform: &Matrix4) -> Option<ScreenRect> {
+                              transform: &Matrix4D<f32>) -> Option<ScreenRect> {
     let mut result = None;
 
     let x0 = rect.min_x();

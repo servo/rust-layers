@@ -16,11 +16,7 @@ use texturegl::TextureTarget::{TextureTarget2D, TextureTargetRectangle};
 use tiling::Tile;
 use platform::surface::NativeDisplay;
 
-use euclid::matrix::Matrix4;
-use euclid::Matrix2D;
-use euclid::point::Point2D;
-use euclid::rect::Rect;
-use euclid::size::Size2D;
+use euclid::{Matrix2D, Matrix4D, Point2D, Rect, Size2D};
 use libc::c_int;
 use gleam::gl;
 use gleam::gl::{GLenum, GLfloat, GLint, GLsizei, GLuint};
@@ -68,8 +64,8 @@ impl TextureVertex {
 const ORTHO_NEAR_PLANE: f32 = -1000000.0;
 const ORTHO_FAR_PLANE: f32 = 1000000.0;
 
-fn create_ortho(scene_size: &Size2D<f32>) -> Matrix4 {
-    Matrix4::ortho(0.0, scene_size.width, scene_size.height, 0.0, ORTHO_NEAR_PLANE, ORTHO_FAR_PLANE)
+fn create_ortho(scene_size: &Size2D<f32>) -> Matrix4D<f32> {
+    Matrix4D::ortho(0.0, scene_size.width, scene_size.height, 0.0, ORTHO_NEAR_PLANE, ORTHO_FAR_PLANE)
 }
 
 static TEXTURE_FRAGMENT_SHADER_SOURCE: &'static str = "
@@ -212,9 +208,9 @@ impl TextureProgram {
 
     fn bind_uniforms_and_attributes(&self,
                                     vertices: &[TextureVertex; 4],
-                                    transform: &Matrix4,
-                                    projection_matrix: &Matrix4,
-                                    texture_space_transform: &Matrix4,
+                                    transform: &Matrix4D<f32>,
+                                    projection_matrix: &Matrix4D<f32>,
+                                    texture_space_transform: &Matrix4D<f32>,
                                     buffers: &Buffers,
                                     opacity: f32) {
         gl::uniform_1i(self.sampler_uniform, 0);
@@ -284,8 +280,8 @@ impl SolidColorProgram {
     }
 
     fn bind_uniforms_and_attributes_common(&self,
-                                           transform: &Matrix4,
-                                           projection_matrix: &Matrix4,
+                                           transform: &Matrix4D<f32>,
+                                           projection_matrix: &Matrix4D<f32>,
                                            color: &Color) {
         gl::uniform_matrix_4fv(self.modelview_uniform, false, &transform.to_array());
         gl::uniform_matrix_4fv(self.projection_uniform, false, &projection_matrix.to_array());
@@ -298,8 +294,8 @@ impl SolidColorProgram {
 
     fn bind_uniforms_and_attributes_for_lines(&self,
                                               vertices: &[ColorVertex; 5],
-                                              transform: &Matrix4,
-                                              projection_matrix: &Matrix4,
+                                              transform: &Matrix4D<f32>,
+                                              projection_matrix: &Matrix4D<f32>,
                                               buffers: &Buffers,
                                               color: &Color) {
         self.bind_uniforms_and_attributes_common(transform, projection_matrix, color);
@@ -311,8 +307,8 @@ impl SolidColorProgram {
 
     fn bind_uniforms_and_attributes_for_quad(&self,
                                              vertices: &[ColorVertex; 4],
-                                             transform: &Matrix4,
-                                             projection_matrix: &Matrix4,
+                                             transform: &Matrix4D<f32>,
+                                             projection_matrix: &Matrix4D<f32>,
                                              buffers: &Buffers,
                                              color: &Color) {
         self.bind_uniforms_and_attributes_common(transform, projection_matrix, color);
@@ -521,8 +517,8 @@ impl RenderContext {
 
     fn bind_and_render_solid_quad(&self,
                                   vertices: &[ColorVertex; 4],
-                                  transform: &Matrix4,
-                                  projection: &Matrix4,
+                                  transform: &Matrix4D<f32>,
+                                  projection: &Matrix4D<f32>,
                                   color: &Color) {
         self.solid_color_program.enable_attribute_arrays();
         gl::use_program(self.solid_color_program.program.id);
@@ -538,8 +534,8 @@ impl RenderContext {
     fn bind_and_render_quad(&self,
                             vertices: &[TextureVertex; 4],
                             texture: &Texture,
-                            transform: &Matrix4,
-                            projection_matrix: &Matrix4,
+                            transform: &Matrix4D<f32>,
+                            projection_matrix: &Matrix4D<f32>,
                             opacity: f32) {
         let mut texture_coordinates_need_to_be_scaled_by_size = false;
         let program = match texture.target {
@@ -569,7 +565,7 @@ impl RenderContext {
         // We calculate a transformation matrix for the texture coordinates
         // which is useful for flipping the texture vertically or scaling the
         // coordinates when dealing with GL_ARB_texture_rectangle.
-        let mut texture_transform = Matrix4::identity();
+        let mut texture_transform = Matrix4D::identity();
         if texture.flip == VerticalFlip {
             texture_transform = texture_transform.scale(1.0, -1.0, 1.0);
         }
@@ -599,8 +595,8 @@ impl RenderContext {
 
     pub fn bind_and_render_quad_lines(&self,
                                       vertices: &[ColorVertex; 5],
-                                      transform: &Matrix4,
-                                      projection: &Matrix4,
+                                      transform: &Matrix4D<f32>,
+                                      projection: &Matrix4D<f32>,
                                       color: &Color,
                                       line_thickness: usize) {
         self.solid_color_program.enable_attribute_arrays();
@@ -617,8 +613,8 @@ impl RenderContext {
 
     fn render_layer<T>(&self,
                        layer: Rc<Layer<T>>,
-                       transform: &Matrix4,
-                       projection: &Matrix4,
+                       transform: &Matrix4D<f32>,
+                       projection: &Matrix4D<f32>,
                        clip_rect: Option<Rect<f32>>,
                        gfx_context: &NativeDisplay) {
         let ts = layer.transform_state.borrow();
@@ -685,7 +681,7 @@ impl RenderContext {
                 ColorVertex::new(aabb.origin),
             ];
             self.bind_and_render_quad_lines(&debug_vertices,
-                                            &Matrix4::identity(),
+                                            &Matrix4D::identity(),
                                             projection,
                                             &LAYER_AABB_DEBUG_BORDER_COLOR,
                                             LAYER_AABB_DEBUG_BORDER_THICKNESS);
@@ -695,8 +691,8 @@ impl RenderContext {
     fn render_tile(&self,
                    tile: &Tile,
                    layer_origin: &Point2D<f32>,
-                   transform: &Matrix4,
-                   projection: &Matrix4,
+                   transform: &Matrix4D<f32>,
+                   projection: &Matrix4D<f32>,
                    clip_rect: Option<Rect<f32>>,
                    opacity: f32) {
         if tile.texture.is_zero() || !tile.bounds.is_some() {
@@ -754,8 +750,8 @@ impl RenderContext {
 
     fn render_3d_context<T>(&self,
                             context: &RenderContext3D<T>,
-                            transform: &Matrix4,
-                            projection: &Matrix4,
+                            transform: &Matrix4D<f32>,
+                            projection: &Matrix4D<f32>,
                             gfx_context: &NativeDisplay) {
         if context.children.is_empty() {
             return;
@@ -831,7 +827,7 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
     gl::depth_func(gl::LEQUAL);
 
     // Set up the initial modelview matrix.
-    let transform = Matrix4::identity().scale(scene.scale.get(), scene.scale.get(), 1.0);
+    let transform = Matrix4D::identity().scale(scene.scale.get(), scene.scale.get(), 1.0);
     let projection = create_ortho(&scene.viewport.size.to_untyped());
 
     // Build the list of render items
