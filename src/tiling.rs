@@ -14,8 +14,7 @@ use texturegl::Texture;
 use util::project_rect_to_screen;
 
 use euclid::length::Length;
-use euclid::matrix::Matrix4;
-use euclid::point::Point2D;
+use euclid::{Matrix4D, Point2D};
 use euclid::rect::{Rect, TypedRect};
 use euclid::size::{Size2D, TypedSize2D};
 use std::collections::HashMap;
@@ -161,7 +160,7 @@ impl TileGrid {
                                 test_rect: &Rect<f32>,
                                 current_layer_size: TypedSize2D<DevicePixel, f32>,
                                 layer_world_origin: &Point2D<f32>,
-                                layer_transform: &Matrix4) -> bool {
+                                layer_transform: &Matrix4D<f32>) -> bool {
         let tile_rect = self.get_rect_for_tile_index(*tile_index,
                                                      current_layer_size);
         let tile_rect = tile_rect.as_f32()
@@ -182,7 +181,7 @@ impl TileGrid {
     pub fn mark_tiles_outside_of_rect_as_unused(&mut self,
                                                 rect: TypedRect<DevicePixel, f32>,
                                                 layer_world_origin: &Point2D<f32>,
-                                                layer_transform: &Matrix4,
+                                                layer_transform: &Matrix4D<f32>,
                                                 current_layer_size: TypedSize2D<DevicePixel, f32>) {
         let mut tile_indexes_to_take = Vec::new();
 
@@ -236,7 +235,7 @@ impl TileGrid {
                                        viewport: TypedRect<DevicePixel, f32>,
                                        current_layer_size: TypedSize2D<DevicePixel, f32>,
                                        layer_world_origin: &Point2D<f32>,
-                                       layer_transform: &Matrix4,
+                                       layer_transform: &Matrix4D<f32>,
                                        current_content_age: ContentAge)
                                        -> Vec<BufferRequest> {
         let mut buffer_requests = Vec::new();

@@ -11,7 +11,7 @@ use color::Color;
 use geometry::{DevicePixel, LayerPixel};
 use tiling::{Tile, TileGrid};
 
-use euclid::matrix::Matrix4;
+use euclid::Matrix4D;
 use euclid::scale_factor::ScaleFactor;
 use euclid::size::{Size2D, TypedSize2D};
 use euclid::point::{Point2D, TypedPoint2D};
@@ -42,7 +42,7 @@ impl ContentAge {
 #[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub struct TransformState {
     /// Final, concatenated transform + perspective matrix for this layer
-    pub final_transform: Matrix4,
+    pub final_transform: Matrix4D<f32>,
 
     /// If this is none, the rect was clipped and is not visible at all!
     pub screen_rect: Option<ScreenRect>,
@@ -57,7 +57,7 @@ pub struct TransformState {
 impl TransformState {
     fn new() -> TransformState {
         TransformState {
-            final_transform: Matrix4::identity(),
+            final_transform: Matrix4D::identity(),
             screen_rect: None,
             world_rect: Rect::zero(),
             has_transform: false,
@@ -67,8 +67,8 @@ impl TransformState {
 
 pub struct Layer<T> {
     pub children: RefCell<Vec<Rc<Layer<T>>>>,
-    pub transform: RefCell<Matrix4>,
-    pub perspective: RefCell<Matrix4>,
+    pub transform: RefCell<Matrix4D<f32>>,
+    pub perspective: RefCell<Matrix4D<f32>>,
     pub tile_size: usize,
     pub extra_data: RefCell<T>,
     tile_grid: RefCell<TileGrid>,
@@ -108,8 +108,8 @@ impl<T> Layer<T> {
                -> Layer<T> {
         Layer {
             children: RefCell::new(vec!()),
-            transform: RefCell::new(Matrix4::identity()),
-            perspective: RefCell::new(Matrix4::identity()),
+            transform: RefCell::new(Matrix4D::identity()),
+            perspective: RefCell::new(Matrix4D::identity()),
             bounds: RefCell::new(bounds),
             tile_size: tile_size,
             extra_data: RefCell::new(data),
@@ -182,8 +182,8 @@ impl<T> Layer<T> {
     }
 
     pub fn update_transform_state(&self,
-                                  parent_transform: &Matrix4,
-                                  parent_perspective: &Matrix4,
+                                  parent_transform: &Matrix4D<f32>,
+                                  parent_perspective: &Matrix4D<f32>,
                                   parent_origin: &Point2D<f32>) {
         let mut ts = self.transform_state.borrow_mut();
         let rect_without_scroll = self.bounds.borrow()
@@ -196,9 +196,9 @@ impl<T> Layer<T> {
         let y0 = ts.world_rect.origin.y;
 
         // Build world space transform
-        let local_transform = Matrix4::identity().translate(x0, y0, 0.0)
-                                                 .mul(&*self.transform.borrow())
-                                                 .translate(-x0, -y0, 0.0);
+        let local_transform = Matrix4D::identity().translate(x0, y0, 0.0)
+                                                  .mul(&*self.transform.borrow())
+                                                  .translate(-x0, -y0, 0.0);
 
         ts.final_transform = parent_perspective.mul(&local_transform).mul(&parent_transform);
         ts.screen_rect = project_rect_to_screen(&ts.world_rect, &ts.final_transform);
@@ -208,12 +208,12 @@ impl<T> Layer<T> {
         // We should probably make the display list optimizer work with transforms!
         // This layer is part of a 3d context if its concatenated transform
         // is not identity, since 2d transforms don't get layers.
-        ts.has_transform = ts.final_transform != Matrix4::identity();
+        ts.has_transform = ts.final_transform != Matrix4D::identity();
 
         // Build world space perspective transform
-        let perspective_transform = Matrix4::identity().translate(x0, y0, 0.0)
-                                                       .mul(&*self.perspective.borrow())
-                                                       .translate(-x0, -y0, 0.0);
+        let perspective_transform = Matrix4D::identity().translate(x0, y0, 0.0)
+                                                        .mul(&*self.perspective.borrow())
+                                                        .translate(-x0, -y0, 0.0);
 
         for child in self.children().iter() {
             child.update_transform_state(&ts.final_transform,
