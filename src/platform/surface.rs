@@ -217,7 +217,6 @@ impl NativeSurface {
     }
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
 pub struct MemoryBufferNativeSurface {
     bytes: Vec<u8>,
     pub size: Size2D<i32>,
