@@ -7,24 +7,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use euclid::rect::{Rect, TypedRect};
+use euclid::rect::TypedRect;
 use euclid::scale_factor::ScaleFactor;
 use euclid::size::TypedSize2D;
-use euclid::point::Point2D;
+use euclid::point::TypedPoint2D;
 use geometry::{DevicePixel, LayerPixel};
 use layers::{BufferRequest, Layer, LayerBuffer};
 use std::rc::Rc;
 
 pub struct Scene<T> {
     pub root: Option<Rc<Layer<T>>>,
-    pub viewport: TypedRect<DevicePixel, f32>,
+    pub viewport: TypedRect<f32, DevicePixel>,
 
     /// The scene scale, to allow for zooming and high-resolution painting.
-    pub scale: ScaleFactor<LayerPixel, DevicePixel, f32>,
+    pub scale: ScaleFactor<f32, LayerPixel, DevicePixel>,
 }
 
 impl<T> Scene<T> {
-    pub fn new(viewport: TypedRect<DevicePixel, f32>) -> Scene<T> {
+    pub fn new(viewport: TypedRect<f32, DevicePixel>) -> Scene<T> {
         Scene {
             root: None,
             viewport: viewport,
@@ -34,8 +34,8 @@ impl<T> Scene<T> {
 
     pub fn get_buffer_requests_for_layer(&mut self,
                                          layer: Rc<Layer<T>>,
-                                         dirty_rect: TypedRect<LayerPixel, f32>,
-                                         viewport_rect: TypedRect<LayerPixel, f32>,
+                                         dirty_rect: TypedRect<f32, LayerPixel>,
+                                         viewport_rect: TypedRect<f32, LayerPixel>,
                                          layers_and_requests: &mut Vec<(Rc<Layer<T>>,
                                                                         Vec<BufferRequest>)>,
                                          unused_buffers: &mut Vec<Box<LayerBuffer>>) {
@@ -54,7 +54,7 @@ impl<T> Scene<T> {
             match layer.transform_state.borrow().screen_rect {
                 Some(ref screen_rect) => {
                     match dirty_rect.to_untyped().intersection(&screen_rect.rect) {
-                        Some(ref child_dirty_rect) => Rect::from_untyped(child_dirty_rect),
+                        Some(ref child_dirty_rect) => TypedRect::from_untyped(child_dirty_rect),
                         None => return, // The layer is entirely outside the dirty rect.
                     }
                 },
@@ -101,9 +101,10 @@ impl<T> Scene<T> {
         self.mark_layer_contents_as_changed_recursively_for_layer(root_layer);
     }
 
-    pub fn set_root_layer_size(&self, new_size: TypedSize2D<DevicePixel, f32>) {
+    pub fn set_root_layer_size(&self, new_size: TypedSize2D<f32, DevicePixel>) {
         if let Some(ref root_layer) = self.root {
-            *root_layer.bounds.borrow_mut() = Rect::new(Point2D::zero(), new_size / self.scale);
+            *root_layer.bounds.borrow_mut() = TypedRect::new(TypedPoint2D::zero(),
+                                                             new_size / self.scale);
         }
     }
 
