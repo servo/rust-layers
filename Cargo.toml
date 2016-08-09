@@ -16,7 +16,6 @@ log = "0.3.4"
 gleam = "0.2"
 euclid = ">=0.6.2, <0.8"
 servo-skia = "0.20130412.8"
-azure = { git = "https://github.com/servo/rust-azure" }
 
 [dependencies.heapsize]
 version = ">=0.2.2, <0.4"
