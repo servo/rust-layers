@@ -17,7 +17,6 @@
 
 #![cfg_attr(feature = "plugins", plugin(heapsize_plugin))]
 
-extern crate azure;
 extern crate euclid;
 #[cfg(feature = "plugins")]
 extern crate heapsize;

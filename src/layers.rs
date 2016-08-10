@@ -74,13 +74,13 @@ pub struct Layer<T> {
     tile_grid: RefCell<TileGrid>,
 
     /// The boundaries of this layer in the coordinate system of the parent layer.
-    pub bounds: RefCell<TypedRect<LayerPixel, f32>>,
+    pub bounds: RefCell<TypedRect<f32, LayerPixel>>,
 
     /// A monotonically increasing counter that keeps track of the current content age.
     pub content_age: RefCell<ContentAge>,
 
     /// The content offset for this layer in unscaled layer pixels.
-    pub content_offset: RefCell<TypedPoint2D<LayerPixel, f32>>,
+    pub content_offset: RefCell<TypedPoint2D<f32, LayerPixel>>,
 
     /// Whether this layer clips its children to its boundaries.
     pub masks_to_bounds: RefCell<bool>,
@@ -99,7 +99,7 @@ pub struct Layer<T> {
 }
 
 impl<T> Layer<T> {
-    pub fn new(bounds: TypedRect<LayerPixel, f32>,
+    pub fn new(bounds: TypedRect<f32, LayerPixel>,
                tile_size: usize,
                background_color: Color,
                opacity: f32,
@@ -116,7 +116,7 @@ impl<T> Layer<T> {
             tile_grid: RefCell::new(TileGrid::new(tile_size)),
             content_age: RefCell::new(ContentAge::new()),
             masks_to_bounds: RefCell::new(false),
-            content_offset: RefCell::new(Point2D::zero()),
+            content_offset: RefCell::new(TypedPoint2D::zero()),
             background_color: RefCell::new(background_color),
             opacity: RefCell::new(opacity),
             establishes_3d_context: establishes_3d_context,
@@ -139,9 +139,9 @@ impl<T> Layer<T> {
     /// Returns buffer requests inside the given dirty rect, and simultaneously throws out tiles
     /// outside the given viewport rect.
     pub fn get_buffer_requests(&self,
-                               rect_in_layer: TypedRect<LayerPixel, f32>,
-                               viewport_in_layer: TypedRect<LayerPixel, f32>,
-                               scale: ScaleFactor<LayerPixel, DevicePixel, f32>)
+                               rect_in_layer: TypedRect<f32, LayerPixel>,
+                               viewport_in_layer: TypedRect<f32, LayerPixel>,
+                               scale: ScaleFactor<f32, LayerPixel, DevicePixel>)
                                -> Vec<BufferRequest> {
         let mut tile_grid = self.tile_grid.borrow_mut();
         tile_grid.get_buffer_requests_in_rect(rect_in_layer * scale,
@@ -153,7 +153,7 @@ impl<T> Layer<T> {
                                               *self.content_age.borrow())
     }
 
-    pub fn resize(&self, new_size: TypedSize2D<LayerPixel, f32>) {
+    pub fn resize(&self, new_size: TypedSize2D<f32, LayerPixel>) {
         self.bounds.borrow_mut().size = new_size;
     }
 

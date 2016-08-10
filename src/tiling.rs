@@ -14,7 +14,7 @@ use texturegl::Texture;
 use util::project_rect_to_screen;
 
 use euclid::length::Length;
-use euclid::{Matrix4D, Point2D};
+use euclid::{Matrix4D, Point2D, TypedPoint2D};
 use euclid::rect::{Rect, TypedRect};
 use euclid::size::{Size2D, TypedSize2D};
 use std::collections::HashMap;
@@ -33,7 +33,7 @@ pub struct Tile {
     pub texture: Texture,
 
     /// The tile boundaries in the parent layer coordinates.
-    pub bounds: Option<TypedRect<LayerPixel,f32>>,
+    pub bounds: Option<TypedRect<f32, LayerPixel>>,
 }
 
 impl Tile {
@@ -80,7 +80,7 @@ impl Tile {
             buffer.native_surface.bind_to_texture(display, &self.texture);
 
             // Set the layer's rect.
-            self.bounds = Some(Rect::from_untyped(&buffer.rect));
+            self.bounds = Some(TypedRect::from_untyped(&buffer.rect));
         }
     }
 
@@ -104,15 +104,15 @@ pub struct TileGrid {
     pub tiles: HashMap<Point2D<usize>, Tile>,
 
     /// The size of tiles in this grid in device pixels.
-    tile_size: Length<DevicePixel, usize>,
+    tile_size: Length<usize, DevicePixel>,
 
     // Buffers that are currently unused.
     unused_buffers: Vec<Box<LayerBuffer>>,
 }
 
 pub fn rect_uint_as_rect_f32(rect: Rect<usize>) -> Rect<f32> {
-    Rect::new(Point2D::new(rect.origin.x as f32, rect.origin.y as f32),
-              Size2D::new(rect.size.width as f32, rect.size.height as f32))
+    TypedRect::new(Point2D::new(rect.origin.x as f32, rect.origin.y as f32),
+                   Size2D::new(rect.size.width as f32, rect.size.height as f32))
 }
 
 impl TileGrid {
@@ -126,21 +126,22 @@ impl TileGrid {
 
     pub fn get_rect_for_tile_index(&self,
                                    tile_index: Point2D<usize>,
-                                   current_layer_size: TypedSize2D<DevicePixel, f32>)
-                                   -> TypedRect<DevicePixel, usize> {
+                                   current_layer_size: TypedSize2D<f32, DevicePixel>)
+                                   -> TypedRect<usize, DevicePixel> {
 
-        let origin = Point2D::new(self.tile_size.get() * tile_index.x,
-                             self.tile_size.get() * tile_index.y);
+        let origin : TypedPoint2D<usize, DevicePixel> =
+            TypedPoint2D::new(self.tile_size.get() * tile_index.x,
+                              self.tile_size.get() * tile_index.y);
 
         // Don't let tiles extend beyond the layer boundaries.
         let tile_size = self.tile_size.get() as f32;
-        let size = Size2D::new(tile_size.min(current_layer_size.width.get() - origin.x as f32),
-                          tile_size.min(current_layer_size.height.get() - origin.y as f32));
+        let size = Size2D::new(tile_size.min(current_layer_size.width - origin.x as f32),
+                               tile_size.min(current_layer_size.height - origin.y as f32));
 
         // Round up to texture pixels.
-        let size = Size2D::new(size.width.ceil() as usize, size.height.ceil() as usize);
+        let size = TypedSize2D::new(size.width.ceil() as usize, size.height.ceil() as usize);
 
-        Rect::from_untyped(&Rect::new(origin, size))
+        TypedRect::new(origin, size)
     }
 
     pub fn take_unused_buffers(&mut self) -> Vec<Box<LayerBuffer>> {
@@ -158,7 +159,7 @@ impl TileGrid {
     pub fn tile_intersects_rect(&self,
                                 tile_index: &Point2D<usize>,
                                 test_rect: &Rect<f32>,
-                                current_layer_size: TypedSize2D<DevicePixel, f32>,
+                                current_layer_size: TypedSize2D<f32, DevicePixel>,
                                 layer_world_origin: &Point2D<f32>,
                                 layer_transform: &Matrix4D<f32>) -> bool {
         let tile_rect = self.get_rect_for_tile_index(*tile_index,
@@ -179,10 +180,10 @@ impl TileGrid {
     }
 
     pub fn mark_tiles_outside_of_rect_as_unused(&mut self,
-                                                rect: TypedRect<DevicePixel, f32>,
+                                                rect: TypedRect<f32, DevicePixel>,
                                                 layer_world_origin: &Point2D<f32>,
                                                 layer_transform: &Matrix4D<f32>,
-                                                current_layer_size: TypedSize2D<DevicePixel, f32>) {
+                                                current_layer_size: TypedSize2D<f32, DevicePixel>) {
         let mut tile_indexes_to_take = Vec::new();
 
         for tile_index in self.tiles.keys() {
@@ -204,7 +205,7 @@ impl TileGrid {
 
     pub fn get_buffer_request_for_tile(&mut self,
                                        tile_index: Point2D<usize>,
-                                       current_layer_size: TypedSize2D<DevicePixel, f32>,
+                                       current_layer_size: TypedSize2D<f32, DevicePixel>,
                                        current_content_age: ContentAge)
                                        -> Option<BufferRequest> {
         let tile_rect = self.get_rect_for_tile_index(tile_index, current_layer_size);
@@ -231,9 +232,9 @@ impl TileGrid {
     /// Returns buffer requests inside the given dirty rect, and simultaneously throws out tiles
     /// outside the given viewport rect.
     pub fn get_buffer_requests_in_rect(&mut self,
-                                       dirty_rect: TypedRect<DevicePixel, f32>,
-                                       viewport: TypedRect<DevicePixel, f32>,
-                                       current_layer_size: TypedSize2D<DevicePixel, f32>,
+                                       dirty_rect: TypedRect<f32, DevicePixel>,
+                                       viewport: TypedRect<f32, DevicePixel>,
+                                       current_layer_size: TypedSize2D<f32, DevicePixel>,
                                        layer_world_origin: &Point2D<f32>,
                                        layer_transform: &Matrix4D<f32>,
                                        current_content_age: ContentAge)
