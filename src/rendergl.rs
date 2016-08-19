@@ -575,14 +575,14 @@ impl RenderContext {
         // coordinates when dealing with GL_ARB_texture_rectangle.
         let mut texture_transform = Matrix4D::identity();
         if texture.flip == VerticalFlip {
-            texture_transform = texture_transform.post_scaled(1.0, -1.0, 1.0);
+            texture_transform = texture_transform.pre_scaled(1.0, -1.0, 1.0);
         }
         if texture_coordinates_need_to_be_scaled_by_size {
-            texture_transform = texture_transform.post_scaled(
+            texture_transform = texture_transform.pre_scaled(
                 texture.size.width as f32, texture.size.height as f32, 1.0);
         }
         if texture.flip == VerticalFlip {
-            texture_transform = texture_transform.post_translated(0.0, -1.0, 0.0);
+            texture_transform = texture_transform.pre_translated(0.0, -1.0, 0.0);
         }
 
         program.bind_uniforms_and_attributes(vertices,
@@ -625,7 +625,7 @@ impl RenderContext {
                        clip_rect: Option<Rect<f32>>,
                        gfx_context: &NativeDisplay) {
         let ts = layer.transform_state.borrow();
-        let transform = transform.post_mul(&ts.final_transform);
+        let transform = transform.pre_mul(&ts.final_transform);
         let background_color = *layer.background_color.borrow();
 
         // Create native textures for this layer
@@ -832,7 +832,7 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
     gl::depth_func(gl::LEQUAL);
 
     // Set up the initial modelview matrix.
-    let transform = Matrix4D::identity().post_scaled(scene.scale.get(), scene.scale.get(), 1.0);
+    let transform = Matrix4D::identity().pre_scaled(scene.scale.get(), scene.scale.get(), 1.0);
     let projection = create_ortho(&scene.viewport.size.to_untyped());
 
     // Build the list of render items
