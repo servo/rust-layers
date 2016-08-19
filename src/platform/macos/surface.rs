@@ -115,7 +115,7 @@ impl IOSurfaceNativeSurface {
     pub fn bind_to_texture(&self, _: &NativeDisplay, texture: &Texture) {
         let _bound_texture = texture.bind();
         let io_surface = self.surface.as_ref().unwrap();
-        io_surface.bind_to_gl_texture(self.size);
+        io_surface.bind_to_gl_texture(self.size.width, self.size.height);
     }
 
     pub fn upload(&mut self, _: &NativeDisplay, data: &[u8]) {

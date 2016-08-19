@@ -164,7 +164,7 @@ impl TileGrid {
                                 layer_transform: &Matrix4D<f32>) -> bool {
         let tile_rect = self.get_rect_for_tile_index(*tile_index,
                                                      current_layer_size);
-        let tile_rect = tile_rect.as_f32()
+        let tile_rect = tile_rect.to_f32()
                                  .to_untyped()
                                  .translate(layer_world_origin);
 
@@ -225,7 +225,7 @@ impl TileGrid {
         tile.content_age_of_pending_buffer = Some(current_content_age);
 
         Some(BufferRequest::new(tile_rect.to_untyped(),
-                                tile_rect.as_f32().to_untyped(),
+                                tile_rect.to_f32().to_untyped(),
                                 current_content_age))
     }
 
