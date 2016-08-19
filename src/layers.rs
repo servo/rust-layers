@@ -197,13 +197,13 @@ impl<T> Layer<T> {
 
         // Build world space transform
         let local_transform = Matrix4D::identity()
-            .post_translated(x0, y0, 0.0)
-            .post_mul(&*self.transform.borrow())
-            .post_translated(-x0, -y0, 0.0);
+            .pre_translated(x0, y0, 0.0)
+            .pre_mul(&*self.transform.borrow())
+            .pre_translated(-x0, -y0, 0.0);
 
         ts.final_transform = parent_perspective
-            .post_mul(&local_transform)
-            .post_mul(&parent_transform);
+            .pre_mul(&local_transform)
+            .pre_mul(&parent_transform);
         ts.screen_rect = project_rect_to_screen(&ts.world_rect, &ts.final_transform);
 
         // TODO(gw): This is quite bogus. It's a hack to allow the paint task
@@ -215,9 +215,9 @@ impl<T> Layer<T> {
 
         // Build world space perspective transform
         let perspective_transform = Matrix4D::identity()
-            .post_translated(x0, y0, 0.0)
-            .post_mul(&*self.perspective.borrow())
-            .post_translated(-x0, -y0, 0.0);
+            .pre_translated(x0, y0, 0.0)
+            .pre_mul(&*self.perspective.borrow())
+            .pre_translated(-x0, -y0, 0.0);
 
         for child in self.children().iter() {
             child.update_transform_state(&ts.final_transform,
