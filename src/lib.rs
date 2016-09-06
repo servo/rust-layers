@@ -10,6 +10,7 @@
 #![crate_name = "layers"]
 #![crate_type = "rlib"]
 
+#![cfg_attr(feature = "plugins", feature(core_intrinsics))]
 #![cfg_attr(feature = "plugins", feature(custom_attribute))]
 #![cfg_attr(feature = "plugins", feature(custom_derive))]
 #![cfg_attr(feature = "plugins", feature(plugin))]
