@@ -10,15 +10,9 @@
 #![crate_name = "layers"]
 #![crate_type = "rlib"]
 
-#![cfg_attr(feature = "plugins", feature(core_intrinsics))]
-#![cfg_attr(feature = "plugins", feature(custom_attribute))]
-#![cfg_attr(feature = "plugins", feature(custom_derive))]
-#![cfg_attr(feature = "plugins", feature(plugin))]
-
-#![cfg_attr(feature = "plugins", plugin(heapsize_plugin))]
-
 extern crate euclid;
-#[cfg(feature = "plugins")]
+#[cfg(feature = "heapsize")]
+#[macro_use]
 extern crate heapsize;
 extern crate libc;
 #[macro_use]

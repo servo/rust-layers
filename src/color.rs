@@ -8,10 +8,12 @@
 // except according to those terms.
 
 #[derive(Copy, Clone, Debug)]
-#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub struct Color {
     pub r: f32,
     pub g: f32,
     pub b: f32,
     pub a: f32,
 }
+
+#[cfg(feature = "heapsize")]
+known_heap_size!(0, Color);

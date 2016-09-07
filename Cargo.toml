@@ -1,13 +1,13 @@
 [package]
 
 name = "layers"
-version = "0.5.2"
+version = "0.5.3"
 authors = ["The Servo Project Developers"]
 license = "MIT/Apache-2.0"
 
 [features]
 default = []
-plugins = ["heapsize", "heapsize_plugin"]
+plugins = ["heapsize"]
 
 [dependencies]
 libc = "0.2"
@@ -19,10 +19,6 @@ servo-skia = "0.20130412.23"
 
 [dependencies.heapsize]
 version = ">=0.2.2, <0.4"
-optional = true
-
-[dependencies.heapsize_plugin]
-version = "0.1.2"
 optional = true
 
 [target.x86_64-apple-darwin.dependencies]

@@ -26,11 +26,13 @@ use std::rc::Rc;
 use std::cmp::Ordering;
 
 #[derive(Copy, Clone, Debug)]
-#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub struct ColorVertex {
     x: f32,
     y: f32,
 }
+
+#[cfg(feature = "heapsize")]
+known_heap_size!(0, ColorVertex);
 
 impl ColorVertex {
     pub fn new(point: Point2D<f32>) -> ColorVertex {
@@ -42,13 +44,15 @@ impl ColorVertex {
 }
 
 #[derive(Copy, Clone, Debug)]
-#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub struct TextureVertex {
     x: f32,
     y: f32,
     u: f32,
     v: f32,
 }
+
+#[cfg(feature = "heapsize")]
+known_heap_size!(0, TextureVertex);
 
 impl TextureVertex {
     pub fn new(point: Point2D<f32>, texture_coordinates: Point2D<f32>) -> TextureVertex {

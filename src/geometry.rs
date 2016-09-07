@@ -13,15 +13,17 @@
 ///
 /// This unit corresponds to the smallest addressable element of the display hardware.
 #[derive(Copy, Clone, RustcEncodable, Debug)]
-#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub enum DevicePixel {}
+
+#[cfg(feature = "heapsize")]
+known_heap_size!(0, DevicePixel);
 
 /// One pixel in layer coordinate space.
 ///
 /// This unit corresponds to a "pixel" in layer coordinate space, which after scaling and
 /// transformation becomes a device pixel.
 #[derive(Copy, Clone, RustcEncodable, Debug)]
-#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub enum LayerPixel {}
 
-
+#[cfg(feature = "heapsize")]
+known_heap_size!(0, LayerPixel);

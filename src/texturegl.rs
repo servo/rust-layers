@@ -16,28 +16,34 @@ use gleam::gl;
 use gleam::gl::{GLenum, GLint, GLuint};
 
 #[derive(Copy, Clone)]
-#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub enum Format {
     ARGB32Format,
     RGB24Format
 }
 
+#[cfg(feature = "heapsize")]
+known_heap_size!(0, Format);
+
 #[derive(Copy, Clone)]
-#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub enum FilterMode {
     Nearest,
     Linear
 }
 
+#[cfg(feature = "heapsize")]
+known_heap_size!(0, FilterMode);
+
 /// The texture target.
 #[derive(Copy, Clone)]
-#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub enum TextureTarget {
     /// TEXTURE_2D.
     TextureTarget2D,
     /// TEXTURE_RECTANGLE_ARB, with the size included.
     TextureTargetRectangle,
 }
+
+#[cfg(feature = "heapsize")]
+known_heap_size!(0, TextureTarget);
 
 impl TextureTarget {
 
@@ -205,10 +211,12 @@ impl Texture {
 
 /// Whether a texture should be flipped.
 #[derive(PartialEq, Copy, Clone)]
-#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub enum Flip {
     /// The texture should not be flipped.
     NoFlip,
     /// The texture should be flipped vertically.
     VerticalFlip,
 }
+
+#[cfg(feature = "heapsize")]
+known_heap_size!(0, Flip);

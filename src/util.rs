@@ -16,11 +16,13 @@ use std::f32;
 const W_CLIPPING_PLANE: f32 = 0.00001;
 
 #[derive(Debug)]
-#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub struct ScreenRect {
     pub rect: Rect<f32>,
     pub z_center: f32,
 }
+
+#[cfg(feature = "heapsize")]
+known_heap_size!(0, ScreenRect);
 
 pub fn convert_rgb32_to_rgb24(buffer: &[u8]) -> Vec<u8> {
     let mut i = 0;

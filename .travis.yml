@@ -21,7 +21,7 @@ rust:
 
 script:
   - cargo test
-  - ([ $TRAVIS_RUST_VERSION != nightly ] || cargo test --features plugins)
+  - cargo test --features heapsize
 
 notifications:
   webhooks: http://build.servo.org:54856/travis
