@@ -22,10 +22,12 @@ use std::rc::Rc;
 use util::{project_rect_to_screen, ScreenRect};
 
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
-#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub struct ContentAge {
     age: usize,
 }
+
+#[cfg(feature = "heapsize")]
+known_heap_size!(0, ContentAge);
 
 impl ContentAge {
     pub fn new() -> ContentAge {
@@ -39,7 +41,6 @@ impl ContentAge {
     }
 }
 
-#[cfg_attr(feature = "plugins", derive(HeapSizeOf))]
 pub struct TransformState {
     /// Final, concatenated transform + perspective matrix for this layer
     pub final_transform: Matrix4D<f32>,
@@ -53,6 +54,9 @@ pub struct TransformState {
     /// True if this layer has a non-identity transform
     pub has_transform: bool,
 }
+
+#[cfg(feature = "heapsize")]
+known_heap_size!(0, TransformState);
 
 impl TransformState {
     fn new() -> TransformState {
