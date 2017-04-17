@@ -473,6 +473,10 @@ impl<T> RenderContext3DBuilder<T> for Rc<Layer<T>> {
     }
 }
 
+enum GraphicOption {
+    GL,
+    ES2,
+  }
 #[derive(Copy, Clone)]
 pub struct RenderContext {
     texture_2d_program: TextureProgram,
@@ -487,17 +491,30 @@ pub struct RenderContext {
     show_debug_borders: bool,
 
     force_near_texture_filter: bool,
+
 }
 
 impl RenderContext {
     pub fn new(compositing_display: NativeDisplay,
                show_debug_borders: bool,
-               force_near_texture_filter: bool) -> RenderContext {
+               force_near_texture_filter: bool,
+               graphics_option: bool) -> RenderContext {
+               
         gl::enable(gl::TEXTURE_2D);
 
+	
         // Each layer uses premultiplied alpha!
         gl::enable(gl::BLEND);
         gl::blend_func(gl::ONE, gl::ONE_MINUS_SRC_ALPHA);
+	let mut graphics_select = GraphicOption::GL;
+	if(graphics_option == true)
+	{
+		graphics_select = GraphicOption::GL;
+	}
+	else
+	{
+		graphics_select = GraphicOption::ES2;
+	}
 
         let texture_2d_program = TextureProgram::create_2d_program();
         let solid_color_program = SolidColorProgram::new();
@@ -511,6 +528,8 @@ impl RenderContext {
             compositing_display: compositing_display,
             show_debug_borders: show_debug_borders,
             force_near_texture_filter: force_near_texture_filter,
+
+
         }
     }
 
