@@ -31,9 +31,7 @@ known_heap_size!(0, ContentAge);
 
 impl ContentAge {
     pub fn new() -> ContentAge {
-        ContentAge {
-            age: 0,
-        }
+        ContentAge { age: 0 }
     }
 
     pub fn next(&mut self) {
@@ -103,15 +101,16 @@ pub struct Layer<T> {
 }
 
 impl<T> Layer<T> {
-    pub fn new(bounds: TypedRect<f32, LayerPixel>,
-               tile_size: usize,
-               background_color: Color,
-               opacity: f32,
-               establishes_3d_context: bool,
-               data: T)
-               -> Layer<T> {
+    pub fn new(
+        bounds: TypedRect<f32, LayerPixel>,
+        tile_size: usize,
+        background_color: Color,
+        opacity: f32,
+        establishes_3d_context: bool,
+        data: T,
+    ) -> Layer<T> {
         Layer {
-            children: RefCell::new(vec!()),
+            children: RefCell::new(vec![]),
             transform: RefCell::new(Matrix4D::identity()),
             perspective: RefCell::new(Matrix4D::identity()),
             bounds: RefCell::new(bounds),
@@ -142,19 +141,21 @@ impl<T> Layer<T> {
 
     /// Returns buffer requests inside the given dirty rect, and simultaneously throws out tiles
     /// outside the given viewport rect.
-    pub fn get_buffer_requests(&self,
-                               rect_in_layer: TypedRect<f32, LayerPixel>,
-                               viewport_in_layer: TypedRect<f32, LayerPixel>,
-                               scale: ScaleFactor<f32, LayerPixel, DevicePixel>)
-                               -> Vec<BufferRequest> {
+    pub fn get_buffer_requests(
+        &self,
+        rect_in_layer: TypedRect<f32, LayerPixel>,
+        viewport_in_layer: TypedRect<f32, LayerPixel>,
+        scale: ScaleFactor<f32, LayerPixel, DevicePixel>,
+    ) -> Vec<BufferRequest> {
         let mut tile_grid = self.tile_grid.borrow_mut();
-        tile_grid.get_buffer_requests_in_rect(rect_in_layer * scale,
-                                              viewport_in_layer * scale,
-                                              self.bounds.borrow().size * scale,
-                                              &(self.transform_state.borrow().world_rect.origin *
-                                                scale.get()),
-                                              &self.transform_state.borrow().final_transform,
-                                              *self.content_age.borrow())
+        tile_grid.get_buffer_requests_in_rect(
+            rect_in_layer * scale,
+            viewport_in_layer * scale,
+            self.bounds.borrow().size * scale,
+            &(self.transform_state.borrow().world_rect.origin * scale.get()),
+            &self.transform_state.borrow().final_transform,
+            *self.content_age.borrow(),
+        )
     }
 
     pub fn resize(&self, new_size: TypedSize2D<f32, LayerPixel>) {
@@ -185,14 +186,14 @@ impl<T> Layer<T> {
         self.tile_grid.borrow().do_for_all_tiles(f);
     }
 
-    pub fn update_transform_state(&self,
-                                  parent_transform: &Matrix4D<f32>,
-                                  parent_perspective: &Matrix4D<f32>,
-                                  parent_origin: &Point2D<f32>) {
+    pub fn update_transform_state(
+        &self,
+        parent_transform: &Matrix4D<f32>,
+        parent_perspective: &Matrix4D<f32>,
+        parent_origin: &Point2D<f32>,
+    ) {
         let mut ts = self.transform_state.borrow_mut();
-        let rect_without_scroll = self.bounds.borrow()
-                                             .to_untyped()
-                                             .translate(parent_origin);
+        let rect_without_scroll = self.bounds.borrow().to_untyped().translate(parent_origin);
 
         ts.world_rect = rect_without_scroll.translate(&self.content_offset.borrow().to_untyped());
 
@@ -205,9 +206,9 @@ impl<T> Layer<T> {
             .pre_mul(&*self.transform.borrow())
             .pre_translated(-x0, -y0, 0.0);
 
-        ts.final_transform = parent_perspective
-            .pre_mul(&local_transform)
-            .pre_mul(&parent_transform);
+        ts.final_transform = parent_perspective.pre_mul(&local_transform).pre_mul(
+            &parent_transform,
+        );
         ts.screen_rect = project_rect_to_screen(&ts.world_rect, &ts.final_transform);
 
         // TODO(gw): This is quite bogus. It's a hack to allow the paint task
@@ -224,18 +225,21 @@ impl<T> Layer<T> {
             .pre_translated(-x0, -y0, 0.0);
 
         for child in self.children().iter() {
-            child.update_transform_state(&ts.final_transform,
-                                         &perspective_transform,
-                                         &rect_without_scroll.origin);
+            child.update_transform_state(
+                &ts.final_transform,
+                &perspective_transform,
+                &rect_without_scroll.origin,
+            );
         }
     }
 
     /// Calculate the amount of memory used by this layer and all its children.
     /// The memory may be allocated on the heap or in GPU memory.
     pub fn get_memory_usage(&self) -> usize {
-        let size_of_children : usize = self.children().iter().map(|ref child| -> usize {
-            child.get_memory_usage()
-        }).sum();
+        let size_of_children: usize = self.children()
+            .iter()
+            .map(|ref child| -> usize { child.get_memory_usage() })
+            .sum();
         size_of_children + self.tile_grid.borrow().get_memory_usage()
     }
 }
@@ -256,8 +260,11 @@ pub struct BufferRequest {
 }
 
 impl BufferRequest {
-    pub fn new(screen_rect: Rect<usize>, page_rect: Rect<f32>, content_age: ContentAge)
-               -> BufferRequest {
+    pub fn new(
+        screen_rect: Rect<usize>,
+        page_rect: Rect<f32>,
+        content_age: ContentAge,
+    ) -> BufferRequest {
         BufferRequest {
             screen_rect: screen_rect,
             page_rect: page_rect,
@@ -320,7 +327,7 @@ impl LayerBuffer {
 /// A set of layer buffers. This is an atomic unit used to switch between the front and back
 /// buffers.
 pub struct LayerBufferSet {
-    pub buffers: Vec<Box<LayerBuffer>>
+    pub buffers: Vec<Box<LayerBuffer>>,
 }
 
 impl LayerBufferSet {

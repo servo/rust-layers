@@ -21,16 +21,16 @@ extern crate rustc_serialize;
 extern crate gleam;
 extern crate skia;
 
-#[cfg(target_os="macos")]
+#[cfg(target_os = "macos")]
 extern crate core_foundation;
-#[cfg(target_os="macos")]
+#[cfg(target_os = "macos")]
 extern crate io_surface;
-#[cfg(target_os="macos")]
+#[cfg(target_os = "macos")]
 extern crate cgl;
 
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 extern crate x11;
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 extern crate glx;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -46,23 +46,23 @@ pub mod tiling;
 pub mod util;
 
 pub mod platform {
-    #[cfg(target_os="linux")]
+    #[cfg(target_os = "linux")]
     pub mod linux {
         pub mod surface;
     }
-    #[cfg(target_os="macos")]
+    #[cfg(target_os = "macos")]
     pub mod macos {
         pub mod surface;
     }
-    #[cfg(target_os="android")]
+    #[cfg(target_os = "android")]
     pub mod android {
         pub mod surface;
     }
-    #[cfg(any(target_os="android",target_os="linux"))]
+    #[cfg(any(target_os = "android", target_os = "linux"))]
     pub mod egl {
         pub mod surface;
     }
-    #[cfg(target_os="windows")]
+    #[cfg(target_os = "windows")]
     pub mod windows {
         pub mod surface;
     }

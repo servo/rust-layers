@@ -18,7 +18,7 @@ use gleam::gl::{GLenum, GLint, GLuint};
 #[derive(Copy, Clone)]
 pub enum Format {
     ARGB32Format,
-    RGB24Format
+    RGB24Format,
 }
 
 #[cfg(feature = "heapsize")]
@@ -27,7 +27,7 @@ known_heap_size!(0, Format);
 #[derive(Copy, Clone)]
 pub enum FilterMode {
     Nearest,
-    Linear
+    Linear,
 }
 
 #[cfg(feature = "heapsize")]
@@ -46,7 +46,6 @@ pub enum TextureTarget {
 known_heap_size!(0, TextureTarget);
 
 impl TextureTarget {
-
     #[cfg(not(target_os = "android"))]
     pub fn as_gl_target(self) -> GLenum {
         match self {
@@ -59,7 +58,9 @@ impl TextureTarget {
     pub fn as_gl_target(self) -> GLenum {
         match self {
             TextureTarget::TextureTarget2D => gl::TEXTURE_2D,
-            TextureTarget::TextureTargetRectangle => panic!("android doesn't supported rectangle targets"),
+            TextureTarget::TextureTargetRectangle => {
+                panic!("android doesn't supported rectangle targets")
+            }
         }
     }
 }
@@ -82,13 +83,13 @@ pub struct Texture {
     pub flip: Flip,
 
     // The size of this texture in device pixels.
-    pub size: Size2D<usize>
+    pub size: Size2D<usize>,
 }
 
 impl Drop for Texture {
     fn drop(&mut self) {
         if !self.weak {
-            gl::delete_textures(&[ self.id ])
+            gl::delete_textures(&[self.id])
         }
     }
 }
@@ -111,7 +112,7 @@ impl Texture {
 /// Encapsulates a bound texture. This ensures that the texture is unbound
 /// properly.
 pub struct BoundTexture {
-    pub target: TextureTarget
+    pub target: TextureTarget,
 }
 
 impl Drop for BoundTexture {
@@ -142,7 +143,7 @@ impl Texture {
     }
 
     // Returns whether the layer should be vertically flipped.
-    #[cfg(target_os="macos")]
+    #[cfg(target_os = "macos")]
     pub fn texture_flip_and_target(cpu_painting: bool) -> (Flip, TextureTarget) {
         let flip = if cpu_painting {
             Flip::NoFlip
@@ -153,7 +154,7 @@ impl Texture {
         (flip, TextureTarget::TextureTargetRectangle)
     }
 
-    #[cfg(target_os="android")]
+    #[cfg(target_os = "android")]
     pub fn texture_flip_and_target(cpu_painting: bool) -> (Flip, TextureTarget) {
         let flip = if cpu_painting {
             Flip::NoFlip
@@ -164,12 +165,12 @@ impl Texture {
         (flip, TextureTarget::TextureTarget2D)
     }
 
-    #[cfg(target_os="linux")]
+    #[cfg(target_os = "linux")]
     pub fn texture_flip_and_target(_: bool) -> (Flip, TextureTarget) {
         (Flip::NoFlip, TextureTarget::TextureTarget2D)
     }
 
-    #[cfg(target_os="windows")]
+    #[cfg(target_os = "windows")]
     pub fn texture_flip_and_target(_: bool) -> (Flip, TextureTarget) {
         (Flip::NoFlip, TextureTarget::TextureTarget2D)
     }
@@ -182,10 +183,26 @@ impl Texture {
     /// Sets default parameters for this texture.
     fn set_default_params(&self) {
         let _bound_texture = self.bind();
-        gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_MAG_FILTER, gl::LINEAR as GLint);
-        gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_MIN_FILTER, gl::LINEAR as GLint);
-        gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as GLint);
-        gl::tex_parameter_i(self.target.as_gl_target(), gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as GLint);
+        gl::tex_parameter_i(
+            self.target.as_gl_target(),
+            gl::TEXTURE_MAG_FILTER,
+            gl::LINEAR as GLint,
+        );
+        gl::tex_parameter_i(
+            self.target.as_gl_target(),
+            gl::TEXTURE_MIN_FILTER,
+            gl::LINEAR as GLint,
+        );
+        gl::tex_parameter_i(
+            self.target.as_gl_target(),
+            gl::TEXTURE_WRAP_S,
+            gl::CLAMP_TO_EDGE as GLint,
+        );
+        gl::tex_parameter_i(
+            self.target.as_gl_target(),
+            gl::TEXTURE_WRAP_T,
+            gl::CLAMP_TO_EDGE as GLint,
+        );
     }
 
     /// Sets the filter mode for this texture.
@@ -203,9 +220,7 @@ impl Texture {
     pub fn bind(&self) -> BoundTexture {
         gl::bind_texture(self.target.as_gl_target(), self.id);
 
-        BoundTexture {
-            target: self.target,
-        }
+        BoundTexture { target: self.target }
     }
 }
 

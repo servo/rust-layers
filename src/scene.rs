@@ -32,13 +32,14 @@ impl<T> Scene<T> {
         }
     }
 
-    pub fn get_buffer_requests_for_layer(&mut self,
-                                         layer: Rc<Layer<T>>,
-                                         dirty_rect: TypedRect<f32, LayerPixel>,
-                                         viewport_rect: TypedRect<f32, LayerPixel>,
-                                         layers_and_requests: &mut Vec<(Rc<Layer<T>>,
-                                                                        Vec<BufferRequest>)>,
-                                         unused_buffers: &mut Vec<Box<LayerBuffer>>) {
+    pub fn get_buffer_requests_for_layer(
+        &mut self,
+        layer: Rc<Layer<T>>,
+        dirty_rect: TypedRect<f32, LayerPixel>,
+        viewport_rect: TypedRect<f32, LayerPixel>,
+        layers_and_requests: &mut Vec<(Rc<Layer<T>>, Vec<BufferRequest>)>,
+        unused_buffers: &mut Vec<Box<LayerBuffer>>,
+    ) {
         // Get buffers for this layer, in global (screen) coordinates.
         let requests = layer.get_buffer_requests(dirty_rect, viewport_rect, self.scale);
         if !requests.is_empty() {
@@ -57,33 +58,39 @@ impl<T> Scene<T> {
                         Some(ref child_dirty_rect) => TypedRect::from_untyped(child_dirty_rect),
                         None => return, // The layer is entirely outside the dirty rect.
                     }
-                },
+                }
                 None => return, // The layer is entirely clipped.
             }
         };
 
         for kid in layer.children().iter() {
-            self.get_buffer_requests_for_layer(kid.clone(),
-                                               child_dirty_rect,
-                                               viewport_rect,
-                                               layers_and_requests,
-                                               unused_buffers);
+            self.get_buffer_requests_for_layer(
+                kid.clone(),
+                child_dirty_rect,
+                viewport_rect,
+                layers_and_requests,
+                unused_buffers,
+            );
         }
     }
 
-    pub fn get_buffer_requests(&mut self,
-                               requests: &mut Vec<(Rc<Layer<T>>, Vec<BufferRequest>)>,
-                               unused_buffers: &mut Vec<Box<LayerBuffer>>) {
+    pub fn get_buffer_requests(
+        &mut self,
+        requests: &mut Vec<(Rc<Layer<T>>, Vec<BufferRequest>)>,
+        unused_buffers: &mut Vec<Box<LayerBuffer>>,
+    ) {
         let root_layer = match self.root {
             Some(ref root_layer) => root_layer.clone(),
             None => return,
         };
 
-        self.get_buffer_requests_for_layer(root_layer.clone(),
-                                           *root_layer.bounds.borrow(),
-                                           *root_layer.bounds.borrow(),
-                                           requests,
-                                           unused_buffers);
+        self.get_buffer_requests_for_layer(
+            root_layer.clone(),
+            *root_layer.bounds.borrow(),
+            *root_layer.bounds.borrow(),
+            requests,
+            unused_buffers,
+        );
     }
 
     pub fn mark_layer_contents_as_changed_recursively_for_layer(&self, layer: Rc<Layer<T>>) {
@@ -103,8 +110,8 @@ impl<T> Scene<T> {
 
     pub fn set_root_layer_size(&self, new_size: TypedSize2D<f32, DevicePixel>) {
         if let Some(ref root_layer) = self.root {
-            *root_layer.bounds.borrow_mut() = TypedRect::new(TypedPoint2D::zero(),
-                                                             new_size / self.scale);
+            *root_layer.bounds.borrow_mut() =
+                TypedRect::new(TypedPoint2D::zero(), new_size / self.scale);
         }
     }
 

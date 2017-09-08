@@ -3,7 +3,7 @@ use skia::gl_context::PlatformDisplayData;
 #[derive(Copy, Clone)]
 pub struct NativeDisplay;
 
-#[cfg(target_os="windows")]
+#[cfg(target_os = "windows")]
 impl NativeDisplay {
     pub fn new() -> NativeDisplay {
         NativeDisplay
@@ -13,4 +13,3 @@ impl NativeDisplay {
         PlatformDisplayData::new()
     }
 }
-

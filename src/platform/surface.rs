@@ -17,39 +17,37 @@ use skia::gl_rasterization_context::GLRasterizationContext;
 use skia::gl_context::GLContext;
 use std::sync::Arc;
 
-#[cfg(not(target_os="android"))]
+#[cfg(not(target_os = "android"))]
 use gleam::gl;
 
-#[cfg(target_os="macos")]
-pub use platform::macos::surface::{NativeDisplay,
-                                   IOSurfaceNativeSurface};
+#[cfg(target_os = "macos")]
+pub use platform::macos::surface::{NativeDisplay, IOSurfaceNativeSurface};
 
-#[cfg(target_os="linux")]
-pub use platform::linux::surface::{NativeDisplay,
-                                   PixmapNativeSurface};
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
+pub use platform::linux::surface::{NativeDisplay, PixmapNativeSurface};
+#[cfg(target_os = "linux")]
 use std::ptr;
 
-#[cfg(any(target_os="android",target_os="linux"))]
-pub use platform::egl::surface::{EGLImageNativeSurface};
+#[cfg(any(target_os = "android", target_os = "linux"))]
+pub use platform::egl::surface::EGLImageNativeSurface;
 
-#[cfg(target_os="android")]
+#[cfg(target_os = "android")]
 pub use platform::android::surface::NativeDisplay;
 
-#[cfg(target_os="windows")]
+#[cfg(target_os = "windows")]
 pub use platform::windows::surface::NativeDisplay;
 
 pub enum NativeSurface {
     MemoryBuffer(MemoryBufferNativeSurface),
-#[cfg(target_os="linux")]
+    #[cfg(target_os = "linux")]
     Pixmap(PixmapNativeSurface),
-#[cfg(target_os="macos")]
+    #[cfg(target_os = "macos")]
     IOSurface(IOSurfaceNativeSurface),
-#[cfg(any(target_os="android",target_os="linux"))]
+    #[cfg(any(target_os = "android", target_os = "linux"))]
     EGLImage(EGLImageNativeSurface),
 }
 
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 impl NativeSurface {
     /// Creates a new native surface with uninitialized data.
     pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> NativeSurface {
@@ -68,28 +66,28 @@ impl NativeSurface {
     }
 }
 
-#[cfg(target_os="macos")]
+#[cfg(target_os = "macos")]
 impl NativeSurface {
     /// Creates a new native surface with uninitialized data.
     pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> NativeSurface {
         NativeSurface::IOSurface(IOSurfaceNativeSurface::new(display, size))
-   }
+    }
 }
 
-#[cfg(target_os="android")]
+#[cfg(target_os = "android")]
 impl NativeSurface {
     /// Creates a new native surface with uninitialized data.
     pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> NativeSurface {
         NativeSurface::EGLImage(EGLImageNativeSurface::new(display, size))
-   }
+    }
 }
 
-#[cfg(target_os="windows")]
+#[cfg(target_os = "windows")]
 impl NativeSurface {
     /// Creates a new native surface with uninitialized data.
     pub fn new(display: &NativeDisplay, size: Size2D<i32>) -> NativeSurface {
         NativeSurface::MemoryBuffer(MemoryBufferNativeSurface::new(display, size))
-   }
+    }
 }
 
 macro_rules! native_surface_method_with_mutability {
@@ -193,9 +191,10 @@ impl NativeSurface {
         native_surface_method_mut!(self mark_wont_leak ())
     }
 
-    pub fn gl_rasterization_context(&mut self,
-                                    gl_context: Arc<GLContext>)
-                                    -> Option<Arc<GLRasterizationContext>> {
+    pub fn gl_rasterization_context(
+        &mut self,
+        gl_context: Arc<GLContext>,
+    ) -> Option<Arc<GLRasterizationContext>> {
         match native_surface_method_mut!(self gl_rasterization_context (gl_context)) {
             Some(context) => Some(Arc::new(context)),
             None => None,
@@ -225,28 +224,30 @@ pub struct MemoryBufferNativeSurface {
 
 impl MemoryBufferNativeSurface {
     pub fn new(_: &NativeDisplay, size: Size2D<i32>) -> MemoryBufferNativeSurface {
-        MemoryBufferNativeSurface{
-            bytes: vec!(),
+        MemoryBufferNativeSurface {
+            bytes: vec![],
             size: size,
         }
     }
 
     /// This may only be called on the compositor side.
-    #[cfg(not(target_os="android"))]
+    #[cfg(not(target_os = "android"))]
     pub fn bind_to_texture(&self, _: &NativeDisplay, texture: &Texture) {
         let _bound = texture.bind();
-        gl::tex_image_2d(gl::TEXTURE_2D,
-                         0,
-                         gl::RGBA as i32,
-                         self.size.width as i32,
-                         self.size.height as i32,
-                         0,
-                         gl::BGRA,
-                         gl::UNSIGNED_BYTE,
-                         Some(&self.bytes));
+        gl::tex_image_2d(
+            gl::TEXTURE_2D,
+            0,
+            gl::RGBA as i32,
+            self.size.width as i32,
+            self.size.height as i32,
+            0,
+            gl::BGRA,
+            gl::UNSIGNED_BYTE,
+            Some(&self.bytes),
+        );
     }
 
-    #[cfg(target_os="android")]
+    #[cfg(target_os = "android")]
     pub fn bind_to_texture(&self, _: &NativeDisplay, _: &Texture) {
         panic!("Binding a memory surface to a texture is not yet supported on Android.");
     }
@@ -261,18 +262,16 @@ impl MemoryBufferNativeSurface {
         0
     }
 
-    pub fn destroy(&mut self, _: &NativeDisplay) {
-    }
+    pub fn destroy(&mut self, _: &NativeDisplay) {}
 
-    pub fn mark_will_leak(&mut self) {
-    }
+    pub fn mark_will_leak(&mut self) {}
 
-    pub fn mark_wont_leak(&mut self) {
-    }
+    pub fn mark_wont_leak(&mut self) {}
 
-    pub fn gl_rasterization_context(&mut self,
-                                    _: Arc<GLContext>)
-                                    -> Option<GLRasterizationContext> {
+    pub fn gl_rasterization_context(
+        &mut self,
+        _: Arc<GLContext>,
+    ) -> Option<GLRasterizationContext> {
         None
     }
 }

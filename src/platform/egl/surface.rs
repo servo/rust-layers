@@ -29,10 +29,10 @@ const GL_FORMAT_BGRA: gl::GLuint = gl::BGRA;
 #[cfg(any(target_os = "android", target_os = "gonk"))]
 const GL_FORMAT_BGRA: gl::GLuint = gl::BGRA_EXT;
 
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 pub use platform::linux::surface::NativeDisplay;
 
-#[cfg(target_os="android")]
+#[cfg(target_os = "android")]
 pub use platform::android::surface::NativeDisplay;
 
 pub struct EGLImageNativeSurface {
@@ -68,25 +68,29 @@ impl EGLImageNativeSurface {
     pub fn bind_to_texture(&self, _: &NativeDisplay, texture: &Texture) {
         let _bound = texture.bind();
         match self.image {
-            None => match self.bitmap {
-                Some(ref bitmap) => {
-                    let data = bitmap.as_ptr() as *const c_void;
-                    unsafe {
-                        TexImage2D(TEXTURE_2D,
-                                   0,
-                                   GL_FORMAT_BGRA as i32,
-                                   self.size.width as i32,
-                                   self.size.height as i32,
-                                   0,
-                                   GL_FORMAT_BGRA as u32,
-                                   UNSIGNED_BYTE,
-                                   data);
-                     }
+            None => {
+                match self.bitmap {
+                    Some(ref bitmap) => {
+                        let data = bitmap.as_ptr() as *const c_void;
+                        unsafe {
+                            TexImage2D(
+                                TEXTURE_2D,
+                                0,
+                                GL_FORMAT_BGRA as i32,
+                                self.size.width as i32,
+                                self.size.height as i32,
+                                0,
+                                GL_FORMAT_BGRA as u32,
+                                UNSIGNED_BYTE,
+                                data,
+                            );
+                        }
+                    }
+                    None => {
+                        debug!("Cannot bind the buffer(CPU rendering), there is no bitmap");
+                    }
                 }
-                None => {
-                    debug!("Cannot bind the buffer(CPU rendering), there is no bitmap");
-                }
-            },
+            }
             Some(_image_khr) => {
                 panic!("TODO: Support GPU rasterizer path on EGL");
             }
@@ -128,9 +132,10 @@ impl EGLImageNativeSurface {
         self.will_leak = false
     }
 
-    pub fn gl_rasterization_context(&mut self,
-                                    _gl_context: Arc<GLContext>)
-                                    -> Option<GLRasterizationContext> {
+    pub fn gl_rasterization_context(
+        &mut self,
+        _gl_context: Arc<GLContext>,
+    ) -> Option<GLRasterizationContext> {
         panic!("TODO: Support GL context on EGL");
     }
 }

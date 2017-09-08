@@ -34,16 +34,12 @@ unsafe impl Send for NativeDisplay {}
 impl NativeDisplay {
     pub fn new() -> NativeDisplay {
         unsafe {
-            NativeDisplay {
-                pixel_format: cgl::CGLGetPixelFormat(cgl::CGLGetCurrentContext()),
-            }
+            NativeDisplay { pixel_format: cgl::CGLGetPixelFormat(cgl::CGLGetCurrentContext()) }
         }
     }
 
     pub fn platform_display_data(&self) -> PlatformDisplayData {
-        PlatformDisplayData {
-            pixel_format: self.pixel_format,
-        }
+        PlatformDisplayData { pixel_format: self.pixel_format }
     }
 }
 
@@ -68,7 +64,12 @@ impl Decodable for IOSurfaceNativeSurface {
 }
 impl Encodable for IOSurfaceNativeSurface {
     fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
-        try!(self.surface.as_ref().map(io_surface::IOSurface::get_id).encode(e));
+        try!(
+            self.surface
+                .as_ref()
+                .map(io_surface::IOSurface::get_id)
+                .encode(e)
+        );
         try!(self.will_leak.encode(e));
         try!(self.size.encode(e));
         Ok(())
@@ -96,13 +97,21 @@ impl IOSurfaceNativeSurface {
                 TCFType::wrap_under_get_rule(io_surface::kIOSurfaceIsGlobal);
             let is_global_value = CFBoolean::true_value();
 
-            let surface = io_surface::new(&CFDictionary::from_CFType_pairs(&[
-                (width_key.as_CFType(), width_value.as_CFType()),
-                (height_key.as_CFType(), height_value.as_CFType()),
-                (bytes_per_row_key.as_CFType(), bytes_per_row_value.as_CFType()),
-                (bytes_per_elem_key.as_CFType(), bytes_per_elem_value.as_CFType()),
-                (is_global_key.as_CFType(), is_global_value.as_CFType()),
-            ]));
+            let surface = io_surface::new(&CFDictionary::from_CFType_pairs(
+                &[
+                    (width_key.as_CFType(), width_value.as_CFType()),
+                    (height_key.as_CFType(), height_value.as_CFType()),
+                    (
+                        bytes_per_row_key.as_CFType(),
+                        bytes_per_row_value.as_CFType(),
+                    ),
+                    (
+                        bytes_per_elem_key.as_CFType(),
+                        bytes_per_elem_value.as_CFType(),
+                    ),
+                    (is_global_key.as_CFType(), is_global_value.as_CFType()),
+                ],
+            ));
 
             IOSurfaceNativeSurface {
                 surface: Some(surface),
@@ -143,11 +152,10 @@ impl IOSurfaceNativeSurface {
         self.will_leak = false
     }
 
-    pub fn gl_rasterization_context(&mut self,
-                                    gl_context: Arc<GLContext>)
-                                    -> Option<GLRasterizationContext> {
-        GLRasterizationContext::new(gl_context,
-                                    self.surface.as_ref().unwrap().obj,
-                                    self.size)
+    pub fn gl_rasterization_context(
+        &mut self,
+        gl_context: Arc<GLContext>,
+    ) -> Option<GLRasterizationContext> {
+        GLRasterizationContext::new(gl_context, self.surface.as_ref().unwrap().obj, self.size)
     }
 }

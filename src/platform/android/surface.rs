@@ -27,7 +27,6 @@ use std::vec::Vec;
 /// buffer. EGLImageKHR is used to GPU rendering and vector is used to CPU rendering. EGL
 /// extension seems not provide simple way to accessing its bitmap directly. In the
 /// future, we need to find out the way to integrate them.
-
 #[derive(Clone, Copy)]
 pub struct NativeDisplay {
     pub display: EGLDisplay,
@@ -40,15 +39,11 @@ impl NativeDisplay {
     }
 
     pub fn new_with_display(display: EGLDisplay) -> NativeDisplay {
-        NativeDisplay {
-            display: display,
-        }
+        NativeDisplay { display: display }
     }
 
     pub fn platform_display_data(&self) -> PlatformDisplayData {
-        PlatformDisplayData {
-            display: self.display,
-        }
+        PlatformDisplayData { display: self.display }
     }
 }
 
@@ -85,25 +80,29 @@ impl EGLImageNativeSurface {
     pub fn bind_to_texture(&self, _: &NativeDisplay, texture: &Texture) {
         let _bound = texture.bind();
         match self.image {
-            None => match self.bitmap {
-                Some(ref bitmap) => {
-                    let data = bitmap.as_ptr() as *const c_void;
-                    unsafe {
-                        TexImage2D(TEXTURE_2D,
-                                   0,
-                                   BGRA_EXT as i32,
-                                   self.size.width as i32,
-                                   self.size.height as i32,
-                                   0,
-                                   BGRA_EXT as u32,
-                                   UNSIGNED_BYTE,
-                                   data);
+            None => {
+                match self.bitmap {
+                    Some(ref bitmap) => {
+                        let data = bitmap.as_ptr() as *const c_void;
+                        unsafe {
+                            TexImage2D(
+                                TEXTURE_2D,
+                                0,
+                                BGRA_EXT as i32,
+                                self.size.width as i32,
+                                self.size.height as i32,
+                                0,
+                                BGRA_EXT as u32,
+                                UNSIGNED_BYTE,
+                                data,
+                            );
+                        }
+                    }
+                    None => {
+                        debug!("Cannot bind the buffer(CPU rendering), there is no bitmap");
                     }
                 }
-                None => {
-                    debug!("Cannot bind the buffer(CPU rendering), there is no bitmap");
-                }
-            },
+            }
             Some(image_khr) => {
                 egl_image_target_texture2d_oes(TEXTURE_2D, image_khr as *const c_void);
             }
@@ -132,7 +131,7 @@ impl EGLImageNativeSurface {
 
     pub fn destroy(&mut self, graphics_context: &NativeDisplay) {
         match self.image {
-            None => {},
+            None => {}
             Some(image_khr) => {
                 DestroyImageKHR(graphics_context.display, image_khr);
                 mem::replace(&mut self.image, None);
@@ -149,9 +148,10 @@ impl EGLImageNativeSurface {
         self.will_leak = false
     }
 
-    pub fn gl_rasterization_context(&mut self,
-                                    gl_context: Arc<GLContext>)
-                                    -> Option<GLRasterizationContext> {
+    pub fn gl_rasterization_context(
+        &mut self,
+        gl_context: Arc<GLContext>,
+    ) -> Option<GLRasterizationContext> {
         // TODO: Eventually we should preserve the previous GLRasterizationContext,
         // so that we don't have to keep destroying and recreating the image.
         if let Some(egl_image) = self.image.take() {

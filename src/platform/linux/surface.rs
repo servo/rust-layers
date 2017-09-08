@@ -13,7 +13,7 @@
 
 //TODO: Linking EGL here is probably wrong - should it be done in gleam / glutin etc?
 #[link(name = "EGL")]
-extern {}
+extern "C" {}
 
 use texturegl::Texture;
 
@@ -40,7 +40,6 @@ use egl::egl::{EGLDisplay, GetCurrentDisplay};
 /// to fix because the Display is given to us by the native windowing system, but we should fix it
 /// someday.
 /// FIXME(pcwalton): Mark nonsendable.
-
 #[derive(Copy, Clone)]
 pub struct GLXDisplayInfo {
     pub display: *mut xlib::Display,
@@ -79,8 +78,9 @@ impl NativeDisplay {
     /// Chooses the compositor visual info using the same algorithm that the compositor uses.
     ///
     /// FIXME(pcwalton): It would be more robust to actually have the compositor pass the visual.
-    fn compositor_visual_info(display: *mut xlib::Display)
-                              -> (*mut xlib::XVisualInfo, Option<glx::types::GLXFBConfig>) {
+    fn compositor_visual_info(
+        display: *mut xlib::Display,
+    ) -> (*mut xlib::XVisualInfo, Option<glx::types::GLXFBConfig>) {
         // If display is null, we'll assume we are going to be rendering
         // in headless mode without X running.
         if display == ptr::null_mut() {
@@ -89,28 +89,36 @@ impl NativeDisplay {
 
         unsafe {
             let fbconfig_attributes = [
-                glx::DOUBLEBUFFER as i32, 0,
-                glx::DRAWABLE_TYPE as i32, glx::PIXMAP_BIT as i32 | glx::WINDOW_BIT as i32,
-                glx::BIND_TO_TEXTURE_RGBA_EXT as i32, 1,
-                glx::RENDER_TYPE as i32, glx::RGBA_BIT as i32,
-                glx::ALPHA_SIZE as i32, 8,
-                0
+                glx::DOUBLEBUFFER as i32,
+                0,
+                glx::DRAWABLE_TYPE as i32,
+                glx::PIXMAP_BIT as i32 | glx::WINDOW_BIT as i32,
+                glx::BIND_TO_TEXTURE_RGBA_EXT as i32,
+                1,
+                glx::RENDER_TYPE as i32,
+                glx::RGBA_BIT as i32,
+                glx::ALPHA_SIZE as i32,
+                8,
+                0,
             ];
 
             let screen = xlib::XDefaultScreen(display);
             let mut number_of_configs = 0;
-            let configs = glx::ChooseFBConfig(mem::transmute(display),
-                                              screen,
-                                              fbconfig_attributes.as_ptr(),
-                                              &mut number_of_configs);
+            let configs = glx::ChooseFBConfig(
+                mem::transmute(display),
+                screen,
+                fbconfig_attributes.as_ptr(),
+                &mut number_of_configs,
+            );
             NativeDisplay::get_compatible_configuration(display, configs, number_of_configs)
         }
     }
 
-    fn get_compatible_configuration(display: *mut xlib::Display,
-                                    configs: *mut glx::types::GLXFBConfig,
-                                    number_of_configs: i32)
-                                    -> (*mut xlib::XVisualInfo, Option<glx::types::GLXFBConfig>) {
+    fn get_compatible_configuration(
+        display: *mut xlib::Display,
+        configs: *mut glx::types::GLXFBConfig,
+        number_of_configs: i32,
+    ) -> (*mut xlib::XVisualInfo, Option<glx::types::GLXFBConfig>) {
         unsafe {
             if number_of_configs == 0 {
                 panic!("glx::ChooseFBConfig returned no configurations.");
@@ -149,12 +157,11 @@ impl NativeDisplay {
             if glx_vendor == ptr::null() {
                 panic!("Could not determine GLX vendor.");
             }
-            let glx_vendor =
-                str::from_utf8(CStr::from_ptr(glx_vendor).to_bytes())
-                    .ok()
-                    .expect("GLX client vendor string not in UTF-8 format.")
-                    .to_string()
-                    .to_ascii_lowercase();
+            let glx_vendor = str::from_utf8(CStr::from_ptr(glx_vendor).to_bytes())
+                .ok()
+                .expect("GLX client vendor string not in UTF-8 format.")
+                .to_string()
+                .to_ascii_lowercase();
             glx_vendor.contains("nvidia") || glx_vendor.contains("ati")
         }
     }
@@ -172,9 +179,7 @@ impl NativeDisplay {
     }
 
     pub fn new_egl_display() -> NativeDisplay {
-        NativeDisplay::EGL(EGLDisplayInfo {
-            display: GetCurrentDisplay()
-        })
+        NativeDisplay::EGL(EGLDisplayInfo { display: GetCurrentDisplay() })
     }
 }
 
@@ -193,8 +198,10 @@ pub struct PixmapNativeSurface {
 impl Drop for PixmapNativeSurface {
     fn drop(&mut self) {
         if self.will_leak {
-            panic!("You should have disposed of the pixmap properly with destroy()! This pixmap \
-                   will leak!");
+            panic!(
+                "You should have disposed of the pixmap properly with destroy()! This pixmap \
+                   will leak!"
+            );
         }
     }
 }
@@ -208,11 +215,13 @@ impl PixmapNativeSurface {
             // The X server we use for testing on build machines always returns
             // visuals that report 24 bit depth. But creating a 32 bit pixmap does work, so
             // hard code the depth here.
-            let pixmap = xlib::XCreatePixmap(display.display,
-                                             window,
-                                             size.width as c_uint,
-                                             size.height as c_uint,
-                                             32);
+            let pixmap = xlib::XCreatePixmap(
+                display.display,
+                window,
+                size.width as c_uint,
+                size.height as c_uint,
+                32,
+            );
             PixmapNativeSurface {
                 pixmap: pixmap,
                 will_leak: true,
@@ -233,27 +242,39 @@ impl PixmapNativeSurface {
             };
 
             let pixmap_attributes = [
-                glx::TEXTURE_TARGET_EXT as i32, glx::TEXTURE_2D_EXT as i32,
-                glx::TEXTURE_FORMAT_EXT as i32, glx::TEXTURE_FORMAT_RGBA_EXT as i32,
-                0
+                glx::TEXTURE_TARGET_EXT as i32,
+                glx::TEXTURE_2D_EXT as i32,
+                glx::TEXTURE_FORMAT_EXT as i32,
+                glx::TEXTURE_FORMAT_RGBA_EXT as i32,
+                0,
             ];
 
             let glx_display = mem::transmute(display.display);
 
-            let glx_pixmap = glx::CreatePixmap(glx_display,
-                                               display.framebuffer_configuration.expect(
-                                                   "GLX 1.3 should have a framebuffer_configuration"),
-                                               self.pixmap,
-                                               pixmap_attributes.as_ptr());
+            let glx_pixmap = glx::CreatePixmap(
+                glx_display,
+                display.framebuffer_configuration.expect(
+                    "GLX 1.3 should have a framebuffer_configuration",
+                ),
+                self.pixmap,
+                pixmap_attributes.as_ptr(),
+            );
 
-            let glx_bind_tex_image: extern "C" fn(*mut xlib::Display, glx::types::GLXDrawable, c_int, *mut c_int) =
-                mem::transmute(glx::GetProcAddress(mem::transmute(&"glXBindTexImageEXT\x00".as_bytes()[0])));
+            let glx_bind_tex_image: extern "C" fn(*mut xlib::Display,
+                                                  glx::types::GLXDrawable,
+                                                  c_int,
+                                                  *mut c_int) =
+                mem::transmute(glx::GetProcAddress(
+                    mem::transmute(&"glXBindTexImageEXT\x00".as_bytes()[0]),
+                ));
             assert!(glx_bind_tex_image as *mut c_void != ptr::null_mut());
             let _bound = texture.bind();
-            glx_bind_tex_image(display.display,
-                               mem::transmute(glx_pixmap),
-                               glx::FRONT_EXT  as i32,
-                               ptr::null_mut());
+            glx_bind_tex_image(
+                display.display,
+                mem::transmute(glx_pixmap),
+                glx::FRONT_EXT as i32,
+                ptr::null_mut(),
+            );
 
             // FIXME(pcwalton): Recycle these for speed?
             glx::DestroyPixmap(glx_display, glx_pixmap);
@@ -268,28 +289,32 @@ impl PixmapNativeSurface {
                 &NativeDisplay::EGL(_) => unreachable!(),
             };
 
-            let image = xlib::XCreateImage(display.display,
-                                           (*display.visual_info).visual,
-                                           32,
-                                           xlib::ZPixmap,
-                                           0,
-                                           mem::transmute(&data[0]),
-                                           self.size.width as c_uint,
-                                           self.size.height as c_uint,
-                                           32,
-                                           0);
+            let image = xlib::XCreateImage(
+                display.display,
+                (*display.visual_info).visual,
+                32,
+                xlib::ZPixmap,
+                0,
+                mem::transmute(&data[0]),
+                self.size.width as c_uint,
+                self.size.height as c_uint,
+                32,
+                0,
+            );
 
             let gc = xlib::XCreateGC(display.display, self.pixmap, 0, ptr::null_mut());
-            let _ = xlib::XPutImage(display.display,
-                                    self.pixmap,
-                                    gc,
-                                    image,
-                                    0,
-                                    0,
-                                    0,
-                                    0,
-                                    self.size.width as c_uint,
-                                    self.size.height as c_uint);
+            let _ = xlib::XPutImage(
+                display.display,
+                self.pixmap,
+                gc,
+                image,
+                0,
+                0,
+                0,
+                0,
+                self.size.width as c_uint,
+                self.size.height as c_uint,
+            );
         }
     }
 
@@ -318,9 +343,10 @@ impl PixmapNativeSurface {
         self.will_leak = false;
     }
 
-    pub fn gl_rasterization_context(&mut self,
-                                    gl_context: Arc<GLContext>)
-                                    -> Option<GLRasterizationContext> {
+    pub fn gl_rasterization_context(
+        &mut self,
+        gl_context: Arc<GLContext>,
+    ) -> Option<GLRasterizationContext> {
         GLRasterizationContext::new(gl_context, self.pixmap, self.size)
     }
 }

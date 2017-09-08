@@ -69,7 +69,14 @@ const ORTHO_NEAR_PLANE: f32 = -1000000.0;
 const ORTHO_FAR_PLANE: f32 = 1000000.0;
 
 fn create_ortho(scene_size: &Size2D<f32>) -> Matrix4D<f32> {
-    Matrix4D::ortho(0.0, scene_size.width, scene_size.height, 0.0, ORTHO_NEAR_PLANE, ORTHO_FAR_PLANE)
+    Matrix4D::ortho(
+        0.0,
+        scene_size.width,
+        scene_size.height,
+        0.0,
+        ORTHO_NEAR_PLANE,
+        ORTHO_FAR_PLANE,
+    )
 }
 
 static TEXTURE_FRAGMENT_SHADER_SOURCE: &'static str = "
@@ -125,11 +132,26 @@ static SOLID_COLOR_VERTEX_SHADER_SOURCE: &'static str = "
     }
 ";
 
-static TILE_DEBUG_BORDER_COLOR: Color = Color { r: 0., g: 1., b: 1., a: 1.0 };
+static TILE_DEBUG_BORDER_COLOR: Color = Color {
+    r: 0.,
+    g: 1.,
+    b: 1.,
+    a: 1.0,
+};
 static TILE_DEBUG_BORDER_THICKNESS: usize = 1;
-static LAYER_DEBUG_BORDER_COLOR: Color = Color { r: 1., g: 0.5, b: 0., a: 1.0 };
+static LAYER_DEBUG_BORDER_COLOR: Color = Color {
+    r: 1.,
+    g: 0.5,
+    b: 0.,
+    a: 1.0,
+};
 static LAYER_DEBUG_BORDER_THICKNESS: usize = 2;
-static LAYER_AABB_DEBUG_BORDER_COLOR: Color = Color { r: 1., g: 0.0, b: 0., a: 1.0 };
+static LAYER_AABB_DEBUG_BORDER_COLOR: Color = Color {
+    r: 1.,
+    g: 0.0,
+    b: 0.,
+    a: 1.0,
+};
 static LAYER_AABB_DEBUG_BORDER_THICKNESS: usize = 1;
 
 #[derive(Copy, Clone)]
@@ -146,21 +168,28 @@ struct ShaderProgram {
 impl ShaderProgram {
     pub fn new(vertex_shader_source: &str, fragment_shader_source: &str) -> ShaderProgram {
         let id = gl::create_program();
-        gl::attach_shader(id, ShaderProgram::compile_shader(fragment_shader_source, gl::FRAGMENT_SHADER));
-        gl::attach_shader(id, ShaderProgram::compile_shader(vertex_shader_source, gl::VERTEX_SHADER));
+        gl::attach_shader(
+            id,
+            ShaderProgram::compile_shader(fragment_shader_source, gl::FRAGMENT_SHADER),
+        );
+        gl::attach_shader(
+            id,
+            ShaderProgram::compile_shader(vertex_shader_source, gl::VERTEX_SHADER),
+        );
         gl::link_program(id);
         if gl::get_program_iv(id, gl::LINK_STATUS) == (0 as GLint) {
-            panic!("Failed to compile shader program: {}", gl::get_program_info_log(id));
+            panic!(
+                "Failed to compile shader program: {}",
+                gl::get_program_info_log(id)
+            );
         }
 
-        ShaderProgram {
-            id: id,
-        }
+        ShaderProgram { id: id }
     }
 
     pub fn compile_shader(source_string: &str, shader_type: GLenum) -> GLuint {
         let id = gl::create_shader(shader_type);
-        gl::shader_source(id, &[ source_string.as_bytes() ]);
+        gl::shader_source(id, &[source_string.as_bytes()]);
         gl::compile_shader(id);
         if gl::get_shader_iv(id, gl::COMPILE_STATUS) == (0 as GLint) {
             panic!("Failed to compile shader: {}", gl::get_shader_info_log(id));
@@ -192,11 +221,12 @@ struct TextureProgram {
 
 impl TextureProgram {
     fn new(sampler_function: &str, sampler_type: &str) -> TextureProgram {
-        let fragment_shader_source
-             = fmt::format(format_args!("#define samplerFunction {}\n#define samplerType {}\n{}",
-                                        sampler_function,
-                                        sampler_type,
-                                        TEXTURE_FRAGMENT_SHADER_SOURCE));
+        let fragment_shader_source = fmt::format(format_args!(
+            "#define samplerFunction {}\n#define samplerType {}\n{}",
+            sampler_function,
+            sampler_type,
+            TEXTURE_FRAGMENT_SHADER_SOURCE
+        ));
         let program = ShaderProgram::new(TEXTURE_VERTEX_SHADER_SOURCE, &fragment_shader_source);
         TextureProgram {
             program: program,
@@ -210,31 +240,51 @@ impl TextureProgram {
         }
     }
 
-    fn bind_uniforms_and_attributes(&self,
-                                    vertices: &[TextureVertex; 4],
-                                    transform: &Matrix4D<f32>,
-                                    projection_matrix: &Matrix4D<f32>,
-                                    texture_space_transform: &Matrix4D<f32>,
-                                    buffers: &Buffers,
-                                    opacity: f32) {
+    fn bind_uniforms_and_attributes(
+        &self,
+        vertices: &[TextureVertex; 4],
+        transform: &Matrix4D<f32>,
+        projection_matrix: &Matrix4D<f32>,
+        texture_space_transform: &Matrix4D<f32>,
+        buffers: &Buffers,
+        opacity: f32,
+    ) {
         gl::uniform_1i(self.sampler_uniform, 0);
-        gl::uniform_matrix_4fv(self.modelview_uniform,
-                               false,
-                               &transform.to_row_major_array());
-        gl::uniform_matrix_4fv(self.projection_uniform,
-                               false,
-                               &projection_matrix.to_row_major_array());
+        gl::uniform_matrix_4fv(
+            self.modelview_uniform,
+            false,
+            &transform.to_row_major_array(),
+        );
+        gl::uniform_matrix_4fv(
+            self.projection_uniform,
+            false,
+            &projection_matrix.to_row_major_array(),
+        );
 
         let vertex_size = mem::size_of::<TextureVertex>();
 
         gl::bind_buffer(gl::ARRAY_BUFFER, buffers.quad_vertex_buffer);
         gl::buffer_data(gl::ARRAY_BUFFER, vertices, gl::DYNAMIC_DRAW);
-        gl::vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint,2, false, vertex_size as i32, 0);
-        gl::vertex_attrib_pointer_f32(self.vertex_uv_attr as GLuint, 2, false, vertex_size as i32, 8);
+        gl::vertex_attrib_pointer_f32(
+            self.vertex_position_attr as GLuint,
+            2,
+            false,
+            vertex_size as i32,
+            0,
+        );
+        gl::vertex_attrib_pointer_f32(
+            self.vertex_uv_attr as GLuint,
+            2,
+            false,
+            vertex_size as i32,
+            8,
+        );
 
-        gl::uniform_matrix_4fv(self.texture_space_transform_uniform,
-                               false,
-                               &texture_space_transform.to_row_major_array());
+        gl::uniform_matrix_4fv(
+            self.texture_space_transform_uniform,
+            false,
+            &texture_space_transform.to_row_major_array(),
+        );
 
         gl::uniform_1f(self.opacity_uniform, opacity);
     }
@@ -253,13 +303,13 @@ impl TextureProgram {
         TextureProgram::new("texture2D", "sampler2D")
     }
 
-    #[cfg(target_os="macos")]
+    #[cfg(target_os = "macos")]
     fn create_rectangle_program_if_necessary() -> Option<TextureProgram> {
         gl::enable(gl::TEXTURE_RECTANGLE_ARB);
         Some(TextureProgram::new("texture2DRect", "sampler2DRect"))
     }
 
-    #[cfg(not(target_os="macos"))]
+    #[cfg(not(target_os = "macos"))]
     fn create_rectangle_program_if_necessary() -> Option<TextureProgram> {
         None
     }
@@ -276,8 +326,10 @@ struct SolidColorProgram {
 
 impl SolidColorProgram {
     fn new() -> SolidColorProgram {
-        let program = ShaderProgram::new(SOLID_COLOR_VERTEX_SHADER_SOURCE,
-                                         SOLID_COLOR_FRAGMENT_SHADER_SOURCE);
+        let program = ShaderProgram::new(
+            SOLID_COLOR_VERTEX_SHADER_SOURCE,
+            SOLID_COLOR_FRAGMENT_SHADER_SOURCE,
+        );
         SolidColorProgram {
             program: program,
             vertex_position_attr: program.get_attribute_location("aVertexPosition"),
@@ -287,29 +339,39 @@ impl SolidColorProgram {
         }
     }
 
-    fn bind_uniforms_and_attributes_common(&self,
-                                           transform: &Matrix4D<f32>,
-                                           projection_matrix: &Matrix4D<f32>,
-                                           color: &Color) {
-        gl::uniform_matrix_4fv(self.modelview_uniform,
-                               false,
-                               &transform.to_row_major_array());
-        gl::uniform_matrix_4fv(self.projection_uniform,
-                               false,
-                               &projection_matrix.to_row_major_array());
-        gl::uniform_4f(self.color_uniform,
-                   color.r as GLfloat,
-                   color.g as GLfloat,
-                   color.b as GLfloat,
-                   color.a as GLfloat);
+    fn bind_uniforms_and_attributes_common(
+        &self,
+        transform: &Matrix4D<f32>,
+        projection_matrix: &Matrix4D<f32>,
+        color: &Color,
+    ) {
+        gl::uniform_matrix_4fv(
+            self.modelview_uniform,
+            false,
+            &transform.to_row_major_array(),
+        );
+        gl::uniform_matrix_4fv(
+            self.projection_uniform,
+            false,
+            &projection_matrix.to_row_major_array(),
+        );
+        gl::uniform_4f(
+            self.color_uniform,
+            color.r as GLfloat,
+            color.g as GLfloat,
+            color.b as GLfloat,
+            color.a as GLfloat,
+        );
     }
 
-    fn bind_uniforms_and_attributes_for_lines(&self,
-                                              vertices: &[ColorVertex; 5],
-                                              transform: &Matrix4D<f32>,
-                                              projection_matrix: &Matrix4D<f32>,
-                                              buffers: &Buffers,
-                                              color: &Color) {
+    fn bind_uniforms_and_attributes_for_lines(
+        &self,
+        vertices: &[ColorVertex; 5],
+        transform: &Matrix4D<f32>,
+        projection_matrix: &Matrix4D<f32>,
+        buffers: &Buffers,
+        color: &Color,
+    ) {
         self.bind_uniforms_and_attributes_common(transform, projection_matrix, color);
 
         gl::bind_buffer(gl::ARRAY_BUFFER, buffers.line_quad_vertex_buffer);
@@ -317,12 +379,14 @@ impl SolidColorProgram {
         gl::vertex_attrib_pointer_f32(self.vertex_position_attr as GLuint, 2, false, 0, 0);
     }
 
-    fn bind_uniforms_and_attributes_for_quad(&self,
-                                             vertices: &[ColorVertex; 4],
-                                             transform: &Matrix4D<f32>,
-                                             projection_matrix: &Matrix4D<f32>,
-                                             buffers: &Buffers,
-                                             color: &Color) {
+    fn bind_uniforms_and_attributes_for_quad(
+        &self,
+        vertices: &[ColorVertex; 4],
+        transform: &Matrix4D<f32>,
+        projection_matrix: &Matrix4D<f32>,
+        buffers: &Buffers,
+        color: &Color,
+    ) {
         self.bind_uniforms_and_attributes_common(transform, projection_matrix, color);
 
         gl::bind_buffer(gl::ARRAY_BUFFER, buffers.quad_vertex_buffer);
@@ -346,7 +410,7 @@ struct RenderContextChild<T> {
     z_center: f32,
 }
 
-pub struct RenderContext3D<T>{
+pub struct RenderContext3D<T> {
     children: Vec<RenderContextChild<T>>,
     clip_rect: Option<Rect<f32>>,
 }
@@ -354,7 +418,7 @@ pub struct RenderContext3D<T>{
 impl<T> RenderContext3D<T> {
     fn new(layer: Rc<Layer<T>>) -> RenderContext3D<T> {
         let mut render_context = RenderContext3D {
-            children: vec!(),
+            children: vec![],
             clip_rect: RenderContext3D::calculate_context_clip(layer.clone(), None),
         };
         layer.build(&mut render_context);
@@ -362,9 +426,10 @@ impl<T> RenderContext3D<T> {
         render_context
     }
 
-    fn build_child(layer: Rc<Layer<T>>,
-                   parent_clip_rect: Option<Rect<f32>>)
-                   -> Option<RenderContext3D<T>> {
+    fn build_child(
+        layer: Rc<Layer<T>>,
+        parent_clip_rect: Option<Rect<f32>>,
+    ) -> Option<RenderContext3D<T>> {
         let clip_rect = RenderContext3D::calculate_context_clip(layer.clone(), parent_clip_rect);
         if let Some(ref clip_rect) = clip_rect {
             if clip_rect.is_empty() {
@@ -373,7 +438,7 @@ impl<T> RenderContext3D<T> {
         }
 
         let mut render_context = RenderContext3D {
-            children: vec!(),
+            children: vec![],
             clip_rect: clip_rect,
         };
 
@@ -389,24 +454,23 @@ impl<T> RenderContext3D<T> {
         // TODO(gw): This is basically what FF does, which breaks badly
         // when there are intersecting polygons. Need to split polygons
         // to handle this case correctly (Blink uses a BSP tree).
-        self.children.sort_by(|a, b| {
-            if a.z_center < b.z_center {
-                Ordering::Less
-            } else if a.z_center > b.z_center {
-                Ordering::Greater
-            } else if a.paint_order < b.paint_order {
-                Ordering::Less
-            } else if a.paint_order > b.paint_order {
-                Ordering::Greater
-            } else {
-                Ordering::Equal
-            }
+        self.children.sort_by(|a, b| if a.z_center < b.z_center {
+            Ordering::Less
+        } else if a.z_center > b.z_center {
+            Ordering::Greater
+        } else if a.paint_order < b.paint_order {
+            Ordering::Less
+        } else if a.paint_order > b.paint_order {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
         });
     }
 
-    fn calculate_context_clip(layer: Rc<Layer<T>>,
-                              parent_clip_rect: Option<Rect<f32>>)
-                              -> Option<Rect<f32>> {
+    fn calculate_context_clip(
+        layer: Rc<Layer<T>>,
+        parent_clip_rect: Option<Rect<f32>>,
+    ) -> Option<Rect<f32>> {
         // TODO(gw): This doesn't work for iframes that are transformed.
         if !*layer.masks_to_bounds.borrow() {
             return parent_clip_rect;
@@ -418,18 +482,22 @@ impl<T> RenderContext3D<T> {
         };
 
         match parent_clip_rect {
-            Some(parent_clip_rect) => match layer_clip.intersection(&parent_clip_rect) {
-                Some(intersected_clip) => Some(intersected_clip),
-                None => Some(Rect::zero()), // No intersection.
-            },
+            Some(parent_clip_rect) => {
+                match layer_clip.intersection(&parent_clip_rect) {
+                    Some(intersected_clip) => Some(intersected_clip),
+                    None => Some(Rect::zero()), // No intersection.
+                }
+            }
             None => Some(layer_clip),
         }
     }
 
-    fn add_child(&mut self,
-                 layer: Option<Rc<Layer<T>>>,
-                 child_context: Option<RenderContext3D<T>>,
-                 z_center: f32) {
+    fn add_child(
+        &mut self,
+        layer: Option<Rc<Layer<T>>>,
+        child_context: Option<RenderContext3D<T>>,
+        z_center: f32,
+    ) {
         let paint_order = self.children.len();
         self.children.push(RenderContextChild {
             layer: layer,
@@ -490,9 +558,11 @@ pub struct RenderContext {
 }
 
 impl RenderContext {
-    pub fn new(compositing_display: NativeDisplay,
-               show_debug_borders: bool,
-               force_near_texture_filter: bool) -> RenderContext {
+    pub fn new(
+        compositing_display: NativeDisplay,
+        show_debug_borders: bool,
+        force_near_texture_filter: bool,
+    ) -> RenderContext {
         gl::enable(gl::TEXTURE_2D);
 
         // Each layer uses premultiplied alpha!
@@ -527,38 +597,47 @@ impl RenderContext {
         }
     }
 
-    fn bind_and_render_solid_quad(&self,
-                                  vertices: &[ColorVertex; 4],
-                                  transform: &Matrix4D<f32>,
-                                  projection: &Matrix4D<f32>,
-                                  color: &Color) {
+    fn bind_and_render_solid_quad(
+        &self,
+        vertices: &[ColorVertex; 4],
+        transform: &Matrix4D<f32>,
+        projection: &Matrix4D<f32>,
+        color: &Color,
+    ) {
         self.solid_color_program.enable_attribute_arrays();
         gl::use_program(self.solid_color_program.program.id);
-        self.solid_color_program.bind_uniforms_and_attributes_for_quad(vertices,
-                                                                       transform,
-                                                                       projection,
-                                                                       &self.buffers,
-                                                                       color);
+        self.solid_color_program
+            .bind_uniforms_and_attributes_for_quad(
+                vertices,
+                transform,
+                projection,
+                &self.buffers,
+                color,
+            );
         gl::draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
         self.solid_color_program.disable_attribute_arrays();
     }
 
-    fn bind_and_render_quad(&self,
-                            vertices: &[TextureVertex; 4],
-                            texture: &Texture,
-                            transform: &Matrix4D<f32>,
-                            projection_matrix: &Matrix4D<f32>,
-                            opacity: f32) {
+    fn bind_and_render_quad(
+        &self,
+        vertices: &[TextureVertex; 4],
+        texture: &Texture,
+        transform: &Matrix4D<f32>,
+        projection_matrix: &Matrix4D<f32>,
+        opacity: f32,
+    ) {
         let mut texture_coordinates_need_to_be_scaled_by_size = false;
         let program = match texture.target {
             TextureTarget2D => self.texture_2d_program,
-            TextureTargetRectangle => match self.texture_rectangle_program {
-                Some(program) => {
-                    texture_coordinates_need_to_be_scaled_by_size = true;
-                    program
+            TextureTargetRectangle => {
+                match self.texture_rectangle_program {
+                    Some(program) => {
+                        texture_coordinates_need_to_be_scaled_by_size = true;
+                        program
+                    }
+                    None => panic!("There is no shader program for texture rectangle"),
                 }
-                None => panic!("There is no shader program for texture rectangle"),
-            },
+            }
         };
         program.enable_attribute_arrays();
 
@@ -571,8 +650,16 @@ impl RenderContext {
         } else {
             gl::LINEAR
         } as GLint;
-        gl::tex_parameter_i(texture.target.as_gl_target(), gl::TEXTURE_MAG_FILTER, filter_mode);
-        gl::tex_parameter_i(texture.target.as_gl_target(), gl::TEXTURE_MIN_FILTER, filter_mode);
+        gl::tex_parameter_i(
+            texture.target.as_gl_target(),
+            gl::TEXTURE_MAG_FILTER,
+            filter_mode,
+        );
+        gl::tex_parameter_i(
+            texture.target.as_gl_target(),
+            gl::TEXTURE_MIN_FILTER,
+            filter_mode,
+        );
 
         // We calculate a transformation matrix for the texture coordinates
         // which is useful for flipping the texture vertically or scaling the
@@ -583,18 +670,23 @@ impl RenderContext {
         }
         if texture_coordinates_need_to_be_scaled_by_size {
             texture_transform = texture_transform.pre_scaled(
-                texture.size.width as f32, texture.size.height as f32, 1.0);
+                texture.size.width as f32,
+                texture.size.height as f32,
+                1.0,
+            );
         }
         if texture.flip == VerticalFlip {
             texture_transform = texture_transform.pre_translated(0.0, -1.0, 0.0);
         }
 
-        program.bind_uniforms_and_attributes(vertices,
-                                             transform,
-                                             &projection_matrix,
-                                             &texture_transform,
-                                             &self.buffers,
-                                             opacity);
+        program.bind_uniforms_and_attributes(
+            vertices,
+            transform,
+            &projection_matrix,
+            &texture_transform,
+            &self.buffers,
+            opacity,
+        );
 
         // Draw!
         gl::draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
@@ -604,30 +696,37 @@ impl RenderContext {
         program.disable_attribute_arrays()
     }
 
-    pub fn bind_and_render_quad_lines(&self,
-                                      vertices: &[ColorVertex; 5],
-                                      transform: &Matrix4D<f32>,
-                                      projection: &Matrix4D<f32>,
-                                      color: &Color,
-                                      line_thickness: usize) {
+    pub fn bind_and_render_quad_lines(
+        &self,
+        vertices: &[ColorVertex; 5],
+        transform: &Matrix4D<f32>,
+        projection: &Matrix4D<f32>,
+        color: &Color,
+        line_thickness: usize,
+    ) {
         self.solid_color_program.enable_attribute_arrays();
         gl::use_program(self.solid_color_program.program.id);
-        self.solid_color_program.bind_uniforms_and_attributes_for_lines(vertices,
-                                                                        transform,
-                                                                        projection,
-                                                                        &self.buffers,
-                                                                        color);
+        self.solid_color_program
+            .bind_uniforms_and_attributes_for_lines(
+                vertices,
+                transform,
+                projection,
+                &self.buffers,
+                color,
+            );
         gl::line_width(line_thickness as GLfloat);
         gl::draw_arrays(gl::LINE_STRIP, 0, 5);
         self.solid_color_program.disable_attribute_arrays();
     }
 
-    fn render_layer<T>(&self,
-                       layer: Rc<Layer<T>>,
-                       transform: &Matrix4D<f32>,
-                       projection: &Matrix4D<f32>,
-                       clip_rect: Option<Rect<f32>>,
-                       gfx_context: &NativeDisplay) {
+    fn render_layer<T>(
+        &self,
+        layer: Rc<Layer<T>>,
+        transform: &Matrix4D<f32>,
+        projection: &Matrix4D<f32>,
+        clip_rect: Option<Rect<f32>>,
+        gfx_context: &NativeDisplay,
+    ) {
         let ts = layer.transform_state.borrow();
         let transform = transform.pre_mul(&ts.final_transform);
         let background_color = *layer.background_color.borrow();
@@ -635,11 +734,11 @@ impl RenderContext {
         // Create native textures for this layer
         layer.create_textures(gfx_context);
 
-        let layer_rect = clip_rect.map_or(ts.world_rect, |clip_rect| {
-            match clip_rect.intersection(&ts.world_rect) {
-                Some(layer_rect) => layer_rect,
-                None => Rect::zero(),
-            }
+        let layer_rect = clip_rect.map_or(ts.world_rect, |clip_rect| match clip_rect.intersection(
+            &ts.world_rect,
+        ) {
+            Some(layer_rect) => layer_rect,
+            None => Rect::zero(),
         });
 
         if layer_rect.is_empty() {
@@ -654,19 +753,23 @@ impl RenderContext {
                 ColorVertex::new(layer_rect.bottom_right()),
             ];
 
-            self.bind_and_render_solid_quad(&bg_vertices,
-                                            &transform,
-                                            &projection,
-                                            &background_color);
+            self.bind_and_render_solid_quad(
+                &bg_vertices,
+                &transform,
+                &projection,
+                &background_color,
+            );
         }
 
         layer.do_for_all_tiles(|tile: &Tile| {
-           self.render_tile(tile,
-                            &ts.world_rect.origin,
-                            &transform,
-                            projection,
-                            clip_rect,
-                            *layer.opacity.borrow());
+            self.render_tile(
+                tile,
+                &ts.world_rect.origin,
+                &transform,
+                projection,
+                clip_rect,
+                *layer.opacity.borrow(),
+            );
         });
 
         if self.show_debug_borders {
@@ -677,11 +780,13 @@ impl RenderContext {
                 ColorVertex::new(layer_rect.bottom_left()),
                 ColorVertex::new(layer_rect.origin),
             ];
-            self.bind_and_render_quad_lines(&debug_vertices,
-                                            &transform,
-                                            projection,
-                                            &LAYER_DEBUG_BORDER_COLOR,
-                                            LAYER_DEBUG_BORDER_THICKNESS);
+            self.bind_and_render_quad_lines(
+                &debug_vertices,
+                &transform,
+                projection,
+                &LAYER_DEBUG_BORDER_COLOR,
+                LAYER_DEBUG_BORDER_THICKNESS,
+            );
 
             let aabb = ts.screen_rect.as_ref().unwrap().rect;
             let debug_vertices = [
@@ -691,21 +796,25 @@ impl RenderContext {
                 ColorVertex::new(aabb.bottom_left()),
                 ColorVertex::new(aabb.origin),
             ];
-            self.bind_and_render_quad_lines(&debug_vertices,
-                                            &Matrix4D::identity(),
-                                            projection,
-                                            &LAYER_AABB_DEBUG_BORDER_COLOR,
-                                            LAYER_AABB_DEBUG_BORDER_THICKNESS);
+            self.bind_and_render_quad_lines(
+                &debug_vertices,
+                &Matrix4D::identity(),
+                projection,
+                &LAYER_AABB_DEBUG_BORDER_COLOR,
+                LAYER_AABB_DEBUG_BORDER_THICKNESS,
+            );
         }
     }
 
-    fn render_tile(&self,
-                   tile: &Tile,
-                   layer_origin: &Point2D<f32>,
-                   transform: &Matrix4D<f32>,
-                   projection: &Matrix4D<f32>,
-                   clip_rect: Option<Rect<f32>>,
-                   opacity: f32) {
+    fn render_tile(
+        &self,
+        tile: &Tile,
+        layer_origin: &Point2D<f32>,
+        transform: &Matrix4D<f32>,
+        projection: &Matrix4D<f32>,
+        clip_rect: Option<Rect<f32>>,
+        opacity: f32,
+    ) {
         if tile.texture.is_zero() || !tile.bounds.is_some() {
             return;
         }
@@ -719,22 +828,31 @@ impl RenderContext {
         });
 
         if clipped_tile_rect.is_empty() {
-           return;
+            return;
         }
 
         let texture_rect_origin = clipped_tile_rect.origin - tile_rect.origin;
         let texture_rect = Rect::new(
-            Point2D::new(texture_rect_origin.x / tile_rect.size.width,
-                         texture_rect_origin.y / tile_rect.size.height),
-            Size2D::new(clipped_tile_rect.size.width / tile_rect.size.width,
-                        clipped_tile_rect.size.height / tile_rect.size.height));
+            Point2D::new(
+                texture_rect_origin.x / tile_rect.size.width,
+                texture_rect_origin.y / tile_rect.size.height,
+            ),
+            Size2D::new(
+                clipped_tile_rect.size.width / tile_rect.size.width,
+                clipped_tile_rect.size.height / tile_rect.size.height,
+            ),
+        );
 
-        let tile_vertices: [TextureVertex; 4] = [
-            TextureVertex::new(clipped_tile_rect.origin, texture_rect.origin),
-            TextureVertex::new(clipped_tile_rect.top_right(), texture_rect.top_right()),
-            TextureVertex::new(clipped_tile_rect.bottom_left(), texture_rect.bottom_left()),
-            TextureVertex::new(clipped_tile_rect.bottom_right(), texture_rect.bottom_right()),
-        ];
+        let tile_vertices: [TextureVertex; 4] =
+            [
+                TextureVertex::new(clipped_tile_rect.origin, texture_rect.origin),
+                TextureVertex::new(clipped_tile_rect.top_right(), texture_rect.top_right()),
+                TextureVertex::new(clipped_tile_rect.bottom_left(), texture_rect.bottom_left()),
+                TextureVertex::new(
+                    clipped_tile_rect.bottom_right(),
+                    texture_rect.bottom_right(),
+                ),
+            ];
 
         if self.show_debug_borders {
             let debug_vertices = [
@@ -745,25 +863,31 @@ impl RenderContext {
                 ColorVertex::new(clipped_tile_rect.bottom_left()),
                 ColorVertex::new(clipped_tile_rect.origin),
             ];
-            self.bind_and_render_quad_lines(&debug_vertices,
-                                            &transform,
-                                            projection,
-                                            &TILE_DEBUG_BORDER_COLOR,
-                                            TILE_DEBUG_BORDER_THICKNESS);
+            self.bind_and_render_quad_lines(
+                &debug_vertices,
+                &transform,
+                projection,
+                &TILE_DEBUG_BORDER_COLOR,
+                TILE_DEBUG_BORDER_THICKNESS,
+            );
         }
 
-        self.bind_and_render_quad(&tile_vertices,
-                                  &tile.texture,
-                                  &transform,
-                                  projection,
-                                  opacity);
+        self.bind_and_render_quad(
+            &tile_vertices,
+            &tile.texture,
+            &transform,
+            projection,
+            opacity,
+        );
     }
 
-    fn render_3d_context<T>(&self,
-                            context: &RenderContext3D<T>,
-                            transform: &Matrix4D<f32>,
-                            projection: &Matrix4D<f32>,
-                            gfx_context: &NativeDisplay) {
+    fn render_3d_context<T>(
+        &self,
+        context: &RenderContext3D<T>,
+        transform: &Matrix4D<f32>,
+        projection: &Matrix4D<f32>,
+        gfx_context: &NativeDisplay,
+    ) {
         if context.children.is_empty() {
             return;
         }
@@ -784,11 +908,11 @@ impl RenderContext {
                     let m = layer.transform_state.borrow().final_transform;
 
                     // See https://drafts.csswg.org/css-transforms/#2d-matrix
-                    let is_3d_transform = m.m31 != 0.0 || m.m32 != 0.0 ||
-                                          m.m13 != 0.0 || m.m23 != 0.0 ||
-                                          m.m43 != 0.0 || m.m14 != 0.0 ||
-                                          m.m24 != 0.0 || m.m34 != 0.0 ||
-                                          m.m33 != 1.0 || m.m44 != 1.0;
+                    let is_3d_transform = m.m31 != 0.0 || m.m32 != 0.0 || m.m13 != 0.0 ||
+                        m.m23 != 0.0 || m.m43 != 0.0 ||
+                        m.m14 != 0.0 || m.m24 != 0.0 ||
+                        m.m34 != 0.0 || m.m33 != 1.0 ||
+                        m.m44 != 1.0;
 
                     if is_3d_transform {
                         None
@@ -801,31 +925,26 @@ impl RenderContext {
                     }
 
                 });
-                self.render_layer(layer.clone(),
-                                  transform,
-                                  projection,
-                                  clip_rect,
-                                  gfx_context);
+                self.render_layer(layer.clone(), transform, projection, clip_rect, gfx_context);
             }
 
             if let Some(ref context) = child.context {
-                self.render_3d_context(context,
-                                       transform,
-                                       projection,
-                                       gfx_context);
+                self.render_3d_context(context, transform, projection, gfx_context);
 
             }
         }
     }
 }
 
-pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
-                       render_context: RenderContext,
-                       scene: &Scene<T>) {
+pub fn render_scene<T>(root_layer: Rc<Layer<T>>, render_context: RenderContext, scene: &Scene<T>) {
     // Set the viewport.
     let v = scene.viewport.to_untyped();
-    gl::viewport(v.origin.x as GLint, v.origin.y as GLint,
-                 v.size.width as GLsizei, v.size.height as GLsizei);
+    gl::viewport(
+        v.origin.x as GLint,
+        v.origin.y as GLint,
+        v.size.width as GLsizei,
+        v.size.height as GLsizei,
+    );
 
     // Enable depth testing for 3d transforms. Set z-mode to LESS-EQUAL
     // so that layers with equal Z are able to paint correctly in
@@ -840,8 +959,10 @@ pub fn render_scene<T>(root_layer: Rc<Layer<T>>,
     let projection = create_ortho(&scene.viewport.size.to_untyped());
 
     // Build the list of render items
-    render_context.render_3d_context(&RenderContext3D::new(root_layer.clone()),
-                                     &transform,
-                                     &projection,
-                                     &render_context.compositing_display);
+    render_context.render_3d_context(
+        &RenderContext3D::new(root_layer.clone()),
+        &transform,
+        &projection,
+        &render_context.compositing_display,
+    );
 }

@@ -26,30 +26,25 @@ known_heap_size!(0, ScreenRect);
 
 pub fn convert_rgb32_to_rgb24(buffer: &[u8]) -> Vec<u8> {
     let mut i = 0;
-    repeat(buffer.len() * 3 / 4).map(|j| {
-        match j % 3 {
-            0 => {
-                buffer[i + 2]
-            }
-            1 => {
-                buffer[i + 1]
-            }
+    repeat(buffer.len() * 3 / 4)
+        .map(|j| match j % 3 {
+            0 => buffer[i + 2],
+            1 => buffer[i + 1],
             2 => {
                 let val = buffer[i];
                 i += 4;
                 val
             }
-            _ => {
-                panic!()
-            }
-        }
-    }).collect()
+            _ => panic!(),
+        })
+        .collect()
 }
 
 // Sutherland-Hodgman clipping algorithm
-fn clip_polygon_to_near_plane(clip_space_vertices: &[Point4D<f32>; 4])
-                                  -> Option<Vec<Point4D<f32>>> {
-    let mut out_vertices = vec!();
+fn clip_polygon_to_near_plane(
+    clip_space_vertices: &[Point4D<f32>; 4],
+) -> Option<Vec<Point4D<f32>>> {
+    let mut out_vertices = vec![];
 
     // TODO(gw): Check for trivial accept / reject if all
     // input vertices are on the same side of the near plane.
@@ -58,14 +53,23 @@ fn clip_polygon_to_near_plane(clip_space_vertices: &[Point4D<f32>; 4])
         let previous_vertex = if i == 0 {
             clip_space_vertices.last().unwrap()
         } else {
-            &clip_space_vertices[i-1]
+            &clip_space_vertices[i - 1]
         };
 
-        let previous_dot = if previous_vertex.w < W_CLIPPING_PLANE { -1 } else { 1 };
-        let current_dot = if current_vertex.w < W_CLIPPING_PLANE { -1 } else { 1 };
+        let previous_dot = if previous_vertex.w < W_CLIPPING_PLANE {
+            -1
+        } else {
+            1
+        };
+        let current_dot = if current_vertex.w < W_CLIPPING_PLANE {
+            -1
+        } else {
+            1
+        };
 
         if previous_dot * current_dot < 0 {
-            let int_factor = (previous_vertex.w - W_CLIPPING_PLANE) / (previous_vertex.w - current_vertex.w);
+            let int_factor = (previous_vertex.w - W_CLIPPING_PLANE) /
+                (previous_vertex.w - current_vertex.w);
 
             // TODO(gw): Impl operators on Point4D for this
             let int_point = Point4D::new(
@@ -84,14 +88,13 @@ fn clip_polygon_to_near_plane(clip_space_vertices: &[Point4D<f32>; 4])
     }
 
     if out_vertices.len() < 3 {
-        return None
+        return None;
     }
 
     Some(out_vertices)
 }
 
-pub fn project_rect_to_screen(rect: &Rect<f32>,
-                              transform: &Matrix4D<f32>) -> Option<ScreenRect> {
+pub fn project_rect_to_screen(rect: &Rect<f32>, transform: &Matrix4D<f32>) -> Option<ScreenRect> {
     let mut result = None;
 
     let x0 = rect.min_x();
@@ -109,7 +112,7 @@ pub fn project_rect_to_screen(rect: &Rect<f32>,
         Point4D::new(x0, y0, 0.0, 1.0),
         Point4D::new(x1, y0, 0.0, 1.0),
         Point4D::new(x0, y1, 0.0, 1.0),
-        Point4D::new(x1, y1, 0.0, 1.0)
+        Point4D::new(x1, y1, 0.0, 1.0),
     ];
 
     // Transform vertices to clip space
@@ -153,8 +156,7 @@ pub fn project_rect_to_screen(rect: &Rect<f32>,
         }
 
         let origin = Point2D::new(min_vertex.x, min_vertex.y);
-        let size = Size2D::new(max_vertex.x - min_vertex.x,
-                               max_vertex.y - min_vertex.y);
+        let size = Size2D::new(max_vertex.x - min_vertex.x, max_vertex.y - min_vertex.y);
 
         result = Some(ScreenRect {
             rect: Rect::new(origin, size),
