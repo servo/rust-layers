@@ -22,6 +22,3 @@ rust:
 script:
   - cargo test
   - cargo test --features heapsize
-
-notifications:
-  webhooks: http://build.servo.org:54856/travis
